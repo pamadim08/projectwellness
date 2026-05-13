@@ -1,0 +1,97 @@
+/* ListWellnessHub.css */
+:root {
+    --gov-green-dark: #155724;
+    --gov-green-main: #28a745;
+    --gov-bg: #f4f4f4;
+    --gov-border: #000000; /* เส้นตัดขอบดำคมชัด */
+}
+
+.gov-container * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Sarabun', sans-serif;
+    border-radius: 0 !important; /* บังคับเหลี่ยม */
+}
+
+.gov-container {
+    padding: 30px;
+    background-color: var(--gov-bg);
+    min-height: 100vh;
+}
+
+/* Header Section */
+.gov-header {
+    border-bottom: 3px solid var(--gov-green-dark);
+    margin-bottom: 25px;
+    padding-bottom: 10px;
+}
+
+.gov-header h2 {
+    color: var(--gov-green-dark);
+    font-size: 24px;
+    font-weight: 800;
+}
+
+/* Filter Bar */
+.gov-filter-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.gov-input {
+    border: 1px solid var(--gov-border);
+    padding: 8px 12px;
+    background: white;
+    font-size: 14px;
+}
+
+.btn-gov-search {
+    background: var(--gov-green-main);
+    color: white;
+    border: 1px solid var(--gov-green-dark);
+    padding: 8px 20px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-gov-search:hover {
+    background: var(--gov-green-dark);
+}
+
+/* Table Section */
+.gov-table-container {
+    background: white;
+    border: 1px solid var(--gov-border);
+    overflow-x: auto;
+}
+
+.list-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.list-table th {
+    background: var(--gov-green-dark);
+    color: white;
+    border: 1px solid var(--gov-border);
+    padding: 12px;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.list-table td {
+    border: 1px solid var(--gov-border);
+    padding: 10px 15px;
+    font-size: 14px;
+    color: #333;
+}
+
+.list-table tr:nth-child(even) {
+    background: #f9f9f9;
+}
+
+.status-text {
+    font-weight: bold;
+}
