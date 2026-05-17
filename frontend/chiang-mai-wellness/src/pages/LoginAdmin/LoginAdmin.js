@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom"; // 1. นำเข้า useNavigate
+import { useNavigate } from "react-router-dom";
 import "./LoginAdmin.css";
 
 function LoginAdmin() {
@@ -8,11 +8,24 @@ function LoginAdmin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const navigate = useNavigate(); // 2. ประกาศตัวแปร navigate
+  const navigate = useNavigate();
+
+  // นิยามกฎสำหรับตรวจสอบเงื่อนไข (Regex)
+  // ชื่อผู้ใช้: อังกฤษหรือตัวเลขเท่านั้น ห้ามช่องว่าง บังคับยาว 6-10 ตัวอักษร
+  const usernameRegex = /^[a-zA-Z0-9]{6,10}$/;
+  // รหัสผ่าน: อะไรก็ได้ (รวมอักขระพิเศษ) ห้ามช่องว่าง บังคับยาว 1-8 ตัวอักษร
+  const passwordRegex = /^[^\s]{1,8}$/;
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+
+    // เงื่อนไข 3.1: ตรวจสอบความถูกต้องของโครงสร้างข้อมูลก่อนส่งไปหลังบ้าน
+    if (!usernameRegex.test(username) || !passwordRegex.test(password)) {
+      setError("กรุณากรอกข้อมูลให้ถูกต้อง");
+      return;
+    }
+
     try {
       const response = await axios.post(
         "http://localhost:8080/api/admin/login",
@@ -22,15 +35,18 @@ function LoginAdmin() {
         },
       );
 
-      // ในไฟล์ LoginAdmin.js แก้บรรทัด navigate
       if (response.status === 200) {
-        alert(`เข้าสู่ระบบสำเร็จ! สวัสดีคุณ ${response.data.username}`);
-        // ต้องมี /admin/ นำหน้าเพื่อให้ตรงกับ App.js
-        navigate("/admin/listWellnesshub");
+        // เก็บข้อมูลลง localStorage เพื่อไปแสดงผลในหน้าถัดไป
+        localStorage.setItem("adminName", response.data.username || username);
+        localStorage.setItem("showWelcome", "true"); // บอกหน้าถัดไปให้เด้งแบนเนอร์แจ้งเตือน
+
+        // เปลี่ยนหน้าทันที ไม่ใช้ alert() มาขัดจังหวะ
+        navigate("/listWellnesshub");
       }
     } catch (err) {
+      // เงื่อนไข 5.1.1: กรณีระบบตรวจสอบชื่อผู้ใช้และรหัสผ่านไม่ถูกต้อง
       if (err.response && err.response.status === 401) {
-        setError("Username หรือ Password ไม่ถูกต้อง");
+        setError("ไม่พบข้อมูลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
       } else {
         setError("ไม่สามารถเชื่อมต่อกับระบบได้ กรุณาลองใหม่ภายหลัง");
       }
@@ -43,7 +59,10 @@ function LoginAdmin() {
         <div className="login-card">
           <div className="admin-logo-text">ADMIN LOGIN</div>
           <p className="subtitle">Chiang Mai Wellness</p>
+
+          {/* ส่วนแสดงข้อความแจ้งเตือน Error */}
           {error && <div className="error-message">{error}</div>}
+
           <form onSubmit={handleLogin}>
             <div className="input-group">
               <label>Admin ID</label>
@@ -53,7 +72,7 @@ function LoginAdmin() {
                   placeholder="ระบุรหัสผู้ใช้งาน"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  required
+                  // ลบ required ออกเพื่อให้ Regex ทำหน้าที่ตรวจสอบค่าว่างด้วยตัวเอง
                 />
               </div>
             </div>
@@ -65,7 +84,6 @@ function LoginAdmin() {
                   placeholder="ระบุรหัสผ่าน"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
                 />
               </div>
             </div>
