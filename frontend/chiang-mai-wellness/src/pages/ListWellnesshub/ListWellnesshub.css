@@ -1,230 +1,394 @@
 /* List WellnessHub.css */
 :root {
-    --gov-green-dark: #155724;
-    --gov-green-main: #28a745;
-    --gov-bg: #f4f4f4;
-    --gov-border: #000000;
-    --sidebar-dark: #0b2239;
+  --gov-green-dark: #155724;
+  --gov-green-main: #28a745;
+  --gov-bg: #f4f4f4;
+  --gov-border: #000000;
+  --sidebar-dark: #0b2239;
+  --gov-text: #111111;
 }
 
-/* ลบกฎ * ที่บังคับทั้งหน้าออก แล้วเน้นเฉพาะส่วนตาราง */
+/* ครอบคลุมฟอนต์และมิติพื้นฐานภายในส่วนราชการ */
 .gov-container {
-    padding: 30px;
-    background-color: var(--gov-bg);
+  padding: 30px;
+  background-color: var(--gov-bg);
 }
 
 .gov-container * {
-    font-family: 'Sarabun', sans-serif;
-    box-sizing: border-box;
+  font-family: "Sarabun", sans-serif;
+  box-sizing: border-box;
 }
 
 /* Header Section */
 .gov-header {
-    border-bottom: 3px solid var(--gov-green-dark);
-    margin-bottom: 25px;
-    padding-bottom: 10px;
+  border-bottom: 3px double var(--gov-green-dark); /* เส้นคู่เพื่อความเป็นทางการ */
+  margin-bottom: 25px;
+  padding-bottom: 10px;
 }
 
 .gov-header h2 {
-    color: var(--gov-green-dark);
-    font-size: 24px;
-    font-weight: 800;
+  color: var(--gov-green-dark);
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 5px 0;
+}
+
+.gov-header p {
+  color: #333333;
+  font-size: 14px;
+  margin: 0;
 }
 
 /* Layout โครงสร้างหลัก - บังคับให้ Sidebar เต็มจอและ Main เลื่อนได้ */
 .admin-layout {
-    display: flex;
-    height: 100vh;
-    overflow: hidden;
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden; /* ล็อคหน้าจอหลักไม่ให้เลื่อนหลุดเฟรม */
 }
 
-/* --- SIDEBAR STYLE (FIXED) --- */
+/* ==========================================================================
+   --- SIDEBAR STYLE (FIXED & NO SCROLL) ---
+   ========================================================================== */
 .sidebar-menu {
-    width: 260px;
-    background-color: var(--sidebar-dark);
-    color: white;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    border-right: 1px solid #000;
+  width: 260px;
+  height: 100vh; /* บังคับให้สูงเท่าหน้าจอเสมอ */
+  background-color: var(--sidebar-dark);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-right: 2px solid var(--gov-border);
+  position: relative;
 }
 
+/* ส่วนเมนูด้านบนที่ปล่อยให้ Scroll ได้ภายในตัวเองหากหน้าจอเตี้ยเกินไป */
 .sidebar-top {
-    flex: 1; /* ดันส่วนที่เหลือลงไปด้านล่าง */
-    overflow-y: auto;
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 20px;
 }
 
 .sidebar-logo {
-    padding: 25px 20px;
-    font-size: 20px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--gov-green-main);
+  padding: 25px 20px;
+  font-size: 20px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gov-green-main);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .user-profile-box {
-    background-color: rgba(255, 255, 255, 0.05);
-    margin: 0 15px 25px;
-    padding: 15px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  background-color: rgba(0, 0, 0, 0.2);
+  margin: 15px 15px 20px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.user-profile-box i { font-size: 24px; color: var(--gov-green-main); }
-
-.user-info { display: flex; flex-direction: column; }
-.user-label { font-size: 10px; color: #8899aa; text-transform: uppercase; }
-.user-name { font-size: 14px; font-weight: bold; }
+.user-profile-box i {
+  font-size: 24px;
+  color: var(--gov-green-main);
+}
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+.user-label {
+  font-size: 10px;
+  color: #a0aec0;
+  text-transform: uppercase;
+}
+.user-name {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffffff;
+}
 
 .menu-label {
-    padding: 10px 20px;
-    font-size: 12px;
-    text-transform: uppercase;
-    color: #6c757d;
-    font-weight: bold;
+  padding: 15px 20px 5px;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: bold;
+  letter-spacing: 0.5px;
 }
 
 .menu-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    color: #ced4da;
-    text-decoration: none;
-    font-size: 14px;
-    transition: 0.3s;
-    border-left: 4px solid transparent;
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  color: #ced4da;
+  text-decoration: none;
+  font-size: 14px;
+  transition: 0.1s;
+  border-left: 4px solid transparent;
 }
 
-.menu-item:hover { background-color: rgba(255, 255, 255, 0.1); color: white; }
+.menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
 .menu-item.active {
-    background-color: rgba(40, 167, 69, 0.2);
-    color: var(--gov-green-main);
-    border-left: 4px solid var(--gov-green-main);
+  background-color: rgba(40, 167, 69, 0.15);
+  color: white;
+  font-weight: bold;
+  border-left: 4px solid var(--gov-green-main);
 }
 
 .badge-counter {
-    background-color: #dc3545;
-    padding: 2px 6px;
-    border-radius: 10px !important;
-    font-size: 10px;
-    margin-left: auto;
+  background-color: #dc3545;
+  padding: 2px 6px;
+  font-size: 10px;
+  margin-left: auto;
+  font-weight: bold;
+  border-radius: 0px !important; /* ลบความโค้งมนออกคงสไตล์ราชการ */
 }
 
-/* ปุ่ม Logout ล่างสุด */
+/* ปุ่ม Logout ล่างสุด - ล็อคอยู่กับที่ถาวรไม่เลื่อนหนีไปไหน */
 .btn-sidebar-logout {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    padding: 15px;
-    cursor: pointer;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    width: 100%;
+  background-color: #bd2130; /* ปรับสีแดงให้ดูเข้มเป็นทางการและชัดเจน */
+  color: white;
+  border: none;
+  border-top: 1px solid var(--gov-border);
+  padding: 16px;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  flex-shrink: 0; /* บังคับไม่ให้โดนบีบอัดหายไป */
+  transition: background-color 0.1s;
 }
 
-/* --- MAIN CONTENT STYLE --- */
+.btn-sidebar-logout:hover {
+  background-color: #dc3545;
+}
+
+/* ==========================================================================
+   --- MAIN CONTENT STYLE (SCROLLABLE TABLE ONLY) ---
+   ========================================================================== */
 .main-content {
-    flex: 1;
-    background-color: var(--gov-bg);
-    overflow-y: auto;
-    padding-bottom: 50px;
+  flex: 1;
+  background-color: var(--gov-bg);
+  overflow-y: auto; /* ส่วนนี้จะเลื่อนขึ้นลงได้อิสระ */
+  padding-bottom: 60px;
 }
 
+/* จัดระเบียบแถบคัดกรองข้อมูลทรงเหลี่ยม */
 .gov-filter-bar {
-    display: flex;
-    gap: 0; /* แก้ไขช่องว่างระหว่าง input กับปุ่ม */
-    margin-bottom: 20px;
+  display: flex;
+  gap: 10px; /* เพิ่มระยะห่างช่องไฟเล็กน้อยเพื่อให้สอดคล้องกับ UX */
+  margin-bottom: 20px;
+  background: #ffffff;
+  padding: 15px;
+  border: 1px solid var(--gov-border);
+}
+
+.gov-input,
+.gov-select {
+  font-family: "Sarabun", sans-serif;
+  font-size: 14px;
+  border: 1px solid var(--gov-border);
+  padding: 10px 12px;
+  border-radius: 0px !important; /* เหลี่ยมคมชัดเจน */
+  background-color: #ffffff;
+  color: var(--gov-text);
+  height: 40px;
+  outline: none;
 }
 
 .gov-input {
-    border: 1px solid var(--gov-border);
-    padding: 10px 15px;
-    flex: 1;
-    border-radius: 0 !important;
+  flex: 2;
 }
 
+.gov-select {
+  flex: 1;
+  cursor: pointer;
+}
+
+.gov-input:focus,
+.gov-select:focus {
+  border: 2px solid var(--gov-green-dark); /* เน้นขอบหนาชัดเจนตอนพิมพ์ */
+}
+
+/* ปุ่มค้นหาแบบราชการสีเขียวชัดเจน */
 .btn-gov-search {
-    background: var(--gov-green-main);
-    color: white;
-    border: 1px solid var(--gov-border);
-    padding: 0 20px;
-    font-weight: bold;
-    cursor: pointer;
+  background: var(--gov-green-main);
+  color: white;
+  border: 1px solid var(--gov-border);
+  padding: 0 25px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 0px !important;
+}
+
+.btn-gov-search:hover {
+  background: var(--gov-green-dark);
 }
 
 .action-bar-top {
-    margin-bottom: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: flex-end;
 }
 
+/* ปุ่มเพิ่มสถานประกอบการ */
 .btn-gov-add {
-    background-color: var(--sidebar-dark);
-    color: white;
-    padding: 10px 20px;
-    border: 1px solid var(--gov-border);
-    cursor: pointer;
-    font-weight: bold;
+  background-color: var(--sidebar-dark);
+  color: white;
+  padding: 10px 20px;
+  border: 1px solid var(--gov-border);
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 0px !important;
 }
 
-/* Table Section */
+.btn-gov-add:hover {
+  background-color: #153554;
+}
+
+/* ==========================================================================
+   Table Section (มีเส้นคั่นชัดเจนทุกด้านสไตล์เอกสารราชการ)
+   ========================================================================== */
 .gov-table-container {
-    background: white;
-    border: 1px solid var(--gov-border);
+  background: white;
+  border: 2px solid var(--gov-border); /* ปรับขอบนอกให้หนาชัดเจน */
 }
 
 .list-table {
-    width: 100%;
-    border-collapse: collapse;
+  width: 100%;
+  border-collapse: collapse; /* ยุบขอบให้ชนกันเป็นตารางเส้นเดี่ยวเด็ดขาด */
 }
 
 .list-table th {
-    background: var(--gov-green-dark);
-    color: white;
-    border: 1px solid var(--gov-border);
-    padding: 12px;
-    text-align: center;
+  background: var(--gov-green-dark);
+  color: white;
+  border: 1px solid var(--gov-border);
+  padding: 14px 12px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
 }
 
 .list-table td {
-    border: 1px solid var(--gov-border);
-    padding: 12px 15px;
-    vertical-align: middle;
+  border: 1px solid var(--gov-border); /* เส้นคั่นกั้นทุกด้านชัดเจน */
+  padding: 12px 15px;
+  vertical-align: middle;
+  color: var(--gov-text);
 }
 
-/* --- แก้ไขปุ่มในตารางที่พัง --- */
+/* การสลับสีบรรทัดให้เห็นชัดเจนขึ้นเวลาเลื่อนสายตา */
+.list-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.list-table tbody tr:hover {
+  background-color: #f1f5f1; /* เปลี่ยนสีเมื่อ hover เล็กน้อย */
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+/* ข้อความสถานะระบบ */
+.status-text {
+  font-weight: bold;
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   --- ส่วนปุ่มในตารางและการสื่อความหมายผู้ใช้ (UX Colors) ---
+   ========================================================================== */
 .action-group {
-    display: flex;
-    gap: 5px;
-    justify-content: center;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
 }
 
-.btn-edit, .btn-delete {
-    padding: 5px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    background: white;
-    border: 1px solid #ccc !important; /* บังคับให้เห็นเส้นขอบ */
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border-radius: 2px !important; /* ให้โค้งนิดเดียวเพื่อให้ดูเป็นปุ่ม */
+.btn-edit,
+.btn-delete {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  background: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 0px !important; /* คงความเหลี่ยมสนิทสไตล์ข้าราชการ */
+  transition: 0.1s;
 }
 
-.btn-edit { color: #007bff; }
-.btn-delete { color: #dc3545; }
+/* ปุ่มแก้ไข: สีน้ำเงินเข้มชัดเจน สื่อถึงการดำเนินการต่ออย่างปลอดภัย */
+.btn-edit {
+  color: #0056b3;
+  border: 1px solid #0056b3 !important;
+}
+.btn-edit:hover {
+  background: #0056b3;
+  color: white;
+}
 
-.btn-edit:hover { background: #f0f7ff; }
-.btn-delete:hover { background: #fff5f5; }
+/* ปุ่มลบ: สีแดงเข้มข้น ดึงดูดสายตาและเตือนสติผู้ใช้ถึงความอันตรายก่อนลบข้อมูล */
+.btn-delete {
+  color: #c53030;
+  border: 1px solid #c53030 !important;
+}
+.btn-delete:hover {
+  background: #c53030;
+  color: white;
+}
 
 /* Pagination */
 .gov-pagination {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
+  margin-top: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.gov-pagination button {
+  background-color: #ffffff;
+  border: 1px solid var(--gov-border);
+  padding: 8px 16px;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 0px !important;
+  color: var(--gov-text);
+}
+
+.gov-pagination button:hover:not(:disabled) {
+  background-color: var(--gov-green-dark);
+  color: white;
+}
+
+.gov-pagination button:disabled {
+  background-color: #e9ecef;
+  color: #adb5bd;
+  border-color: #ced4da;
+  cursor: not-allowed;
+}
+
+.gov-pagination span {
+  font-weight: bold;
+  font-size: 14px;
 }

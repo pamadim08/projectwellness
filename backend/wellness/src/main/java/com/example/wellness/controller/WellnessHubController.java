@@ -34,6 +34,6 @@ public class WellnessHubController {
     
     @PostMapping
     public WellnessHub create(@RequestBody WellnessHub hub) {
-        return wellnessHubService.saveHub(hub);
+        return wellnessHubService.createWellnessHub(hub);
     }
 }

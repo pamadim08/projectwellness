@@ -143,7 +143,7 @@ const ListWellnessHub = () => {
           <div className="action-bar-top">
             <button
               className="btn-gov-add"
-              onClick={() => navigate("/admin/add-wellness")}
+              onClick={() => navigate("/add-wellness")}
             >
               <i className="fa-solid fa-plus"></i> เพิ่มสถานประกอบการใหม่
             </button>
@@ -228,7 +228,7 @@ const ListWellnessHub = () => {
                 loadData("", "", "");
               }}
             >
-              <i className="fa-solid fa-rotate"></i> รีเฟรชข้อมูลล่าสุด
+              <i className="fa-solid fa-rotate"></i> ล้างค่า
             </button>
           </div>
 
