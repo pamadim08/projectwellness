@@ -133,7 +133,7 @@ const AddWellnessHub = () => {
           <Link to="/admin/routes" className="menu-item">
             <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
           </Link>
-          <Link to="/admin/establishments" className="menu-item active">
+          <Link to="/listWellnesshub" className="menu-item active">
             <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
           </Link>
           <Link to="/admin/articles" className="menu-item">

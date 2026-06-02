@@ -5,7 +5,8 @@ import LoginAdmin from "./pages/LoginAdmin/LoginAdmin";
 // ปรับให้ตรงกับชื่อ Component ที่ export ออกมา
 import ListWellnessHub from "./pages/ListWellnesshub/ListWellnesshub";
 import AddWellnessHub from "./pages/CreateWellnesshub/AddWellnessHub";
-
+// ตัวอย่างการผูก Route ใน App.js ให้จับคู่กับคอมโพเนนต์แก้ไขข้อมูล
+import EditWellnessHub from "./pages/EditWellnesshub/EditWellnesshub"; // เช็ค path ไฟล์ของน้าด้วยนะ
 function App() {
   return (
     <Router>
@@ -18,6 +19,11 @@ function App() {
           <Route path="/listWellnesshub" element={<ListWellnessHub />} />
           {/* เส้นทางหน้าเพิ่มข้อมูลสถานประกอบการใหม่ */}
           <Route path="/add-wellness" element={<AddWellnessHub />} />
+
+          <Route
+            path="/listWellnesshub/edit/:id"
+            element={<EditWellnessHub />}
+          />
         </Routes>
       </div>
     </Router>
