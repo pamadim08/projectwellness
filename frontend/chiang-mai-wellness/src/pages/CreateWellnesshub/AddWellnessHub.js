@@ -130,7 +130,7 @@ const AddWellnessHub = () => {
           <p className="menu-label" style={{ marginTop: "20px" }}>
             การจัดการข้อมูล
           </p>
-          <Link to="/admin/routes" className="menu-item">
+          <Link to="/createMainRoute" className="menu-item">
             <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
           </Link>
           <Link to="/listWellnesshub" className="menu-item active">

@@ -392,3 +392,71 @@
   font-weight: bold;
   font-size: 14px;
 }
+
+/* โครงสร้างหลักของกล่องป๊อปอัพแบบแจ้งเตือนข้ามหน้า */
+.gov-toast-alert {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  min-width: 320px;
+  max-width: 450px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 9999;
+  animation: slideInLeftToast 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* สีแจ้งเตือนเมื่อระบบทำงานสำเร็จ (สีเขียว) */
+.gov-toast-alert.alert-success {
+  background-color: #e6f4ea;
+  border-left: 5px solid #137333;
+  color: #137333;
+}
+
+/* สีแจ้งเตือนเมื่อระบบมีข้อผิดพลาดพังลงมา (สีแดง) */
+.gov-toast-alert.alert-error {
+  background-color: #fce8e6;
+  border-left: 5px solid #c5221f;
+  color: #c5221f;
+}
+
+.toast-content-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.toast-content-wrapper i {
+  font-size: 18px;
+}
+
+.btn-close-toast {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  padding: 4px;
+  transition: opacity 0.2s;
+}
+
+.btn-close-toast:hover {
+  opacity: 1;
+}
+
+@keyframes slideInLeftToast {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

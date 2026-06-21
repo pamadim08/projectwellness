@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import axiosInstance from "axios";
 import "./EditWellnesshub.css";
 
+// นำเข้าไอคอนจากแพ็กเกจที่คุณติดตั้งเสร็จผ่าน npm
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faXmark,
@@ -73,16 +74,26 @@ const EditWellnessHub = () => {
 
         let loadedPlatform = "Line";
         let loadedValue = "";
-        if (hubData.contactInformation && hubData.contactInformation.includes(": ")) {
+        if (
+          hubData.contactInformation &&
+          hubData.contactInformation.includes(": ")
+        ) {
           const parts = hubData.contactInformation.split(": ");
           loadedPlatform = parts[0];
           loadedValue = parts[1];
-        } else if (hubData.contactInformation && hubData.contactInformation !== "null") {
+        } else if (
+          hubData.contactInformation &&
+          hubData.contactInformation !== "null"
+        ) {
           loadedValue = hubData.contactInformation;
         }
 
         let parsedImages = [];
-        if (hubData.wellnessHubImg && hubData.wellnessHubImg !== "null" && hubData.wellnessHubImg !== "") {
+        if (
+          hubData.wellnessHubImg &&
+          hubData.wellnessHubImg !== "null" &&
+          hubData.wellnessHubImg !== ""
+        ) {
           try {
             parsedImages = JSON.parse(hubData.wellnessHubImg);
             if (!Array.isArray(parsedImages)) {
@@ -94,7 +105,11 @@ const EditWellnessHub = () => {
         }
 
         let parsedCertificates = [""];
-        if (hubData.certificateType && hubData.certificateType !== "null" && hubData.certificateType !== "") {
+        if (
+          hubData.certificateType &&
+          hubData.certificateType !== "null" &&
+          hubData.certificateType !== ""
+        ) {
           try {
             parsedCertificates = JSON.parse(hubData.certificateType);
             if (!Array.isArray(parsedCertificates)) {
@@ -111,20 +126,32 @@ const EditWellnessHub = () => {
         setFormData({
           licenseId: hubData.licenseId ?? "",
           wellnessHubName: hubData.wellnessHubName ?? "",
-          categoryId: hubData.category?.categoryId ?? "",
-          districtId: hubData.district?.districtId ?? "",
+          // 🌟 บังคับครอบเป็น String เพื่อให้แมตช์เข้าคู่กับตัวเลือกใน <select> เสมอ ป้องกันค่าหลุดเป็นขีดแดช
+          categoryId: hubData.category?.categoryId
+            ? String(hubData.category.categoryId)
+            : "",
+          districtId: hubData.district?.districtId
+            ? String(hubData.district.districtId)
+            : "",
           certificateType: parsedCertificates,
           telInformation: hubData.telInformation ?? "",
           contactPlatform: loadedPlatform,
           contactValue: loadedValue,
           wellnessHubDescription: hubData.wellnessHubDescription ?? "",
           address: hubData.address === "null" ? "" : (hubData.address ?? ""),
-          googleMapsLink: hubData.googleMapsLink === "null" ? "" : (hubData.googleMapsLink ?? ""),
+          googleMapsLink:
+            hubData.googleMapsLink === "null"
+              ? ""
+              : (hubData.googleMapsLink ?? ""),
           wellnessHubImg: parsedImages,
           status: hubData.status ?? "active",
         });
 
-        if (hubData.operatingHours && hubData.operatingHours !== "null" && hubData.operatingHours !== "") {
+        if (
+          hubData.operatingHours &&
+          hubData.operatingHours !== "null" &&
+          hubData.operatingHours !== ""
+        ) {
           try {
             const parsedHours = JSON.parse(hubData.operatingHours);
             setOperatingHoursObj((prev) => ({ ...prev, ...parsedHours }));
@@ -136,10 +163,15 @@ const EditWellnessHub = () => {
         setIsLoading(false);
       } catch (error) {
         console.error("Error loading data:", error);
-        // 🌟 จุดเปลี่ยนสำคัญ: ปิดสถานะโหลดข้อมูลทันทีหากยิงพลาด ป้องกันหน้าจอหมุนค้างตลอดกาล
-        setIsLoading(false); 
-        alert("ระบบไม่สามารถดึงข้อมูลได้สำเร็จ หรือคุณไม่มีสิทธิ์เข้าถึงหน้านี้");
-        navigate("/listWellnesshub");
+        setIsLoading(false);
+        // หากโหลดข้อมูลเริ่มต้นล้มเหลว ให้กลับไปหน้า List พร้อมส่ง State ข้อผิดพลาดไปพ่นแจ้งเตือน
+        navigate("/listWellnesshub", {
+          state: {
+            showToast: true,
+            toastType: "error",
+            toastMessage: "ไม่สามารถดึงข้อมูลสถานประกอบการได้",
+          },
+        });
       }
     };
 
@@ -175,7 +207,9 @@ const EditWellnessHub = () => {
   const handleRemoveCertificateField = (indexToRemove) => {
     setFormData((prev) => {
       const currentCerts = prev.certificateType || [""];
-      const updatedCerts = currentCerts.filter((_, index) => index !== indexToRemove);
+      const updatedCerts = currentCerts.filter(
+        (_, index) => index !== indexToRemove,
+      );
       return {
         ...prev,
         certificateType: updatedCerts.length === 0 ? [""] : updatedCerts,
@@ -193,7 +227,9 @@ const EditWellnessHub = () => {
 
     for (let file of files) {
       if (!allowedExtensions.exec(file.name)) {
-        alert(`ไฟล์ ${file.name} ไม่รองรับ: ต้องเป็น .png, .jpg และ .jpeg เท่านั้น`);
+        alert(
+          `ไฟล์ ${file.name} ไม่รองรับ: ต้องเป็น .png, .jpg และ .jpeg เท่านั้น`,
+        );
         continue;
       }
       if (file.size > maxSize) {
@@ -220,7 +256,9 @@ const EditWellnessHub = () => {
   const handleRemoveImage = (indexToRemove) => {
     setFormData((prev) => ({
       ...prev,
-      wellnessHubImg: (prev.wellnessHubImg || []).filter((_, index) => index !== indexToRemove),
+      wellnessHubImg: (prev.wellnessHubImg || []).filter(
+        (_, index) => index !== indexToRemove,
+      ),
     }));
   };
 
@@ -242,7 +280,9 @@ const EditWellnessHub = () => {
     e.preventDefault();
     const newErrors = {};
 
-    const tel = formData.telInformation ? String(formData.telInformation).trim() : "";
+    const tel = formData.telInformation
+      ? String(formData.telInformation).trim()
+      : "";
     if (!tel) {
       newErrors.telInformation = "หมายเลขโทรศัพท์ต้องไม่เป็นค่าว่าง";
     } else if (!/^\d+$/.test(tel)) {
@@ -253,10 +293,13 @@ const EditWellnessHub = () => {
       newErrors.telInformation = "หมายเลขโทรศัพท์ต้องมีความยาว 9-10 ตัวอักษร";
     }
 
-    const desc = formData.wellnessHubDescription ? String(formData.wellnessHubDescription).trim() : "";
+    const desc = formData.wellnessHubDescription
+      ? String(formData.wellnessHubDescription).trim()
+      : "";
     if (desc !== "") {
       if (desc.length < 10 || desc.length > 255) {
-        newErrors.wellnessHubDescription = "รายละเอียดบริการต้องมีความยาวอย่างน้อย 10 ตัวอักษร และไม่เกิน 255 ตัวอักษร";
+        newErrors.wellnessHubDescription =
+          "รายละเอียดบริการต้องมีความยาวอย่างน้อย 10 ตัวอักษร และไม่เกิน 255 ตัวอักษร";
       }
     }
 
@@ -264,7 +307,8 @@ const EditWellnessHub = () => {
     if (formData.contactValue && formData.contactValue.trim() !== "") {
       const combinedText = `${formData.contactPlatform}: ${formData.contactValue.trim()}`;
       if (combinedText.length < 3 || combinedText.length > 255) {
-        newErrors.contactValue = "ข้อมูลติดต่อเพิ่มเติมรวมชื่อแพลตฟอร์มต้องมีความยาว 3-255 ตัวอักษร";
+        newErrors.contactValue =
+          "ข้อมูลติดต่อเพิ่มเติมรวมชื่อแพลตฟอร์มต้องมีความยาว 3-255 ตัวอักษร";
       } else {
         finalContactInfo = combinedText;
       }
@@ -285,42 +329,70 @@ const EditWellnessHub = () => {
       .map((cert) => (cert || "").trim())
       .filter((cert) => cert !== "");
 
-    setIsLoading(true);
+    setIsLoading(true); // เปิดหน้า Loading สั้นๆ ขณะทำโครงข่ายคำขอ
 
     const payload = {
       licenseId: formData.licenseId,
       wellnessHubName: formData.wellnessHubName,
       telInformation: tel,
       wellnessHubDescription: desc,
-      certificateType: cleanedCertificates.length > 0 ? JSON.stringify(cleanedCertificates) : null,
+      certificateType:
+        cleanedCertificates.length > 0
+          ? JSON.stringify(cleanedCertificates)
+          : null,
       contactInformation: finalContactInfo,
       address: formData.address ? formData.address : null,
       googleMapsLink: formData.googleMapsLink ? formData.googleMapsLink : null,
-      wellnessHubImg: (formData.wellnessHubImg || []).length > 0 ? JSON.stringify(formData.wellnessHubImg) : null,
+      wellnessHubImg:
+        (formData.wellnessHubImg || []).length > 0
+          ? JSON.stringify(formData.wellnessHubImg)
+          : null,
       operatingHours: JSON.stringify(operatingHoursObj),
       status: formData.status,
+
+      // 🌟 หมวดหมู่ (Category) ส่งเป็น String เสมอ
       category: formData.categoryId && String(formData.categoryId).trim() !== ""
-        ? { categoryId: parseInt(String(formData.categoryId), 10) }
+        ? { categoryId: String(formData.categoryId).trim() }
         : null,
+        
+      // 🌟 อำเภอ (District) ส่งเป็นตัวเลข Integer โดยใช้ parseInt ตามเดิม
       district: formData.districtId && String(formData.districtId).trim() !== ""
-        ? { districtId: parseInt(String(formData.districtId), 10) }
+        ? { districtId: parseInt(formData.districtId, 10) }
         : null,
     };
-
     try {
-      await axiosInstance.put(`http://localhost:8080/api/wellness-hubs/${id}`, payload);
-      const modal = document.getElementById("saveSuccessModal");
-      if (modal) modal.style.display = "flex";
+      await axiosInstance.put(
+        `http://localhost:8080/api/wellness-hubs/${id}`,
+        payload,
+      );
+      setIsLoading(false); // 🌟 ปิดโหลดข้อมูลทันทีกันค้าง
+
+      // 🚀 วิ่งไปหน้ารายชื่อทันทีพร้อมแนบ State ไปสั่งเปิดป๊อปอัพแจ้งเตือนสำเร็จ
+      navigate("/listWellnesshub", {
+        state: {
+          showToast: true,
+          toastType: "success",
+          toastMessage: "แก้ไขและลงรับข้อมูลในตารางกลางเสร็จสิ้น",
+        },
+      });
     } catch (error) {
-      setIsLoading(false);
-      alert("ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง");
+      setIsLoading(false); // 🌟 บล็อกล่มให้ปิดสวิตช์โหลดเช่นกัน ป้องกันแอปค้างหมุนวน
+
+      // ล้มเหลวก็เตะไปหน้า List และแจ้งป๊อปอัพสีแดงเตือนแอดมิน
+      navigate("/listWellnesshub", {
+        state: {
+          showToast: true,
+          toastType: "error",
+          toastMessage: "ไม่สามารถแก้ไขข้อมูลได้ กรุณาลองใหมู่อีกครั้ง",
+        },
+      });
     }
   };
 
   if (isLoading) {
     return (
       <div className="gov-loading-container">
-        <p>กำลังดึงข้อมูลระบบสารสนเทศ...</p>
+        <p>กำลังส่งและปรับปรุงข้อมูลในฐานข้อมูลกลาง...</p>
       </div>
     );
   }
@@ -339,14 +411,29 @@ const EditWellnessHub = () => {
             </div>
           </div>
           <p className="menu-label">เมนูหลัก</p>
-          <Link to="/admin/dashboard" className="menu-item">แผงควบคุมหลัก</Link>
-          <Link to="/admin/requests" className="menu-item">ตรวจสอบคำขอสิทธิ์</Link>
-          <p className="menu-label" style={{ marginTop: "20px" }}>การจัดการข้อมูล</p>
-          <Link to="/admin/routes" className="menu-item">จัดการเส้นทางสุขภาพ</Link>
-          <Link to="/listWellnesshub" className="menu-item active">จัดการสถานประกอบการ</Link>
-          <Link to="/admin/articles" className="menu-item">จัดการบทความ</Link>
+          <Link to="/admin/dashboard" className="menu-item">
+            แผงควบคุมหลัก
+          </Link>
+          <Link to="/admin/requests" className="menu-item">
+            ตรวจสอบคำขอสิทธิ์
+          </Link>
+          <p className="menu-label" style={{ marginTop: "20px" }}>
+            การจัดการข้อมูล
+          </p>
+          <Link to="/admin/routes" className="menu-item">
+            จัดการเส้นทางสุขภาพ
+          </Link>
+          <Link to="/listWellnesshub" className="menu-item active">
+            จัดการสถานประกอบการ
+          </Link>
+          <Link to="/admin/articles" className="menu-item">
+            จัดการบทความ
+          </Link>
         </div>
-        <button className="btn-sidebar-logout" onClick={() => navigate("/login")}>
+        <button
+          className="btn-sidebar-logout"
+          onClick={() => navigate("/login")}
+        >
           ออกจากระบบ
         </button>
       </nav>
@@ -354,7 +441,9 @@ const EditWellnessHub = () => {
       <main className="admin-content">
         <section className="page-title-hero">
           <h2>แก้ไขสถานประกอบการ (Edit Wellness Hub)</h2>
-          <p className="gov-subtitle">ระบบบริหารจัดการข้อมูลสุขภาพ จังหวัดเชียงใหม่</p>
+          <p className="gov-subtitle">
+            ระบบบริหารจัดการข้อมูลสุขภาพ จังหวัดเชียงใหม่
+          </p>
         </section>
 
         <div className="gov-line-divider" />
@@ -368,18 +457,37 @@ const EditWellnessHub = () => {
               <div className="form-grid-3">
                 <div className="form-group">
                   <label>เลขใบอนุญาตประกอบกิจการ</label>
-                  <input type="text" name="licenseId" value={formData.licenseId} readOnly />
+                  <input
+                    type="text"
+                    name="licenseId"
+                    value={formData.licenseId}
+                    readOnly
+                  />
                 </div>
                 <div className="form-group">
                   <label>ชื่อสถานประกอบการ*</label>
-                  <input type="text" name="wellnessHubName" value={formData.wellnessHubName} onChange={handleChange} required />
+                  <input
+                    type="text"
+                    name="wellnessHubName"
+                    value={formData.wellnessHubName}
+                    onChange={handleChange}
+                    required
+                  />
                 </div>
                 <div className="form-group">
                   <label>หมวดหมู่บริการหลัก*</label>
-                  <select name="categoryId" value={formData.categoryId} onChange={handleChange} required>
+                  <select
+                    name="categoryId"
+                    value={formData.categoryId}
+                    onChange={handleChange}
+                    required
+                  >
                     <option value="">-- เลือกประเภทรายการ --</option>
                     {(categories || []).map((cat) => (
-                      <option key={cat.categoryId} value={String(cat.categoryId)}>
+                      <option
+                        key={cat.categoryId}
+                        value={String(cat.categoryId)}
+                      >
                         {cat.categoryName}
                       </option>
                     ))}
@@ -388,16 +496,26 @@ const EditWellnessHub = () => {
               </div>
 
               <div className="form-group">
-                <label>ประเภทใบรับรองศูนย์เวลเนสประทับตรา (ระบุได้หลายรายการ)</label>
+                <label>
+                  ประเภทใบรับรองศูนย์เวลเนสประทับตรา (ระบุได้หลายรายการ)
+                </label>
                 <div className="certificate-fields-container">
                   {(formData.certificateType || [""]).map((cert, index) => (
-                    <div className="certificate-field-row animate-fade" key={index}>
+                    <div
+                      className="certificate-field-row animate-fade"
+                      key={index}
+                    >
                       <div className="cert-input-wrapper">
-                        <FontAwesomeIcon icon={faCertificate} className="cert-field-icon" />
+                        <FontAwesomeIcon
+                          icon={faCertificate}
+                          className="cert-field-icon"
+                        />
                         <input
                           type="text"
                           value={cert || ""}
-                          onChange={(e) => handleCertificateInputChange(index, e.target.value)}
+                          onChange={(e) =>
+                            handleCertificateInputChange(index, e.target.value)
+                          }
                           placeholder={`ระบุใบรับรองรายการที่ ${index + 1}`}
                         />
                       </div>
@@ -412,8 +530,16 @@ const EditWellnessHub = () => {
                     </div>
                   ))}
                 </div>
-                <button type="button" className="btn-add-cert-field" onClick={handleAddCertificateField}>
-                  <FontAwesomeIcon icon={faPlus} style={{ marginRight: "6px" }} /> เพิ่มช่องใบรับรองใหม่
+                <button
+                  type="button"
+                  className="btn-add-cert-field"
+                  onClick={handleAddCertificateField}
+                >
+                  <FontAwesomeIcon
+                    icon={faPlus}
+                    style={{ marginRight: "6px" }}
+                  />{" "}
+                  เพิ่มช่องใบรับรองใหม่
                 </button>
               </div>
 
@@ -421,7 +547,9 @@ const EditWellnessHub = () => {
                 <span>2</span> รายละเอียดการติดต่อสื่อสาร
               </div>
               <div className="form-grid-2">
-                <div className={`form-group ${errors.telInformation ? "has-error" : ""}`}>
+                <div
+                  className={`form-group ${errors.telInformation ? "has-error" : ""}`}
+                >
                   <label>หมายเลขโทรศัพท์ติดต่อ*</label>
                   <input
                     type="tel"
@@ -429,14 +557,20 @@ const EditWellnessHub = () => {
                     value={formData.telInformation}
                     onChange={handleChange}
                     required
-                    style={errors.telInformation ? { borderColor: "#dc3545" } : {}}
+                    style={
+                      errors.telInformation ? { borderColor: "#dc3545" } : {}
+                    }
                   />
                   {errors.telInformation && (
-                    <span className="error-text-under">{errors.telInformation}</span>
+                    <span className="error-text-under">
+                      {errors.telInformation}
+                    </span>
                   )}
                 </div>
 
-                <div className={`form-group ${errors.contactValue ? "has-error" : ""}`}>
+                <div
+                  className={`form-group ${errors.contactValue ? "has-error" : ""}`}
+                >
                   <label>ช่องทางการติดต่อสื่อสารเพิ่มเติม</label>
                   <div className="gov-social-input-group">
                     <select
@@ -455,26 +589,40 @@ const EditWellnessHub = () => {
                       value={formData.contactValue}
                       onChange={handleChange}
                       placeholder="กรอกชื่อไอดีหรือลิงก์ปลายทาง..."
-                      style={errors.contactValue ? { borderColor: "#dc3545" } : {}}
+                      style={
+                        errors.contactValue ? { borderColor: "#dc3545" } : {}
+                      }
                     />
                   </div>
                   {errors.contactValue && (
-                    <span className="error-text-under">{errors.contactValue}</span>
+                    <span className="error-text-under">
+                      {errors.contactValue}
+                    </span>
                   )}
                 </div>
               </div>
 
-              <div className={`form-group ${errors.wellnessHubDescription ? "has-error" : ""}`}>
-                <label>รายละเอียดการให้บริการสารประโยชน์ (Wellness Hub Description)</label>
+              <div
+                className={`form-group ${errors.wellnessHubDescription ? "has-error" : ""}`}
+              >
+                <label>
+                  รายละเอียดการให้บริการสารประโยชน์ (Wellness Hub Description)
+                </label>
                 <textarea
                   name="wellnessHubDescription"
                   rows="3"
                   value={formData.wellnessHubDescription}
                   onChange={handleChange}
-                  style={errors.wellnessHubDescription ? { borderColor: "#dc3545" } : {}}
+                  style={
+                    errors.wellnessHubDescription
+                      ? { borderColor: "#dc3545" }
+                      : {}
+                  }
                 />
                 {errors.wellnessHubDescription && (
-                  <span className="error-text-under">{errors.wellnessHubDescription}</span>
+                  <span className="error-text-under">
+                    {errors.wellnessHubDescription}
+                  </span>
                 )}
               </div>
 
@@ -483,16 +631,29 @@ const EditWellnessHub = () => {
               </div>
               <div className="form-group">
                 <label>รายละเอียดที่อยู่ภูมิสำเนา (Address)*</label>
-                <textarea name="address" rows="2" value={formData.address} onChange={handleChange} />
+                <textarea
+                  name="address"
+                  rows="2"
+                  value={formData.address}
+                  onChange={handleChange}
+                />
               </div>
 
               <div className="form-grid-2">
                 <div className="form-group">
                   <label>อำเภอที่ตั้งท้องที่*</label>
-                  <select name="districtId" value={formData.districtId} onChange={handleChange} required>
+                  <select
+                    name="districtId"
+                    value={formData.districtId}
+                    onChange={handleChange}
+                    required
+                  >
                     <option value="">-- เลือกรายการอำเภอ --</option>
                     {(districts || []).map((dist) => (
-                      <option key={dist.districtId} value={String(dist.districtId)}>
+                      <option
+                        key={dist.districtId}
+                        value={String(dist.districtId)}
+                      >
                         {dist.districtName}
                       </option>
                     ))}
@@ -502,7 +663,12 @@ const EditWellnessHub = () => {
                 <div className="form-group">
                   <label>ลิงก์ระบบพิกัดนำทาง Google Maps</label>
                   <div className="map-input-group">
-                    <input type="text" name="googleMapsLink" value={formData.googleMapsLink} onChange={handleChange} />
+                    <input
+                      type="text"
+                      name="googleMapsLink"
+                      value={formData.googleMapsLink}
+                      onChange={handleChange}
+                    />
                     {formData.googleMapsLink && (
                       <a
                         href={formData.googleMapsLink}
@@ -539,7 +705,9 @@ const EditWellnessHub = () => {
                         type="time"
                         value={operatingHoursObj[day.key]?.open || "10:00"}
                         disabled={!operatingHoursObj[day.key]?.active}
-                        onChange={(e) => handleTimeChange(day.key, "open", e.target.value)}
+                        onChange={(e) =>
+                          handleTimeChange(day.key, "open", e.target.value)
+                        }
                         required={operatingHoursObj[day.key]?.active}
                       />
                       <span className="gov-time-to-text">ถึง</span>
@@ -547,7 +715,9 @@ const EditWellnessHub = () => {
                         type="time"
                         value={operatingHoursObj[day.key]?.close || "22:00"}
                         disabled={!operatingHoursObj[day.key]?.active}
-                        onChange={(e) => handleTimeChange(day.key, "close", e.target.value)}
+                        onChange={(e) =>
+                          handleTimeChange(day.key, "close", e.target.value)
+                        }
                         required={operatingHoursObj[day.key]?.active}
                       />
                     </div>
@@ -560,43 +730,53 @@ const EditWellnessHub = () => {
               </div>
               <div className="gov-file-upload-block">
                 <div className="form-group">
-                  <label>เลือกไฟล์รูปภาพใหม่ สามารถเลือกพร้อมกันได้หลายรูป (.png, .jpg, .jpeg ไม่เกิน 20 MB ต่อไฟล์)</label>
-                  <input type="file" accept=".png, .jpg, .jpeg" multiple onChange={handleMultipleImageUpload} className="gov-file-input" />
+                  <label>
+                    เลือกไฟล์รูปภาพใหม่ สามารถเลือกพร้อมกันได้หลายรูป (.png,
+                    .jpg, .jpeg ไม่เกิน 20 MB ต่อไฟล์)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".png, .jpg, .jpeg"
+                    multiple
+                    onChange={handleMultipleImageUpload}
+                    className="gov-file-input"
+                  />
                 </div>
-                {formData.wellnessHubImg && formData.wellnessHubImg.length > 0 && (
-                  <div className="gallery-grid">
-                    {formData.wellnessHubImg.map((imgUrl, index) => (
-                      <div className="gallery-item animate-fade" key={index}>
-                        <img src={imgUrl} alt={`wellness-hub-preview-${index}`} />
-                        <button type="button" className="btn-remove-img" onClick={() => handleRemoveImage(index)} title="ลบรูปภาพนี้">
-                          <FontAwesomeIcon icon={faXmark} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {formData.wellnessHubImg &&
+                  formData.wellnessHubImg.length > 0 && (
+                    <div className="gallery-grid">
+                      {formData.wellnessHubImg.map((imgUrl, index) => (
+                        <div className="gallery-item animate-fade" key={index}>
+                          <img
+                            src={imgUrl}
+                            alt={`wellness-hub-preview-${index}`}
+                          />
+                          <button
+                            type="button"
+                            className="btn-remove-img"
+                            onClick={() => handleRemoveImage(index)}
+                            title="ลบรูปภาพนี้"
+                          >
+                            <FontAwesomeIcon icon={faXmark} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
               </div>
 
               <div className="form-actions">
-                <Link to="/listWellnesshub" className="btn-cancel">ยกเลิกรายการ</Link>
-                <button type="submit" className="btn-save">บันทึกข้อความอัปเดต</button>
+                <Link to="/listWellnesshub" className="btn-cancel">
+                  ยกเลิกรายการ
+                </Link>
+                <button type="submit" className="btn-save">
+                  บันทึกข้อความอัปเดต
+                </button>
               </div>
             </form>
           </div>
         </div>
       </main>
-
-      <div className="modal-overlay" id="saveSuccessModal">
-        <div className="modal-content">
-          <h3 style={{ fontWeight: 700, color: "var(--gov-green-dark)" }}>บันทึกข้อมูลเสสิ้น</h3>
-          <p style={{ color: "var(--text-muted)", fontSize: "14px", marginTop: "8px", marginBottom: "20px" }}>
-            ระบบได้ทำการลงรับและอัปเดตข้อมูลในฐานข้อมูลกลางเรียบร้อยแล้ว
-          </p>
-          <button className="btn-save" style={{ width: "100%" }} onClick={() => navigate("/listWellnesshub")}>
-            กลับสู่หน้าหลักบัญชีรายชื่อ
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

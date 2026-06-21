@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import { useNavigate, Link } from "react-router-dom";
+// 🌟 นำเข้า useLocation เพื่อใช้รับค่าป๊อปอัพส่งข้ามมาจากหน้า Edit
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import "./ListWellnesshub.css";
 
 const ListWellnessHub = () => {
@@ -11,12 +12,16 @@ const ListWellnessHub = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 50;
   const navigate = useNavigate();
+  const location = useLocation(); // 🌟 เรียกใช้งานระบบพิกัด Location ของเรา
 
   // --- ส่วนเก็บข้อมูลตัวเลือก และค่าที่ถูกเลือกกรอง ---
   const [categories, setCategories] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
+
+  // 🌟 State ใหม่สำหรับควบคุมการแสดงป๊อปอัพแจ้งเตือนบนหน้า List โดยตรง
+  const [toast, setToast] = useState({ show: false, type: "", message: "" });
 
   // ปรับปรุงฟังก์ชันโหลดข้อมูลให้รองรับการส่งเงื่อนไข Payload ไปหาหลังบ้าน
   const loadData = async (
@@ -43,7 +48,6 @@ const ListWellnessHub = () => {
     }
   };
 
-  // --- ฟังก์ชันโหลดตัวเลือกหมวดหมู่และอำเภอจากฐานข้อมูลเพื่อใส่ใน Dropdown ---
   const loadFilterOptions = async () => {
     try {
       const [catResponse, distResponse] = await Promise.all([
@@ -62,7 +66,25 @@ const ListWellnessHub = () => {
     loadFilterOptions(); 
     const storedName = localStorage.getItem("adminName");
     if (storedName) setAdminName(storedName);
-  }, []);
+
+    // 🌟 [จุดสำคัญที่เพิ่มใหม่]: ตรวจจับสเตตัสส่งข้ามมาจากหน้า Edit เพื่อสั่งพ่นป๊อปอัพแจ้งเตือน
+    if (location.state?.showToast) {
+      setToast({
+        show: true,
+        type: location.state.toastType, // 'success' หรือ 'error'
+        message: location.state.toastMessage
+      });
+
+      // ล้างค่าประวัติสเตตัสใน Window ทันที เพื่อไม่ให้ป๊อปอัพเด้งซ้ำเวลาแอดมินกดรีเฟรชหน้าจอตัวนี้
+      window.history.replaceState({}, document.title);
+
+      // สั่งตั้งเวลาเคลียร์หน้าต่างป๊อปอัพให้หายไปเองอัตโนมัติภายใน 4 วินาที
+      const timer = setTimeout(() => {
+        setToast({ show: false, type: "", message: "" });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [location]); // ทำงานใหม่ทุกครั้งที่มีการ Navigate สลับข้ามเพจ
 
   const handleLogout = () => {
     if (window.confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) {
@@ -71,15 +93,12 @@ const ListWellnessHub = () => {
     }
   };
 
-  // 🌟 [ปรับปรุงใหม่] เรียงลำดับข้อมูลตามรหัสสถานประกอบการ (licenseId) จากน้อยไปมาก
   const filteredData = useMemo(() => {
     if (!listwellnesshub || listwellnesshub.length === 0) return [];
-    
-    // ทำการ Copy อาร์เรย์เดิมออกมาก่อนสั่ง .sort() เพื่อไม่ให้กระทบกับ State ตรงๆ
     return [...listwellnesshub].sort((a, b) => {
       const idA = a.licenseId ? parseInt(a.licenseId, 10) : 0;
       const idB = b.licenseId ? parseInt(b.licenseId, 10) : 0;
-      return idA - idB; // เรียงจากน้อยไปหามาก (หากต้องการจากมากไปน้อยให้สลับเป็น idB - idA)
+      return idA - idB; 
     });
   }, [listwellnesshub]);
 
@@ -92,16 +111,29 @@ const ListWellnessHub = () => {
     if (window.confirm("ยืนยันการลบข้อมูลสถานประกอบการนี้?")) {
       try {
         await axios.delete(`http://localhost:8080/api/wellness-hubs/${id}`);
-        alert("ลบข้อมูลสำเร็จ");
+        setToast({ show: true, type: "success", message: "ลบข้อมูลสถานประกอบการเสร็จสิ้น" });
         loadData();
       } catch (error) {
-        alert("ไม่สามารถลบข้อมูลได้");
+        setToast({ show: true, type: "error", message: "ไม่สามารถลบข้อมูลออกจากระบบได้" });
       }
     }
   };
 
   return (
     <div className="admin-layout">
+      {/* 🌟 [กล่องป๊อปอัพแจ้งเตือนรูปแบบใหม่ด้านบนขวาของหน้าจอ] */}
+      {toast.show && (
+        <div className={`gov-toast-alert alert-${toast.type}`}>
+          <div className="toast-content-wrapper">
+            <i className={`fa-solid ${toast.type === "success" ? "fa-circle-check" : "fa-circle-xmark"}`}></i>
+            <span>{toast.message}</span>
+          </div>
+          <button className="btn-close-toast" onClick={() => setToast({ show: false, type: "", message: "" })}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      )}
+
       <nav className="sidebar-menu">
         <div className="sidebar-top">
           <div className="sidebar-logo">
@@ -129,7 +161,7 @@ const ListWellnessHub = () => {
           <p className="menu-label" style={{ marginTop: "20px" }}>
             การจัดการข้อมูล
           </p>
-          <Link to="/admin/routes" className="menu-item">
+          <Link to="/createMainRoute" className="menu-item">
             <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
           </Link>
           <Link to="/listWellnesshub" className="menu-item active">
@@ -270,7 +302,6 @@ const ListWellnessHub = () => {
                 ) : currentRows.length > 0 ? (
                   currentRows.map((hub, index) => (
                     <tr key={hub.licenseId ?? index}>
-                      {/* 🌟 แสดงเป็นรหัสสถานประกอบการจริงจากฐานข้อมูลตรงๆ */}
                       <td className="text-center" style={{ fontWeight: "600", color: "#495057" }}>
                         {hub.licenseId ?? "-"}
                       </td>

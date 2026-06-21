@@ -1,0 +1,450 @@
+/* ==========================================================================
+   🏛️ GOVERNMENT STYLE SHEET: CREATE ROUTE (เวอร์ชันแก้ไขบั๊กแผนที่ทะลักทับฟอร์ม)
+   ========================================================================== */
+
+/* 1. บังคับโครงสร้างหลักให้แสดงผลพอดีหน้าจอ 100% ห้ามดันหน้าเว็บเลื่อนซ้ายขวา */
+.gov-admin-layout {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    font-family: 'Sarabun', sans-serif;
+    box-sizing: border-box;
+}
+
+/* --- 📋 Sidebar เมนูฝั่งซ้ายสไตล์มั่นคง --- */
+.gov-sidebar {
+    width: 280px;
+    background-color: #1a2332;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex-shrink: 0;
+    border-right: 2px solid #111111;
+}
+
+.gov-sidebar-top {
+    padding: 25px 20px;
+}
+
+.gov-sidebar-logo {
+    font-size: 22px;
+    font-weight: 800;
+    color: #28a745;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.gov-admin-info {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    margin-bottom: 20px;
+    border-left: 3px solid #28a745;
+}
+
+.gov-menu-label {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin: 20px 0 10px 5px;
+}
+
+.gov-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #94a3b8;
+    text-decoration: none;
+    padding: 12px 15px;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.gov-menu-item:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.gov-menu-item.active {
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+    font-weight: bold;
+}
+
+/* --- พื้นที่เนื้อหาฝั่งขวา (Main Content) --- */
+.gov-main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* ล็อกกรอบชั้นนอกสุด */
+    padding: 25px;
+    box-sizing: border-box;
+}
+
+/* ส่วนหัวแถบบน (Header) */
+.gov-header-panel {
+    border-bottom: 1px solid #cccccc;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+}
+
+.gov-header-panel h2 {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1a2332;
+    margin: 0;
+}
+
+/* 🌟 บล็อกคอนเทนเนอร์จัดสัดส่วน แผนที่ซ้าย - ฟอร์มขวา ล็อกความสูงพอดีเฟรม */
+.gov-gis-container {
+    display: flex;
+    flex: 1;
+    gap: 25px;
+    overflow: hidden; /* บังคับห้ามมีอะไรทะลักออกนอกสัดส่วนนี้ */
+    height: calc(100vh - 120px);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ==========================================================================
+   🗺️ [แก้ไขจุดบั๊กหลัก] แผงแผนที่ฝั่งซ้าย (Left Map Panel)
+   ========================================================================== */
+.gov-map-panel {
+    flex: 1.5; /* ขยายสัดส่วนพื้นที่ฝั่งแผนที่ให้กว้างขึ้น */
+    border: 2px solid #222222;
+    border-radius: 0px !important;
+    position: relative;
+    height: 100%;
+    overflow: hidden; /* บังคับแผ่น Map Leaflet ตัดขอบเหลี่ยมห้ามล้นทับฟอร์ม */
+    box-sizing: border-box;
+}
+
+/* ตัวแผ่นคลาสโครงสร้างของตาราง Leaflet */
+.gov-map-frame {
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1; /* กำหนดลำดับชั้นให้อยู่ในระดับฐานของตัวเอง */
+    position: relative;
+}
+
+/* กล่องคำอธิบายความหมายหมุดบนแผนที่ */
+.gov-map-legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000; /* ดันให้อยู่เหนือผิวแผนที่ */
+    background: #ffffff;
+    padding: 12px 15px;
+    border-radius: 0px !important;
+    border: 2px solid #222222;
+}
+
+.gov-legend-title {
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #000000;
+    border-bottom: 1px solid #000000;
+    padding-bottom: 3px;
+}
+
+.gov-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.gov-legend-color {
+    width: 12px;
+    height: 12px;
+    border: 1px solid #222222;
+    border-radius: 0px !important;
+}
+
+/* ==========================================================================
+   📋 [แก้ไขจุดบั๊กหลัก] แผงฟอร์มควบคุมฝั่งขวา (Right Form Panel)
+   ========================================================================== */
+.gov-form-panel {
+    width: 480px; /* ล็อกความกว้างตายตัวไม่ให้หดเบี้ยวตามแผนที่ */
+    background-color: #ffffff;
+    border: 2px solid #222222;
+    border-radius: 0px !important;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* เปิดสกอร์บาร์แนวตั้งให้เลื่อนลงไปดูข้อมูลได้ตามรูปม็อคอัพ */
+    height: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0; /* ป้องกันแผนที่บีบอัดกล่องจนฟอร์มบิดเบี้ยว */
+    z-index: 5; /* อยู่สูงกว่าเลเยอร์แผนที่ด้านซ้าย */
+}
+
+/* ฟอร์มกรุ๊ปและเลเบล */
+.gov-form-group {
+    margin-bottom: 18px;
+    width: 100%;
+}
+
+.gov-label-bold {
+    font-size: 14px;
+    font-weight: bold;
+    color: #000000;
+    margin-bottom: 6px;
+    display: block;
+}
+
+/* กล่องป้อนข้อมูลและดรอปดาวน์ */
+.gov-input-text, .gov-dropdown-select {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid #444444 !important;
+    border-radius: 0px !important;
+    background-color: #ffffff;
+    color: #000000;
+    box-sizing: border-box;
+}
+
+.gov-input-text:focus, .gov-dropdown-select:focus {
+    border: 2px solid #28a745 !important;
+    outline: none;
+    background-color: #f9fff9;
+}
+
+.gov-char-counter {
+    font-size: 11px;
+    color: #666666;
+    text-align: right;
+    margin-top: 4px;
+    display: block;
+}
+
+/* 🟢 ประเภทสถานที่แสดง (Checkbox ทรงตราประทับ) */
+.gov-category-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* แบ่งเป็น 2 ฝั่งสมดุลกันแบบในภาพ */
+    gap: 10px;
+    background: #ffffff;
+    padding: 10px;
+    border: 1px solid #444444;
+    box-sizing: border-box;
+}
+
+.gov-category-card {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #cccccc;
+    background-color: #ffffff;
+    cursor: pointer;
+    user-select: none;
+    box-sizing: border-box;
+}
+
+.gov-category-card.gov-selected {
+    border: 2px solid #28a745 !important;
+    background-color: #f4fbf6;
+}
+
+.gov-custom-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #28a745;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.gov-category-text {
+    font-size: 13px;
+    font-weight: bold;
+    color: #222222;
+}
+
+/* 🔵 แผงเพิ่มลำดับอำเภอและปุ่มกด */
+.gov-district-selector-block {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.gov-btn-add-item {
+    background-color: #28a745 !important;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    border: 1px solid #1e7e34 !important;
+    border-radius: 0px !important;
+    padding: 0 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.gov-btn-add-item:hover {
+    background-color: #218838 !important;
+}
+
+/* ตารางแสดงแถบลำดับอำเภอ Track */
+.gov-order-list-container {
+    border: 1px solid #444444 !important;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 6px;
+    background: #fdfdfd;
+    box-sizing: border-box;
+}
+
+.gov-order-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #444444;
+    padding: 6px 10px;
+    margin-bottom: 5px;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.gov-order-left {
+    display: flex;
+    align-items: center;
+}
+
+.gov-badge-number {
+    width: 22px;
+    height: 22px;
+    background-color: #1a2332;
+    color: white;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    margin-right: 12px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.gov-order-name {
+    font-size: 13.5px;
+    font-weight: bold;
+    color: #000000;
+}
+
+.gov-order-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.gov-btn-arrow {
+    background-color: #f2f2f2;
+    border: 1px solid #999999 !important;
+    border-radius: 0px !important;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.gov-btn-arrow:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.gov-btn-delete-item {
+    background-color: transparent;
+    color: #aaaaaa;
+    border: none !important;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.gov-btn-delete-item:hover {
+    color: #dc3545;
+}
+
+/* แถบปุ่มส่งรายงานใต้ฟอร์ม */
+.gov-submit-bar {
+    margin-top: auto;
+    padding-top: 15px;
+    border-top: 1px solid #cccccc;
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.gov-btn-save {
+    flex: 2;
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+    border: 1px solid #1e7e34 !important;
+    border-radius: 0px !important;
+    padding: 12px;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.gov-btn-save:hover {
+    background-color: #218838 !important;
+}
+
+.gov-btn-cancel {
+    flex: 1;
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #444444 !important;
+    border-radius: 0px !important;
+    padding: 12px;
+    text-align: center;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.gov-btn-cancel:hover {
+    background-color: #f2f2f2;
+}
+
+/* เออร์เรอร์ตัวแดงดักเกณฑ์ */
+.gov-error-label {
+    color: #dc3545 !important;
+    font-size: 13px;
+    font-weight: bold;
+    margin-top: 5px;
+    display: block;
+}
+
+.gov-input-border-error {
+    border: 2px solid #dc3545 !important;
+    background-color: #fff8f8;
+}
+/* แปะโค้ดนี้ต่อท้ายไฟล์ CreateMainRoute.css เพื่อรันโครงสร้างปุ่มกากบาทลบอำเภอสีแดง */
+
+.gov-btn-delete-item-red {
+    border: none !important;
+    background: transparent !important;
+    color: #cbd5e1; /* สีเทาอ่อนตั้งต้นตามรูป mockup */
+    padding: 6px;
+    cursor: pointer;
+    font-size: 18px; /* ขนาดกากบาทคมชัด */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease;
+}
+
+.gov-btn-delete-item-red:hover {
+    color: #ef4444 !important; /* เปลี่ยนเป็นสีแดงสดเมื่อเมาส์โฮเวอร์จ่อ */
+}

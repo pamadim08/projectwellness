@@ -7,6 +7,9 @@ import ListWellnessHub from "./pages/ListWellnesshub/ListWellnesshub";
 import AddWellnessHub from "./pages/CreateWellnesshub/AddWellnessHub";
 // ตัวอย่างการผูก Route ใน App.js ให้จับคู่กับคอมโพเนนต์แก้ไขข้อมูล
 import EditWellnessHub from "./pages/EditWellnesshub/EditWellnesshub"; // เช็ค path ไฟล์ของน้าด้วยนะ
+import CreateMainRoute from "./pages/CreateMainRoute.js/CreateMainRoute";
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 function App() {
   return (
     <Router>
@@ -24,6 +27,7 @@ function App() {
             path="/listWellnesshub/edit/:id"
             element={<EditWellnessHub />}
           />
+          <Route path="/createMainRoute" element={<CreateMainRoute />} />
         </Routes>
       </div>
     </Router>
