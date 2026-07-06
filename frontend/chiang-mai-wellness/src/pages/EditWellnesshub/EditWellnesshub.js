@@ -351,14 +351,16 @@ const EditWellnessHub = () => {
       status: formData.status,
 
       // 🌟 หมวดหมู่ (Category) ส่งเป็น String เสมอ
-      category: formData.categoryId && String(formData.categoryId).trim() !== ""
-        ? { categoryId: String(formData.categoryId).trim() }
-        : null,
-        
+      category:
+        formData.categoryId && String(formData.categoryId).trim() !== ""
+          ? { categoryId: String(formData.categoryId).trim() }
+          : null,
+
       // 🌟 อำเภอ (District) ส่งเป็นตัวเลข Integer โดยใช้ parseInt ตามเดิม
-      district: formData.districtId && String(formData.districtId).trim() !== ""
-        ? { districtId: parseInt(formData.districtId, 10) }
-        : null,
+      district:
+        formData.districtId && String(formData.districtId).trim() !== ""
+          ? { districtId: parseInt(formData.districtId, 10) }
+          : null,
     };
     try {
       await axiosInstance.put(
@@ -396,45 +398,52 @@ const EditWellnessHub = () => {
       </div>
     );
   }
-
+  const handleLogout = () => {
+    localStorage.removeItem("adminName");
+    navigate("/login");
+  };
   return (
     <div className="admin-layout">
       <nav className="sidebar-menu">
         <div className="sidebar-top">
           <div className="sidebar-logo">
+            <i className="fa-solid fa-shield-heart"></i>
             <span>Admin Panel</span>
           </div>
+
           <div className="user-profile-box">
+            <i className="fa-solid fa-circle-user"></i>
             <div className="user-info">
               <span className="user-label">ผู้ใช้งานปัจจุบัน:</span>
               <span className="user-name">{adminName}</span>
             </div>
           </div>
+
           <p className="menu-label">เมนูหลัก</p>
           <Link to="/admin/dashboard" className="menu-item">
-            แผงควบคุมหลัก
+            <i className="fa-solid fa-chart-pie"></i> แผงควบคุมหลัก
           </Link>
           <Link to="/admin/requests" className="menu-item">
-            ตรวจสอบคำขอสิทธิ์
+            <i className="fa-solid fa-clipboard-check"></i> ตรวจสอบคำขอสิทธิ์
+            <span className="badge-counter">5</span>
           </Link>
+
           <p className="menu-label" style={{ marginTop: "20px" }}>
             การจัดการข้อมูล
           </p>
-          <Link to="/admin/routes" className="menu-item">
-            จัดการเส้นทางสุขภาพ
+          <Link to="/listMainRoute" className="menu-item active">
+            <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
           </Link>
-          <Link to="/listWellnesshub" className="menu-item active">
-            จัดการสถานประกอบการ
+          <Link to="/listWellnessHub" className="menu-item">
+            <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
           </Link>
           <Link to="/admin/articles" className="menu-item">
-            จัดการบทความ
+            <i className="fa-solid fa-newspaper"></i> จัดการบทความ
           </Link>
         </div>
-        <button
-          className="btn-sidebar-logout"
-          onClick={() => navigate("/login")}
-        >
-          ออกจากระบบ
+
+        <button className="btn-sidebar-logout" onClick={handleLogout}>
+          <i className="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
         </button>
       </nav>
 

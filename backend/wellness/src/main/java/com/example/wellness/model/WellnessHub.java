@@ -36,20 +36,20 @@ public class WellnessHub {
     @Column(name = "wellness_hub_description", length = 255)
     private String wellnessHubDescription;
 
-    @Column(name = "wellness_hub_img", length = 255)
+    @Column(name = "wellness_hub_img", columnDefinition = "TEXT")
     private String wellnessHubImg;
 
     @Column(name = "wellness_hub_latitude")
-    private Float wellnessHubLatitude;
+    private Double wellnessHubLatitude;
 
     @Column(name = "wellness_hub_longitude")
-    private Float wellnessHubLongitude;
+    private Double wellnessHubLongitude;
 
     @Column(name = "status", length = 20)
     private String status;
 
     // ✨ ฟิลด์ที่ลืม: เพิ่มคอลัมน์เก็บประเภทใบรับรองศูนย์เวลเนส
-    @Column(name = "certificate_type", length = 100)
+    @Column(name = "certificate_type", columnDefinition = "TEXT")
     private String certificateType;
 
     @ManyToOne
@@ -59,4 +59,8 @@ public class WellnessHub {
     @ManyToOne
     @JoinColumn(name = "district_id")
     private District district;
+
+    // เพิ่มตัวนี้เข้าไปในไฟล์ WellnessHub.java
+    @Column(name = "operating_hours", columnDefinition = "TEXT")
+    private String operatingHours;
 }

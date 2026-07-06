@@ -1,5 +1,7 @@
 package com.example.wellness.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -19,6 +21,7 @@ public class MainRouteDetail {
     @JoinColumn(name = "district_id")
     private District district; // อำเภอที่ผ่าน
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @ManyToOne
     @JoinColumn(name = "route_id")
     private MainRoute mainRoute; // อยู่ในเส้นทางไหน

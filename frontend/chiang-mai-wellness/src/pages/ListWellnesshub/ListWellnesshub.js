@@ -3,12 +3,14 @@ import axios from "axios";
 // 🌟 นำเข้า useLocation เพื่อใช้รับค่าป๊อปอัพส่งข้ามมาจากหน้า Edit
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import "./ListWellnesshub.css";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 
 const ListWellnessHub = () => {
   const [listwellnesshub, setListWellnessHub] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [adminName, setAdminName] = useState("ผู้ดูแลระบบ (Admin)");
+  const [adminName, setAdminName] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 50;
   const navigate = useNavigate();
@@ -63,7 +65,7 @@ const ListWellnessHub = () => {
 
   useEffect(() => {
     loadData();
-    loadFilterOptions(); 
+    loadFilterOptions();
     const storedName = localStorage.getItem("adminName");
     if (storedName) setAdminName(storedName);
 
@@ -72,7 +74,7 @@ const ListWellnessHub = () => {
       setToast({
         show: true,
         type: location.state.toastType, // 'success' หรือ 'error'
-        message: location.state.toastMessage
+        message: location.state.toastMessage,
       });
 
       // ล้างค่าประวัติสเตตัสใน Window ทันที เพื่อไม่ให้ป๊อปอัพเด้งซ้ำเวลาแอดมินกดรีเฟรชหน้าจอตัวนี้
@@ -98,7 +100,7 @@ const ListWellnessHub = () => {
     return [...listwellnesshub].sort((a, b) => {
       const idA = a.licenseId ? parseInt(a.licenseId, 10) : 0;
       const idB = b.licenseId ? parseInt(b.licenseId, 10) : 0;
-      return idA - idB; 
+      return idA - idB;
     });
   }, [listwellnesshub]);
 
@@ -111,10 +113,18 @@ const ListWellnessHub = () => {
     if (window.confirm("ยืนยันการลบข้อมูลสถานประกอบการนี้?")) {
       try {
         await axios.delete(`http://localhost:8080/api/wellness-hubs/${id}`);
-        setToast({ show: true, type: "success", message: "ลบข้อมูลสถานประกอบการเสร็จสิ้น" });
+        setToast({
+          show: true,
+          type: "success",
+          message: "ลบข้อมูลสถานประกอบการเสร็จสิ้น",
+        });
         loadData();
       } catch (error) {
-        setToast({ show: true, type: "error", message: "ไม่สามารถลบข้อมูลออกจากระบบได้" });
+        setToast({
+          show: true,
+          type: "error",
+          message: "ไม่สามารถลบข้อมูลออกจากระบบได้",
+        });
       }
     }
   };
@@ -125,10 +135,15 @@ const ListWellnessHub = () => {
       {toast.show && (
         <div className={`gov-toast-alert alert-${toast.type}`}>
           <div className="toast-content-wrapper">
-            <i className={`fa-solid ${toast.type === "success" ? "fa-circle-check" : "fa-circle-xmark"}`}></i>
+            <i
+              className={`fa-solid ${toast.type === "success" ? "fa-circle-check" : "fa-circle-xmark"}`}
+            ></i>
             <span>{toast.message}</span>
           </div>
-          <button className="btn-close-toast" onClick={() => setToast({ show: false, type: "", message: "" })}>
+          <button
+            className="btn-close-toast"
+            onClick={() => setToast({ show: false, type: "", message: "" })}
+          >
             <i className="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -161,10 +176,10 @@ const ListWellnessHub = () => {
           <p className="menu-label" style={{ marginTop: "20px" }}>
             การจัดการข้อมูล
           </p>
-          <Link to="/createMainRoute" className="menu-item">
+          <Link to="/listMainRoute" className="menu-item">
             <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
           </Link>
-          <Link to="/listWellnesshub" className="menu-item active">
+          <Link to="/listWellnessHub" className="menu-item active">
             <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
           </Link>
           <Link to="/admin/articles" className="menu-item">
@@ -276,7 +291,9 @@ const ListWellnessHub = () => {
             <table className="list-table">
               <thead>
                 <tr>
-                  <th width="10%" className="text-center">รหัสระบบ</th>
+                  <th width="10%" className="text-center">
+                    รหัสระบบ
+                  </th>
                   <th width="35%">ชื่อสถานประกอบการ</th>
                   <th width="20%">หมวดหมู่</th>
                   <th width="15%">อำเภอ</th>
@@ -289,20 +306,29 @@ const ListWellnessHub = () => {
                   <tr>
                     <td
                       colSpan="6"
-                      className="text-center"
-                      style={{ padding: "30px", color: "#666" }}
+                      className="gov-loading-row"
+                      style={{
+                        textAlign: "center",
+                        padding: "30px 0",
+                        color: "#666",
+                      }}
                     >
-                      <i
-                        className="fa-solid fa-spinner fa-spin"
+                      {/* 🌟 เปลี่ยนมาใช้ Component ของ React FontAwesome พร้อมสั่ง spin */}
+                      <FontAwesomeIcon
+                        icon={faSpinner}
+                        spin
                         style={{ marginRight: "8px" }}
-                      ></i>{" "}
+                      />{" "}
                       กำลังโหลดข้อมูลระบบ...
                     </td>
                   </tr>
                 ) : currentRows.length > 0 ? (
                   currentRows.map((hub, index) => (
                     <tr key={hub.licenseId ?? index}>
-                      <td className="text-center" style={{ fontWeight: "600", color: "#495057" }}>
+                      <td
+                        className="text-center"
+                        style={{ fontWeight: "600", color: "#495057" }}
+                      >
                         {hub.licenseId ?? "-"}
                       </td>
                       <td>
@@ -363,8 +389,7 @@ const ListWellnessHub = () => {
                       ไม่พบข้อมูลสถานประกอบการ
                     </td>
                   </tr>
-                )
-              }
+                )}
               </tbody>
             </table>
           </div>

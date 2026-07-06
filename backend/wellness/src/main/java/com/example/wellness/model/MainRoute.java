@@ -1,5 +1,9 @@
 package com.example.wellness.model;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -16,12 +20,21 @@ public class MainRoute {
     @Column(name = "route_name", nullable = false, length = 50)
     private String routeName;
 
-    @Column(name = "route_description", nullable = false, length = 255)
-    private String routeDescription;
+    @Column(name = "route_description", nullable = true, length = 255)
 
-    // แนะนำ: แทนที่จะใช้ String categoryId เฉยๆ 
-    // เราควรเชื่อมเป็นความสัมพันธ์ @ManyToOne เหมือนใน WellnessHub ค่ะ
-    @ManyToOne
-    @JoinColumn(name = "category_id") 
-    private Category category; 
+    private String routeDescription;
+    @Column(name = "created_by", length = 100)
+    private String createdBy;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "category_id", columnDefinition = "Text")
+    private String categoryId;
+
+    @OneToMany(mappedBy = "mainRoute", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MainRouteDetail> details = new ArrayList<>();
 }
