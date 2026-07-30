@@ -449,6 +449,13 @@
 .btn-close-toast:hover {
   opacity: 1;
 }
+.gov-loading-row {
+  text-align: center;
+  padding: 30px 0 !important;
+  color: #666;
+  font-size: 14px;
+  height: 72px;
+}
 
 @keyframes slideInLeftToast {
   from {
@@ -459,4 +466,136 @@
     transform: translateX(0);
     opacity: 1;
   }
+}
+/* =======================================================
+   Popup ยืนยันการลบ
+======================================================= */
+
+.popup-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.popup {
+  width: 100%;
+  max-width: 430px;
+
+  padding: 30px;
+
+  background: #ffffff;
+  border: 2px solid var(--gov-border);
+
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.popup-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 68px;
+  height: 68px;
+
+  margin: 0 auto 18px;
+
+  border-radius: 50%;
+
+  color: #ffffff;
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.popup-icon.error {
+  background: #dc3545;
+}
+
+.popup h3 {
+  margin: 0 0 12px;
+
+  color: #111111;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.popup p {
+  margin: 0;
+
+  color: #555555;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.popup-route-name {
+  display: block;
+
+  margin: 8px 0;
+
+  color: var(--gov-green-dark);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.popup-warning-text {
+  display: block;
+
+  margin-top: 10px;
+
+  color: #888888;
+  font-size: 12px;
+}
+
+.popup-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+
+  margin-top: 24px;
+}
+
+.cancel-btn,
+.delete-btn {
+  min-width: 120px;
+
+  padding: 10px 18px;
+
+  border: none;
+
+  color: #ffffff;
+  font-family: "Sarabun", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background: #6c757d;
+}
+
+.cancel-btn:hover {
+  background: #5a6268;
+}
+
+.delete-btn {
+  background: #dc3545;
+}
+
+.delete-btn:hover {
+  background: #bd2130;
+}
+
+.cancel-btn:disabled,
+.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

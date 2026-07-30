@@ -7,8 +7,10 @@ import com.example.wellness.model.WellnessHub;
 import com.example.wellness.repository.CategoryRepository;
 import com.example.wellness.repository.WellnessHubRepository;
 import com.example.wellness.repository.DistrictRepository;
-import com.example.wellness.repository.OperatingHourRepository; // 👈 แทรกเพิ่มตรงนี้
+import com.example.wellness.repository.OperatingHourRepository;
+import com.example.wellness.repository.AccountRequestRepository; // 👈 แทรกเพิ่มตรงนี้
 import jakarta.annotation.PostConstruct; // 🌟 เพิ่ม Import ตัวนี้เพื่อใช้ทำระบบกวาดข้อมูลเก่าตอนรันเซิร์ฟเวอร์
+import jakarta.transaction.Transactional;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
@@ -29,6 +31,8 @@ public class WellnessHubService {
     @Autowired
     private WellnessHubRepository wellnessHubRepository;
 
+    @Autowired
+    private AccountRequestRepository accountRequestRepository; // 🌟 เพิ่ม Repository ของ AccountRequest
     @Autowired
     private CategoryRepository categoryRepository;
     @Autowired
@@ -82,65 +86,66 @@ public class WellnessHubService {
     // 🛠️ ฟังก์ชันแกะพิกัดอัจฉริยะ (ตรวจจับและขยายลิงก์ย่อก่อน)
     // ===================================================
     private void extractCoordinates(WellnessHub hub) {
-    String originalUrl = hub.getGoogleMapsLink();
+        String originalUrl = hub.getGoogleMapsLink();
 
-    if (originalUrl == null || originalUrl.trim().isEmpty()) {
-        hub.setWellnessHubLatitude(null);
-        hub.setWellnessHubLongitude(null);
-        return;
+        if (originalUrl == null || originalUrl.trim().isEmpty()) {
+            hub.setWellnessHubLatitude(null);
+            hub.setWellnessHubLongitude(null);
+            return;
+        }
+
+        String finalUrl = originalUrl.trim();
+
+        if (finalUrl.contains("goo.gl") || finalUrl.contains("maps.app.goo.gl")) {
+            finalUrl = expandShortUrl(finalUrl);
+        }
+
+        // 1) พิกัดสถานที่จริงจาก Google Maps: !3d18.xxxxx!4d98.xxxxx
+        Pattern patternPlace = Pattern.compile("!3d(-?\\d+\\.\\d+)!4d(-?\\d+\\.\\d+)");
+        Matcher matcherPlace = patternPlace.matcher(finalUrl);
+
+        // 2) พิกัดจาก @ ส่วนใหญ่เป็น viewport / map center
+        Pattern patternAt = Pattern.compile("@(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
+        Matcher matcherAt = patternAt.matcher(finalUrl);
+
+        // 3) พิกัดจาก query q=lat,lng
+        Pattern patternQuery = Pattern.compile("[?&]q=(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
+        Matcher matcherQuery = patternQuery.matcher(finalUrl);
+
+        Double lat = null;
+        Double lng = null;
+
+        if (matcherPlace.find()) {
+            lat = Double.parseDouble(matcherPlace.group(1));
+            lng = Double.parseDouble(matcherPlace.group(2));
+            System.out.println("📌 ใช้ Pattern !3d!4d");
+        } else if (matcherQuery.find()) {
+            lat = Double.parseDouble(matcherQuery.group(1));
+            lng = Double.parseDouble(matcherQuery.group(2));
+            System.out.println("📌 ใช้ Pattern q");
+        } else if (matcherAt.find()) {
+            lat = Double.parseDouble(matcherAt.group(1));
+            lng = Double.parseDouble(matcherAt.group(2));
+            System.out.println("📌 ใช้ Pattern @ fallback");
+        }
+
+        if (isValidCoordinate(lat, lng)) {
+            hub.setWellnessHubLatitude(lat);
+            hub.setWellnessHubLongitude(lng);
+        } else {
+            hub.setWellnessHubLatitude(null);
+            hub.setWellnessHubLongitude(null);
+            System.out.println("⚠️ พิกัดไม่ถูกต้อง ตั้งค่าเป็น NULL");
+        }
     }
 
-    String finalUrl = originalUrl.trim();
-
-    if (finalUrl.contains("goo.gl") || finalUrl.contains("maps.app.goo.gl")) {
-        finalUrl = expandShortUrl(finalUrl);
+    private boolean isValidCoordinate(Double lat, Double lng) {
+        return lat != null
+                && lng != null
+                && lat >= -90 && lat <= 90
+                && lng >= -180 && lng <= 180;
     }
 
-    // 1) พิกัดสถานที่จริงจาก Google Maps: !3d18.xxxxx!4d98.xxxxx
-    Pattern patternPlace = Pattern.compile("!3d(-?\\d+\\.\\d+)!4d(-?\\d+\\.\\d+)");
-    Matcher matcherPlace = patternPlace.matcher(finalUrl);
-
-    // 2) พิกัดจาก @ ส่วนใหญ่เป็น viewport / map center
-    Pattern patternAt = Pattern.compile("@(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
-    Matcher matcherAt = patternAt.matcher(finalUrl);
-
-    // 3) พิกัดจาก query q=lat,lng
-    Pattern patternQuery = Pattern.compile("[?&]q=(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
-    Matcher matcherQuery = patternQuery.matcher(finalUrl);
-
-    Double lat = null;
-    Double lng = null;
-
-    if (matcherPlace.find()) {
-    lat = Double.parseDouble(matcherPlace.group(1));
-    lng = Double.parseDouble(matcherPlace.group(2));
-    System.out.println("📌 ใช้ Pattern !3d!4d");
-} else if (matcherQuery.find()) {
-    lat = Double.parseDouble(matcherQuery.group(1));
-    lng = Double.parseDouble(matcherQuery.group(2));
-    System.out.println("📌 ใช้ Pattern q");
-} else if (matcherAt.find()) {
-    lat = Double.parseDouble(matcherAt.group(1));
-    lng = Double.parseDouble(matcherAt.group(2));
-    System.out.println("📌 ใช้ Pattern @ fallback");
-}
-
-    if (isValidCoordinate(lat, lng)) {
-        hub.setWellnessHubLatitude(lat);
-        hub.setWellnessHubLongitude(lng);
-    } else {
-        hub.setWellnessHubLatitude(null);
-        hub.setWellnessHubLongitude(null);
-        System.out.println("⚠️ พิกัดไม่ถูกต้อง ตั้งค่าเป็น NULL");
-    }
-}
-
-private boolean isValidCoordinate(Double lat, Double lng) {
-    return lat != null
-            && lng != null
-            && lat >= -90 && lat <= 90
-            && lng >= -180 && lng <= 180;
-}
     // ฟังก์ชันยิงแกะลิงก์ย่อด้วย HttpURLConnection ป้องกันเออร์เรอร์ค้างด้วย
     // try-catch
     private String expandShortUrl(String shortenedUrl) {
@@ -295,66 +300,85 @@ private boolean isValidCoordinate(Double lat, Double lng) {
         // 7. บันทึกข้อมูลที่ประกอบและกรองเสร็จสิ้นลงตารางใน Supabase
         return wellnessHubRepository.save(oldHub);
     }
-    // // // =========================================================================
-    // // // ➕ ส่วนที่เพิ่มเข้าไปใหม่: จัดการกวาดข้อมูลเก่าในฐานข้อมูล (Data Migration)
-    // // // =========================================================================
+
+    @Transactional // 🌟 นำเข้า org.springframework.transaction.annotation.Transactional
+    public boolean deleteWellnessHub(Integer id) {
+        // 1. ค้นหาข้อมูลเดิมก่อน
+        WellnessHub hub = wellnessHubRepository.findById(id).orElse(null);
+
+        if (hub != null) {
+            // 2. ลบคำขอในตาราง account_requests ที่ผูกกับ licenseId นี้ออกก่อน
+            accountRequestRepository.deleteByWellnessHub_LicenseId(id);
+
+            // 3. 🌟 เพิ่มบรรทัดนี้: ลบเวลาทำการในตาราง operating_hours ที่ผูกกับ Hub
+            // นี้ออกด้วย
+            operatingHourRepository.deleteByWellnessHub(hub);
+
+            // 4. ลบข้อมูลสถานประกอบการในตารางหลัก wellness_hubs
+            wellnessHubRepository.delete(hub);
+            return true;
+        }
+        return false;
+    }
+
+    // // // //
+    // // =========================================================================
+    // // // // ➕ ส่วนที่เพิ่มเข้าไปใหม่: จัดการกวาดข้อมูลเก่าในฐานข้อมูล (Data
+    // // Migration)
+    // // // //
+    // // =========================================================================
     // @PostConstruct
     // public void migrateOldGoogleMapsLinks() {
-    // System.out.println("🔄 [Data Migration] เริ่มตรวจสอบและแปลงพิกัดสำหรับข้อมูลเก่าในตาราง...");
-    // List<WellnessHub> allHubs = wellnessHubRepository.findAll();
+    //     System.out.println("🔄 [Data Migration]\nเริ่มตรวจสอบและแปลงพิกัดสำหรับข้อมูลเก่าในตาราง...");
+    //     List<WellnessHub> allHubs = wellnessHubRepository.findAll();
 
-    // int successCount = 0;
-    // int failedCount = 0;
+    //     int successCount = 0;
+    //     int failedCount = 0;
 
-    // for (WellnessHub hub : allHubs) {
-    // // เงื่อนไข: คัดเลือกเฉพาะแถวที่มี "ลิงก์แผนที่ตัวจริง" และ
-    // // "พิกัดในฐานข้อมูลยังคงเป็นค่าว่าง (null)"
-    // if (hub.getGoogleMapsLink() != null
-    // && !hub.getGoogleMapsLink().isEmpty()
-    // && (hub.getGoogleMapsLink().trim().startsWith("http://")
-    // || hub.getGoogleMapsLink().trim().startsWith("https://"))
-    // && (hub.getWellnessHubLatitude() == null || hub.getWellnessHubLongitude() ==
-    // null)
-    // ) {
+    //     for (WellnessHub hub : allHubs) {
+    //         // เงื่อนไข: คัดเลือกเฉพาะแถวที่มี "ลิงก์แผนที่ตัวจริง" และ
+    //         // "พิกัดในฐานข้อมูลยังคงเป็นค่าว่าง (null)"
+    //         if (hub.getGoogleMapsLink() != null
+    //                 && !hub.getGoogleMapsLink().isEmpty()
+    //                 && (hub.getGoogleMapsLink().trim().startsWith("http://")
+    //                 || hub.getGoogleMapsLink().trim().startsWith("https://"))
+    //                 && (hub.getWellnessHubLatitude() == null || hub.getWellnessHubLongitude() == null)) {
 
-    // try {
-    // // เรียกใช้งานฟังก์ชันตัวเดิมของคุณแกะพิกัดให้
-    // extractCoordinates(hub);
+    //             try {
+    //                 // เรียกใช้งานฟังก์ชันตัวเดิมของคุณแกะพิกัดให้
+    //                 extractCoordinates(hub);
 
-    // // เช็คผลลัพธ์: ถ้าพิกัดที่ได้กลับมาไม่เป็น null
-    // // แปลว่าแกะพิกัดจริงจากลิงก์สำเร็จ
-    // if (hub.getWellnessHubLatitude() != null) {
-    // successCount++;
-    // System.out.println("✅ ร้านเก่า: [" + hub.getWellnessHubName() + "] อัปเดตพิกัดจริงสำเร็จ");
-    // } else {
-    // failedCount++;
-    // System.out.println("🟡 ร้านเก่า: [" + hub.getWellnessHubName() + "] สกัดพิกัดไม่สำเร็จ ➡️ ปล่อยเป็นค่าว่าง (NULL)");
-    // }
+    //                 // เช็คผลลัพธ์: ถ้าพิกัดที่ได้กลับมาไม่เป็น null
+    //                 // แปลว่าแกะพิกัดจริงจากลิงก์สำเร็จ
+    //                 if (hub.getWellnessHubLatitude() != null) {
+    //                     successCount++;
+    //                     System.out.println("✅ ร้านเก่า: [" + hub.getWellnessHubName() + "]\nอัปเดตพิกัดจริงสำเร็จ");
+    //                 } else {
+    //                     failedCount++;
+    //                     System.out.println("🟡 ร้านเก่า: [" + hub.getWellnessHubName() + "]\nสกัดพิกัดไม่สำเร็จ ➡️ ปล่อยเป็นค่าว่าง (NULL)");
+    //                 }
 
-    // // บันทึกความเปลี่ยนแปลงของร้านเก่ากลับลงตารางใน Supabase
-    // wellnessHubRepository.save(hub);
+    //                 // บันทึกความเปลี่ยนแปลงของร้านเก่ากลับลงตารางใน Supabase
+    //                 wellnessHubRepository.save(hub);
 
-    // // สั่งให้ระบบหยุดพักเป็นเวลา 500 มิลลิวินาที (0.5 วินาที)
-    // // ก่อนก้าวไปทำรายการถัดไป เพื่อหลบการโดนตรวจจับจาก Google
-    // Thread.sleep(500);
+    //                 // สั่งให้ระบบหยุดพักเป็นเวลา 500 มิลลิวินาที (0.5 วินาที)
+    //                 // ก่อนก้าวไปทำรายการถัดไป เพื่อหลบการโดนตรวจจับจาก Google
+    //                 Thread.sleep(500);
 
-    // } catch (InterruptedException ie) {
-    // System.err.println("❌ ระบบถูกขัดจังหวะการพักงาน (Thread interrupted): " +
-    // ie.getMessage());
-    // Thread.currentThread().interrupt();
-    // } catch (Exception e) {
-    // System.err.println(
-    // "❌ เกิดข้อผิดพลาดที่ข้อมูลเก่าร้าน " + hub.getWellnessHubName() + " : " +
-    // e.getMessage());
-    // }
-    // }
-    // } // 🟢 ปิดบล็อกลูป for อย่างถูกต้องตรงนี้
+    //             } catch (InterruptedException ie) {
+    //                 System.err.println("❌ ระบบถูกขัดจังหวะการพักงาน (Thread interrupted): " + ie.getMessage());
+    //                 Thread.currentThread().interrupt();
+    //             } catch (Exception e) {
+    //                 System.err.println("❌ เกิดข้อผิดพลาดที่ข้อมูลเก่าร้าน " + hub.getWellnessHubName() + " : " + e.getMessage());
+    //             }
+    //         }
+    //     } // 🟢 ปิดบล็อกลูป for อย่างถูกต้องตรงนี้
 
-    // // รายงานสถิติตัวเลขสรุปผลการ Migration ออกทางหน้าจอคอนโซลหลังบ้าน
-    // System.out.println("==================================================");
-    // System.out.println("🎉 [Data Migration] เสร็จสิ้นกระบวนการตรวจเช็คข้อมูลเก่า!");
-    // System.out.println("🟢 ดึงพิกัดเฉพาะร้านเก่าสำเร็จ: " + successCount + " รายการ");
-    // System.out.println("🟡 ดึงไม่สำเร็จ (ปล่อยเป็นค่าว่าง NULL): " + failedCount + " รายการ");
-    // System.out.println("==================================================");
+    //     // รายงานสถิติตัวเลขสรุปผลการ Migration ออกทางหน้าจอคอนโซลหลังบ้าน
+    //     System.out.println("==================================================");
+    //     System.out.println("🎉 [Data Migration]\nเสร็จสิ้นกระบวนการตรวจเช็คข้อมูลเก่า!");
+    //     System.out.println("🟢 ดึงพิกัดเฉพาะร้านเก่าสำเร็จ: " + successCount + " รายการ");
+    //     System.out.println("🟡 ดึงไม่สำเร็จ (ปล่อยเป็นค่าว่าง NULL): " + failedCount + " รายการ");
+    //     System.out.println("==================================================");
     // }
 }

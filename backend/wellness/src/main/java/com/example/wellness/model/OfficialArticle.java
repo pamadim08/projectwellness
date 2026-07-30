@@ -29,6 +29,13 @@ public class OfficialArticle {
     @Column(name = "publish_date", nullable = false)
     private LocalDateTime publishDate; // ใน Postgres จะเป็น timestamp
 
-    @Column(name = "img", nullable = false, length = 255)
+    // 🔥 แก้ไขจุดนี้: เปลี่ยนจาก length = 255 เป็น TEXT เพื่อรองรับ Base64
+    @Column(name = "img", nullable = false, columnDefinition = "TEXT")
     private String img;
+
+    // หน้าปก
+
+    @Column(name = "article_images", columnDefinition = "TEXT")
+    private String articleImages; // JSON Array
+
 }

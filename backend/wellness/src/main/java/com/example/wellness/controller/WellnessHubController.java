@@ -33,14 +33,14 @@ public class WellnessHubController {
         return wellnessHubService.getHubById(id);
     }
 
-    // // 🌟 ➕ จุดที่เพิ่มใหม่: สร้าง API Endpoint
-    // // เพื่อให้กดสั่งแปลงข้อมูลจากข้างนอกได้ตลอดเวลา
+    // 🌟 ➕ จุดที่เพิ่มใหม่: สร้าง API Endpoint
+    // เพื่อให้กดสั่งแปลงข้อมูลจากข้างนอกได้ตลอดเวลา
     // @PostMapping("/migrate-old-links")
     // public ResponseEntity<Map<String, Object>> runMigration() {
-    //     wellnessHubService.migrateOldGoogleMapsLinks();
-    //     Map<String, Object> report = new HashMap<>();
-    //     report.put("status", "completed");
-    //     return ResponseEntity.ok(report);
+    // wellnessHubService.migrateOldGoogleMapsLinks();
+    // Map<String, Object> report = new HashMap<>();
+    // report.put("status", "completed");
+    // return ResponseEntity.ok(report);
     // }
 
     @PostMapping
@@ -52,9 +52,21 @@ public class WellnessHubController {
     public ResponseEntity<WellnessHub> update(@PathVariable Integer id, @RequestBody WellnessHub hub) {
         WellnessHub updatedHub = wellnessHubService.updateWellnessHub(id, hub);
         if (updatedHub == null) {
-            // ส่งสเตตัส 404 บ่งบอกไม่สำเร็จตาม Alternate Flow "ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้"
-            return ResponseEntity.notFound().build(); 
+            // ส่งสเตตัส 404 บ่งบอกไม่สำเร็จตาม Alternate Flow
+            // "ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้"
+            return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(updatedHub);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+        boolean isDeleted = wellnessHubService.deleteWellnessHub(id);
+        if (!isDeleted) {
+            // คืนค่า 404 หากไม่พบ ID ที่ต้องการลบ
+            return ResponseEntity.notFound().build();
+        }
+        // คืนค่า 204 No Content หรือ 200 OK แสดงว่าลบสำเร็จ
+        return ResponseEntity.noContent().build();
     }
 }

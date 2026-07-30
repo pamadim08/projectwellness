@@ -22,6 +22,9 @@ import java.util.stream.Collectors;
 @Service
 public class MainRouteService {
 
+    // 🌟 6. เพิ่มค่าคงที่สำหรับหมวดฉุกเฉิน
+    private static final List<String> REQUIRED_EMERGENCY_CATEGORY_IDS = List.of("EM01", "EM02");
+
     @Autowired
     private MainRouteRepository mainRouteRepository;
 
@@ -29,12 +32,35 @@ public class MainRouteService {
     private DistrictRepository districtRepository;
 
     @Autowired
-    private CategoryRepository categoryRepository; // 🌟 ดึงข้อมูลมาแปลงชื่อหมวดหมู่จาก JSON
+    private CategoryRepository categoryRepository;
 
     @Autowired
-    private WellnessHubRepository wellnessHubRepository; // 🌟 ดึงข้อมูลมานับจำนวนเวลเนสในอำเภอ
+    private WellnessHubRepository wellnessHubRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // 🌟 6. เพิ่ม Helper Normalize เพื่อรวม EM01 และ EM02 เสมอ
+    private List<String> normalizeCategoryIds(Object categoryIdsRaw) {
+        LinkedHashSet<String> categoryIds = new LinkedHashSet<>();
+
+        if (categoryIdsRaw instanceof List<?> rawList) {
+            rawList.stream()
+                    .filter(Objects::nonNull)
+                    .map(Object::toString)
+                    .map(String::trim)
+                    .filter(value -> !value.isEmpty())
+                    .forEach(categoryIds::add);
+        } else if (categoryIdsRaw != null) {
+            String value = categoryIdsRaw.toString().trim();
+            if (!value.isEmpty()) {
+                categoryIds.add(value);
+            }
+        }
+
+        categoryIds.addAll(REQUIRED_EMERGENCY_CATEGORY_IDS);
+
+        return new ArrayList<>(categoryIds);
+    }
 
     public List<MainRoute> getAllMainRoutes() {
         return mainRouteRepository.findAll();
@@ -44,72 +70,122 @@ public class MainRouteService {
         return mainRouteRepository.findById(id).orElse(null);
     }
 
-    // 🏛️ เมธอดใหม่: สำหรับดึงข้อมูลสรุปไปแสดงที่หน้าตาราง ListMainRoute
-    // (นับรวมสถานประกอบการตรงๆ ไม่กรองหมวดหมู่)
+    // 🏛️ เมธอดสำหรับดึงข้อมูลสรุปไปแสดงที่หน้าตาราง ListMainRoute
     public List<Map<String, Object>> getAllMainRoutesForList() {
+
         List<MainRoute> routes = mainRouteRepository.findAll();
         List<Map<String, Object>> resultList = new ArrayList<>();
 
-        List<WellnessHub> allHubs = wellnessHubRepository.findAll();
         List<Category> allCategories = categoryRepository.findAll();
 
         for (MainRoute route : routes) {
+
             Map<String, Object> map = new HashMap<>();
+
             map.put("routeId", route.getRouteId());
             map.put("routeName", route.getRouteName());
             map.put("routeDescription", route.getRouteDescription());
 
-            // 🗺️ 1. รายชื่ออำเภอที่วิ่งผ่านตามลำดับ (เช่น "อ.เมืองเชียงใหม่ -> อ.แม่ริม")
             String districtsPassed = route.getDetails().stream()
                     .sorted(Comparator.comparing(MainRouteDetail::getOrderNumber))
                     .map(d -> "อ." + d.getDistrict().getDistrictName())
                     .collect(Collectors.joining(" -> "));
-            map.put("districtsPassed", districtsPassed.isEmpty() ? "ยังไม่ได้กำหนดอำเภอ" : districtsPassed);
 
-            // 🎨 2. แกะข้อความ JSON หมวดหมู่ผูกเป็นชื่อประเภทบริการแสดงบนตาราง
-            final List<String> catIds = new ArrayList<>();
-            if (route.getCategoryId() != null && !route.getCategoryId().trim().isEmpty()) {
+            map.put(
+                    "districtsPassed",
+                    districtsPassed.isEmpty()
+                            ? "ยังไม่ได้กำหนดอำเภอ"
+                            : districtsPassed);
+
+            List<String> catIds = new ArrayList<>();
+
+            if (route.getCategoryId() != null && !route.getCategoryId().isEmpty()) {
                 try {
-                    List<String> parsed = objectMapper.readValue(route.getCategoryId(),
-                            new TypeReference<List<String>>() {
-                            });
-                    if (parsed != null) {
-                        catIds.addAll(parsed);
-                    }
+                    catIds.addAll(
+                            objectMapper.readValue(
+                                    route.getCategoryId(),
+                                    new TypeReference<List<String>>() {
+                                    }));
                 } catch (Exception e) {
                     catIds.add(route.getCategoryId());
                 }
             }
 
             String categoriesPassed = allCategories.stream()
-                    .filter(c -> catIds.contains(String.valueOf(c.getCategoryId())))
+                    .filter(c -> catIds.contains(
+                            String.valueOf(c.getCategoryId())))
                     .map(Category::getCategoryName)
                     .collect(Collectors.joining(", "));
-            map.put("categoriesPassed", categoriesPassed.isEmpty() ? "ยังไม่ได้กำหนดหมวดหมู่" : categoriesPassed);
+
+            map.put(
+                    "categoriesPassed",
+                    categoriesPassed.isEmpty()
+                            ? "ยังไม่ได้กำหนดหมวดหมู่"
+                            : categoriesPassed);
+
             map.put("createdBy", route.getCreatedBy());
             map.put("createdAt", route.getCreatedAt());
             map.put("updatedAt", route.getUpdatedAt());
 
-            // 🏢 3. นับจำนวนสถานประกอบการในอำเภอที่วิ่งผ่านตรงๆ
-            // (ไม่มีการกรองหมวดหมู่ซ้ำซ้อน)
-            List<Integer> activeDistrictIds = route.getDetails().stream()
-                    .filter(d -> d.getDistrict() != null)
-                    .map(d -> d.getDistrict().getDistrictId())
-                    .collect(Collectors.toList());
-
-            long pinCount = allHubs.stream()
-                    .filter(h -> h.getDistrict() != null)
-                    .filter(h -> activeDistrictIds.contains(h.getDistrict().getDistrictId()))
-                    .filter(h -> h.getCategory() != null)
-                    .filter(h -> catIds.contains(String.valueOf(h.getCategory().getCategoryId())))
-                    .filter(h -> h.getWellnessHubLatitude() != null && h.getWellnessHubLongitude() != null)
-                    .count();
-
-            map.put("pinCount", pinCount);
+            // อ่านค่าที่คำนวณไว้แล้ว
+            map.put("pinCount", route.getPinCount());
 
             resultList.add(map);
         }
+
         return resultList;
+    }
+
+    // 🌟 7. แก้การนับหมุดให้ปลอดภัย
+    private void calculatePinCount(MainRoute route) {
+
+        final List<String> categoryIds = new ArrayList<>();
+
+        try {
+            if (route.getCategoryId() != null && !route.getCategoryId().trim().isEmpty()) {
+                List<String> parsed = objectMapper.readValue(
+                        route.getCategoryId(),
+                        new TypeReference<List<String>>() {
+                        });
+                if (parsed != null) {
+                    categoryIds.addAll(parsed);
+                }
+            }
+        } catch (Exception e) {
+            if (route.getCategoryId() != null) {
+                categoryIds.add(route.getCategoryId());
+            }
+        }
+
+        // รวม EM01 และ EM02 เพื่อการคำนวณที่แม่นยำ
+        categoryIds.addAll(REQUIRED_EMERGENCY_CATEGORY_IDS);
+
+        List<String> distinctCategoryIds = categoryIds.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .distinct()
+                .toList();
+
+        List<Integer> districtIds = route.getDetails()
+                .stream()
+                .map(d -> d.getDistrict().getDistrictId())
+                .collect(Collectors.toList());
+
+        long count = wellnessHubRepository.findAll()
+                .stream()
+                .filter(h -> h.getDistrict() != null &&
+                        districtIds.contains(
+                                h.getDistrict().getDistrictId()))
+                .filter(h -> h.getCategory() != null &&
+                        distinctCategoryIds.contains(
+                                String.valueOf(
+                                        h.getCategory().getCategoryId())))
+                .filter(h -> h.getWellnessHubLatitude() != null &&
+                        h.getWellnessHubLongitude() != null)
+                .count();
+
+        route.setPinCount((int) count);
     }
 
     // 🟢 เมธอดสร้างเส้นทางท่องเที่ยวใหม่
@@ -127,11 +203,10 @@ public class MainRouteService {
                 detail.setMainRoute(route);
             }
         }
-
+        calculatePinCount(route);
         return mainRouteRepository.save(route);
     }
 
-    
     // 🟡 เมธอดแก้ไขอัปเดตทับข้อมูลเดิม
     @Transactional
     public MainRoute updateMainRoute(Integer id, Map<String, Object> payload) {
@@ -151,12 +226,13 @@ public class MainRouteService {
                 }
             }
             oldRoute.setUpdatedAt(LocalDateTime.now());
+            calculatePinCount(oldRoute);
             return mainRouteRepository.save(oldRoute);
         }
         return null;
     }
 
-    // 🛠️ ตรรกะแปลงร่างแมปข้อมูล
+    // 🛠️ 6. ปรับปรุงตรรกะแปลง Payload เป็น Entity ให้บังคับเซฟ EM01, EM02 เสมอ
     private MainRoute convertPayloadToEntity(Map<String, Object> payload) {
         MainRoute route = new MainRoute();
         route.setRouteName(payload.get("routeName").toString());
@@ -164,13 +240,13 @@ public class MainRouteService {
                 payload.get("routeDescription") != null ? payload.get("routeDescription").toString() : "");
 
         try {
-            Object catIdsRaw = payload.get("categoryIds");
-            if (catIdsRaw != null) {
-                String jsonString = objectMapper.writeValueAsString(catIdsRaw);
-                route.setCategoryId(jsonString);
-            }
-        } catch (Exception e) {
-            System.err.println("⚠️ ไม่สามารถแปลงกลุ่มหมวดหมู่เป็น JSON String ได้: " + e.getMessage());
+            List<String> categoryIds = normalizeCategoryIds(payload.get("categoryIds"));
+            String jsonString = objectMapper.writeValueAsString(categoryIds);
+            route.setCategoryId(jsonString);
+        } catch (Exception exception) {
+            throw new IllegalArgumentException(
+                    "ไม่สามารถบันทึกหมวดหมู่ของเส้นทางได้",
+                    exception);
         }
 
         List<MainRouteDetail> detailList = new ArrayList<>();
@@ -192,7 +268,7 @@ public class MainRouteService {
         return route;
     }
 
-    // 🗑️ เมธอดสำหรับลบข้อมูลเส้นทางสุขภาพหลัก (ล้างตารางลูกรายละเอียดอัตโนมัติ)
+    // 🗑️ เมธอดสำหรับลบข้อมูลเส้นทางสุขภาพหลัก
     @Transactional
     public boolean deleteMainRoute(Integer id) {
         if (mainRouteRepository.existsById(id)) {

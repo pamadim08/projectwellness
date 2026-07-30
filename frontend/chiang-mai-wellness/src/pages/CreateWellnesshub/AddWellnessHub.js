@@ -2,6 +2,13 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import "./AddWellnessHub.css";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faShieldHeart,
+  faCircleInfo,
+  faLocationDot,
+  faSave,
+} from "@fortawesome/free-solid-svg-icons";
 
 const AddWellnessHub = () => {
   const navigate = useNavigate();
@@ -11,6 +18,11 @@ const AddWellnessHub = () => {
   // State สำหรับเก็บข้อมูลตัวเลือกใน Dropdown
   const [categories, setCategories] = useState([]);
   const [districts, setDistricts] = useState([]);
+
+  // State สำหรับควบคุม Popup Alert
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // State สำหรับผูกกับอินพุตในฟอร์ม
   const [formData, setFormData] = useState({
@@ -87,14 +99,14 @@ const AddWellnessHub = () => {
 
     try {
       await axios.post("http://localhost:8080/api/wellness-hubs", payload);
-      alert("🎉 บันทึกข้อมูลสถานประกอบการสำเร็จ!");
-      navigate("/listWellnesshub");
+      setShowSuccessPopup(true);
     } catch (error) {
       console.error("Error saving establishment:", error);
-      alert(
+      setErrorMessage(
         error.response?.data ||
           "ไม่สามารถบันทึกข้อมูลได้ กรุณาตรวจสอบความถูกต้องอีกครั้ง",
       );
+      setShowErrorPopup(true);
     } finally {
       setIsLoading(false);
     }
@@ -102,11 +114,11 @@ const AddWellnessHub = () => {
 
   return (
     <div className="admin-layout">
-      {/* 🟢 Aside / Sidebar เมนูตัวเดิมของคุณเป๊ะๆ */}
+      {/* 🟢 Sidebar เมนูหลัก */}
       <nav className="sidebar-menu">
         <div className="sidebar-top">
           <div className="sidebar-logo">
-            <i className="fa-solid fa-shield-heart"></i>
+            <FontAwesomeIcon icon={faShieldHeart} />
             <span>Admin Panel</span>
           </div>
 
@@ -146,7 +158,7 @@ const AddWellnessHub = () => {
         </button>
       </nav>
 
-      {/* 🔵 เนื้อหาฝั่งฟอร์มบันทึกข้อมูลสไตล์ทางราชการ */}
+      {/* 🔵 เนื้อหาฟอร์มบันทึกข้อมูล */}
       <div className="main-content">
         <div className="gov-container">
           <header className="gov-header">
@@ -157,8 +169,7 @@ const AddWellnessHub = () => {
           <div className="form-card">
             <form onSubmit={handleSubmit}>
               <div className="section-divider">
-                <i className="fa-solid fa-circle-info"></i>{" "}
-                ข้อมูลทั่วไปของธุรกิจ
+                <FontAwesomeIcon icon={faCircleInfo} /> ข้อมูลทั่วไปของธุรกิจ
               </div>
 
               <div className="form-group">
@@ -250,7 +261,7 @@ const AddWellnessHub = () => {
               </div>
 
               <div className="section-divider">
-                <i className="fa-solid fa-location-dot"></i> สถานที่ตั้ง
+                <FontAwesomeIcon icon={faLocationDot} /> สถานที่ตั้ง
               </div>
 
               <div className="form-group">
@@ -304,7 +315,7 @@ const AddWellnessHub = () => {
                 <button
                   type="button"
                   className="btn-gov-cancel"
-                  onClick={() => navigate("/admin/establishments")}
+                  onClick={() => navigate("/listWellnesshub")}
                   disabled={isLoading}
                 >
                   ยกเลิก
@@ -322,7 +333,7 @@ const AddWellnessHub = () => {
                     </>
                   ) : (
                     <>
-                      <i className="fa-solid fa-save"></i> บันทึกข้อมูล
+                      <FontAwesomeIcon icon={faSave} /> บันทึกข้อมูล
                     </>
                   )}
                 </button>
@@ -331,6 +342,43 @@ const AddWellnessHub = () => {
           </div>
         </div>
       </div>
+
+      {/* 🟢 Popup สำเร็จ */}
+      {showSuccessPopup && (
+        <div className="popup-bg">
+          <div className="popup">
+            <div className="popup-icon success">✓</div>
+            <h3>บันทึกข้อมูลสำเร็จ</h3>
+            <p>ระบบได้บันทึกข้อมูลสถานประกอบการเรียบร้อยแล้ว</p>
+            <button
+              className="confirm-btn"
+              onClick={() => {
+                setShowSuccessPopup(false);
+                navigate("/listWellnesshub");
+              }}
+            >
+              ตกลง
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 🔴 Popup ผิดพลาด */}
+      {showErrorPopup && (
+        <div className="popup-bg">
+          <div className="popup">
+            <div className="popup-icon error">!</div>
+            <h3>ไม่สามารถบันทึกข้อมูลได้</h3>
+            <p>{errorMessage}</p>
+            <button
+              className="confirm-btn"
+              onClick={() => setShowErrorPopup(false)}
+            >
+              ปิด
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

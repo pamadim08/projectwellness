@@ -691,7 +691,49 @@ const EditWellnessHub = () => {
                   </div>
                 </div>
               </div>
+              <div className="section-heading">
+                <span>4</span> สถานะการเปิดใช้งานสถานประกอบการ
+              </div>
 
+              <div className="hub-status-container">
+                <div className="hub-status-information">
+                  <label className="hub-status-title">สถานะสถานประกอบการ</label>
+
+                  <p className="hub-status-description">
+                    กำหนดว่าสถานประกอบการจะแสดงและเปิดใช้งานในระบบหรือไม่
+                  </p>
+                </div>
+
+                <div className="hub-status-control">
+                  <span
+                    className={
+                      formData.status === "active"
+                        ? "hub-status-text status-active"
+                        : "hub-status-text status-inactive"
+                    }
+                  >
+                    {formData.status === "active"
+                      ? "เปิดทำการ"
+                      : "ระงับการทำการ"}
+                  </span>
+
+                  <label className="hub-toggle-switch">
+                    <input
+                      type="checkbox"
+                      name="status"
+                      checked={formData.status === "active"}
+                      onChange={(event) =>
+                        setFormData((previousData) => ({
+                          ...previousData,
+                          status: event.target.checked ? "active" : "inactive",
+                        }))
+                      }
+                    />
+
+                    <span className="hub-toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
               <div className="section-heading">
                 <span>4</span> กำหนดการวันและเวลา เปิด - ปิด ทำการ
               </div>

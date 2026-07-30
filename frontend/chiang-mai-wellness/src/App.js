@@ -1,38 +1,100 @@
 // src/App.js
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import LoginAdmin from "./pages/LoginAdmin/LoginAdmin";
-// ปรับให้ตรงกับชื่อ Component ที่ export ออกมา
-import ListWellnessHub from "./pages/ListWellnesshub/ListWellnesshub";
-import AddWellnessHub from "./pages/CreateWellnesshub/AddWellnessHub";
-// ตัวอย่างการผูก Route ใน App.js ให้จับคู่กับคอมโพเนนต์แก้ไขข้อมูล
-import EditWellnessHub from "./pages/EditWellnesshub/EditWellnesshub"; // เช็ค path ไฟล์ของน้าด้วยนะ
-import CreateMainRoute from "./pages/CreateMainRoute/CreateMainRoute";
-import ListMainRoute from "./pages/ListMainroute/ListMainroute"; // เพิ่มการ import สำหรับหน้า ListMainRoute
+
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
+
+// ฝั่งผู้ใช้ทั่วไป
+import Navbar from "./Components/Navbar/Navbar";
+import HomePage from "./pages/HomePage/HomePage";
+
+// ฝั่งแอดมิน
+import LoginAdmin from "./pages/LoginAdmin/LoginAdmin";
+import ListWellnessHub from "./pages/ListWellnesshub/ListWellnesshub";
+import AddWellnessHub from "./pages/CreateWellnesshub/AddWellnessHub";
+import EditWellnessHub from "./pages/EditWellnesshub/EditWellnesshub";
+import CreateMainRoute from "./pages/CreateMainRoute/CreateMainRoute";
+import ListMainRoute from "./pages/ListMainroute/ListMainroute";
+import CreateOfficialArticle from "./pages/CreateArticleOfficial/CreateOfficialArticle";
+import ListOfficialArticle from "./pages/ListOfficialArticle/ListOfficialArticle";
+import ListAccountRequest from "./pages/ListAccountRequest/ListAccountRequest";
+import ApproveAccountRequest from "./pages/ApproveAccountRequest/ApproveAccountRequest";
+import Dashboard from "./pages/Dashboard/Dashboard";
+import RouteDetail from "./pages/RouteDetail/RouteDetail";
+
+function PublicLayout({ children }) {
+  return (
+    <>
+      <Navbar />
+      <main>{children}</main>
+    </>
+  );
+}
 
 function App() {
   return (
     <Router>
       <div className="App">
         <Routes>
-          {/* 🌟 ปรับตรงนี้: ตั้งค่าให้พาร์ทแรกเริ่ม "/" เปิดหน้า Login ตรงๆ ไปเลย ปลอดภัยชัวร์ */}
-          <Route path="/" element={<LoginAdmin />} />
+          {/* ฝั่งผู้ใช้ทั่วไป */}
+          <Route
+            path="/"
+            element={
+              <PublicLayout>
+                <HomePage />
+              </PublicLayout>
+            }
+          />
+          <Route
+            path="/wellness-routes/:routeId"
+            element={
+              <PublicLayout>
+                <RouteDetail />
+              </PublicLayout>
+            }
+          />
+
+          {/* ฝั่งแอดมิน */}
           <Route path="/login" element={<LoginAdmin />} />
-          {/* ตรวจสอบว่าในหน้า LoginAdmin สั่ง navigate มาที่ path นี้เป๊ะๆ หรือไม่ */}
+          <Route path="/dashboard" element={<Dashboard />} />
+
           <Route path="/listWellnesshub" element={<ListWellnessHub />} />
-          {/* เส้นทางหน้าเพิ่มข้อมูลสถานประกอบการใหม่ */}
+
           <Route path="/add-wellness" element={<AddWellnessHub />} />
 
           <Route
             path="/listWellnesshub/edit/:id"
             element={<EditWellnessHub />}
           />
+
           <Route path="/createMainRoute" element={<CreateMainRoute />} />
+
           <Route path="/listMainRoute" element={<ListMainRoute />} />
 
           <Route path="/editMainRoute/:id" element={<CreateMainRoute />} />
+
+          <Route
+            path="/createOfficialArticle"
+            element={<CreateOfficialArticle />}
+          />
+
+          <Route
+            path="/listOfficialArticle"
+            element={<ListOfficialArticle />}
+          />
+
+          <Route
+            path="/editOfficialArticle/:id"
+            element={<CreateOfficialArticle />}
+          />
+
+          <Route path="/listAccountRequest" element={<ListAccountRequest />} />
+
+          <Route
+            path="/account-requests/:id/approve"
+            element={<ApproveAccountRequest />}
+          />
         </Routes>
       </div>
     </Router>

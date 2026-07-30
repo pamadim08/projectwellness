@@ -1,24 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import axiosInstance from "axios";
+
 import "./ListMainroute.css";
 
 const ListMainRoute = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true); // เพิ่ม State สำหรับคุมสถานะการโหลดข้อมูลตามดีไซน์
+
+  // 1. เพิ่ม State สำหรับจัดการ Popup ยืนยันการลบ
+  const [showDeletePopup, setShowDeletePopup] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState(null);
 
   // 🌟 เพิ่ม State สำหรับเก็บชื่อแอดมินที่ล็อกอินอยู่ในปัจจุบัน
   const [adminName, setAdminName] = useState("admin02");
 
-  // State ควบคุมกล่องป๊อปอัปแจ้งเตือนผลลัพธ์ลอยตัว
+  // 1. ใช้ State เดิมต่อ (ไม่ต้องแก้ไข)
   const [popupAlert, setPopupAlert] = useState({
     show: false,
     message: "",
     isSuccess: true,
   });
 
-  // 1. โหลดข้อมูลแอดมิน (กรณีเก็บข้อมูลในระบบ Session หลังระบบล็อกอิน)
+  // โหลดข้อมูลแอดมิน (กรณีเก็บข้อมูลในระบบ Session หลังระบบล็อกอิน)
   useEffect(() => {
     const storedAdmin = localStorage.getItem("adminName");
     if (storedAdmin) {
@@ -26,7 +32,29 @@ const ListMainRoute = () => {
     }
   }, []);
 
-  // 2. โหลดตารางทะเบียนข้อมูลสรุปก้อนใหญ่จาก API หลังบ้าน
+  // 🌟 เพิ่ม useEffect รับ Toast จากหน้า Edit หรือหน้าอื่นๆ ผ่าน location.state
+  useEffect(() => {
+    if (location.state?.showToast) {
+      setPopupAlert({
+        show: true,
+        message: location.state.toastMessage,
+        isSuccess: location.state.toastType === "success",
+      });
+
+      // ล้าง state ป้องกัน popup เด้งซ้ำเวลา refresh
+      navigate(location.pathname, { replace: true });
+
+      setTimeout(() => {
+        setPopupAlert({
+          show: false,
+          message: "",
+          isSuccess: true,
+        });
+      }, 3000);
+    }
+  }, [location.state, location.pathname, navigate]);
+
+  // โหลดตารางทะเบียนข้อมูลสรุปก้อนใหญ่จาก API หลังบ้าน
   const fetchMainRouteList = async () => {
     setLoading(true); // เปิด Loading ก่อนยิงขอข้อมูล
     try {
@@ -46,7 +74,7 @@ const ListMainRoute = () => {
     fetchMainRouteList();
   }, []);
 
-  // 3. ฟังก์ชันสำหรับออกจากระบบ
+  // ฟังก์ชันสำหรับออกจากระบบ
   const handleLogout = () => {
     if (window.confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) {
       localStorage.removeItem("adminName");
@@ -54,72 +82,94 @@ const ListMainRoute = () => {
     }
   };
 
-  // 4. ฟังก์ชันลบข้อมูลเส้นทางสุขภาพหลัก
-  const handleDeleteRoute = async (routeId, routeName) => {
-    if (
-      window.confirm(
-        `⚠️ คุณต้องการสั่งลบเส้นทางสุขภาพหลัก "${routeName}" ใช่หรือไม่?`,
-      )
-    ) {
-      try {
-        await axiosInstance.delete(
-          `http://localhost:8080/api/main-routes/${routeId}`,
-        );
+  // 3. ฟังก์ชันลบข้อมูลเส้นทางสุขภาพ (อัปเดตตามโครงสร้างใหม่)
+  const handleDeleteRoute = async () => {
+    if (!selectedRoute) return;
+
+    try {
+      await axiosInstance.delete(
+        `http://localhost:8080/api/main-routes/${selectedRoute.routeId}`,
+      );
+
+      setShowDeletePopup(false);
+      setSelectedRoute(null);
+
+      await fetchMainRouteList();
+
+      setPopupAlert({
+        show: true,
+        message: "ลบข้อมูลเส้นทางสุขภาพเสร็จสิ้น",
+        isSuccess: true,
+      });
+
+      setTimeout(() => {
         setPopupAlert({
-          show: true,
-          message: "🗑 ... ระบบดำเนินการลบข้อมูลเส้นทางสุขภาพสำเร็จแล้ว!",
+          show: false,
+          message: "",
           isSuccess: true,
         });
+      }, 3000);
+    } catch (err) {
+      console.error("เกิดข้อผิดพลาดในการลบเส้นทาง", err);
 
-        fetchMainRouteList();
-        setTimeout(
-          () => setPopupAlert({ show: false, message: "", isSuccess: true }),
-          2200,
-        );
-      } catch (err) {
-        console.error("เกิดข้อผิดพลาดในการลบทะเบียน", err);
+      setShowDeletePopup(false);
+      setSelectedRoute(null);
+
+      setPopupAlert({
+        show: true,
+        message: "ไม่สามารถลบข้อมูลเส้นทางสุขภาพได้",
+        isSuccess: false,
+      });
+
+      setTimeout(() => {
         setPopupAlert({
-          show: true,
-          message: "❌ ไม่สำเร็จ: เกิดข้อผิดพลาดจากระบบในการลบข้อมูล",
+          show: false,
+          message: "",
           isSuccess: false,
         });
-        setTimeout(
-          () => setPopupAlert({ show: false, message: "", isSuccess: false }),
-          4000,
-        );
-      }
+      }, 3000);
     }
   };
 
   return (
     <div className="gov-admin-layout">
-      {/* 🌟 บล็อกแสดงป๊อปอัปสไตล์แจ้งผลลัพธ์เหลี่ยมมุมคมชัด */}
+      {/* 2. JSX ของ Toast แจ้งเตือนรูปแบบใหม่ (ใช้ className gov-toast-alert) */}
       {popupAlert.show && (
         <div
-          style={{
-            position: "fixed",
-            top: "25px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 9999,
-            backgroundColor: popupAlert.isSuccess ? "#28a745" : "#dc3545",
-            color: "white",
-            padding: "15px 35px",
-            borderRadius: "0px",
-            fontWeight: "bold",
-            fontSize: "15px",
-            boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
-            display: "flex",
-            gap: "10px",
-            alignItems: "center",
-          }}
+          className={`gov-toast-alert ${
+            popupAlert.isSuccess ? "alert-success" : "alert-error"
+          }`}
         >
-          <span>{popupAlert.isSuccess ? "✅" : "⚠️"}</span>
-          <span>{popupAlert.message}</span>
+          <div className="toast-content-wrapper">
+            <i
+              className={
+                popupAlert.isSuccess
+                  ? "fa-solid fa-circle-check"
+                  : "fa-solid fa-circle-exclamation"
+              }
+            ></i>
+
+            <span>{popupAlert.message}</span>
+          </div>
+
+          <button
+            type="button"
+            className="btn-close-toast"
+            onClick={() =>
+              setPopupAlert({
+                show: false,
+                message: "",
+                isSuccess: true,
+              })
+            }
+            aria-label="ปิดข้อความแจ้งเตือน"
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
         </div>
       )}
 
-      {/* 🌟 โครงสร้างนาวิเกชันบาร์สไตล์เมนูควบคุมสิทธิ์ตามที่แอดมินส่งมาเป๊ะๆ */}
+      {/* 🌟 โครงสร้างนาวิเกชันบาร์สไตล์เมนูควบคุมสิทธิ์ */}
       <nav className="sidebar-menu">
         <div className="sidebar-top">
           <div className="sidebar-logo">
@@ -136,10 +186,10 @@ const ListMainRoute = () => {
           </div>
 
           <p className="menu-label">เมนูหลัก</p>
-          <Link to="/admin/dashboard" className="menu-item">
+          <Link to="/dashboard" className="menu-item">
             <i className="fa-solid fa-chart-pie"></i> แผงควบคุมหลัก
           </Link>
-          <Link to="/admin/requests" className="menu-item">
+          <Link to="/listAccountRequest" className="menu-item">
             <i className="fa-solid fa-clipboard-check"></i> ตรวจสอบคำขอสิทธิ์
             <span className="badge-counter">5</span>
           </Link>
@@ -153,7 +203,7 @@ const ListMainRoute = () => {
           <Link to="/listWellnessHub" className="menu-item">
             <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
           </Link>
-          <Link to="/admin/articles" className="menu-item">
+          <Link to="/listOfficialArticle" className="menu-item">
             <i className="fa-solid fa-newspaper"></i> จัดการบทความ
           </Link>
         </div>
@@ -164,24 +214,23 @@ const ListMainRoute = () => {
       </nav>
 
       <main className="gov-main-content">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            borderBottom: "1px solid #ccc",
-            paddingBottom: "15px",
-          }}
-        >
-          <div>
+        <div className="gov-container">
+          {/* ส่วนหัวเว็บแสดงชื่อระบบ */}
+          <header className="gov-header">
             <h2>บัญชีรายชื่อเส้นทางสุขภาพ (List Main Route)</h2>
-            <span style={{ fontSize: "13px", color: "#666" }}>
-              ระบบบริการจัดการข้อมูลสุขภาพ จังหวัดเชียงใหม่
-            </span>
+            <p>ระบบบริการจัดการข้อมูลสุขภาพ จังหวัดเชียงใหม่</p>
+          </header>
+
+          {/* แถบเครื่องมือสำหรับปุ่มกด (ดันปุ่มไปทางขวาสุด) */}
+          <div className="action-bar-top">
+            <Link to="/createMainRoute" className="gov-btn-add-route-new">
+              <i
+                className="fa-solid fa-plus"
+                style={{ marginRight: "6px" }}
+              ></i>{" "}
+              เพิ่มเส้นทางใหม่
+            </Link>
           </div>
-          <Link to="/createMainRoute" className="gov-btn-add-route-new">
-            + เพิ่มเส้นทางใหม่
-          </Link>
         </div>
 
         <div className="gov-table-container-card">
@@ -276,9 +325,10 @@ const ListMainRoute = () => {
                         </button>
                         <button
                           className="gov-table-action-btn delete-red"
-                          onClick={() =>
-                            handleDeleteRoute(item.routeId, item.routeName)
-                          }
+                          onClick={() => {
+                            setSelectedRoute(item);
+                            setShowDeletePopup(true);
+                          }}
                         >
                           ลบ
                         </button>
@@ -307,6 +357,49 @@ const ListMainRoute = () => {
           </table>
         </div>
       </main>
+
+      {/* Pop up ยืนยันการลบข้อมูล */}
+      {showDeletePopup && (
+        <div className="popup-bg">
+          <div className="popup">
+            <div className="popup-icon error">!</div>
+
+            <h3>ยืนยันการลบข้อมูล</h3>
+
+            <p>
+              คุณต้องการลบเส้นทางสุขภาพ
+              <span className="popup-route-name">
+                {selectedRoute?.routeName}
+              </span>
+              ใช่หรือไม่?
+              <span className="popup-warning-text">
+                การดำเนินการนี้ไม่สามารถย้อนกลับได้
+              </span>
+            </p>
+
+            <div className="popup-buttons">
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={() => {
+                  setShowDeletePopup(false);
+                  setSelectedRoute(null);
+                }}
+              >
+                ยกเลิก
+              </button>
+
+              <button
+                type="button"
+                className="delete-btn"
+                onClick={handleDeleteRoute}
+              >
+                ยืนยันลบ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

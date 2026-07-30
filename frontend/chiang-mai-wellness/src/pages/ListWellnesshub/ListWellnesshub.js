@@ -4,7 +4,12 @@ import axios from "axios";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import "./ListWellnesshub.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import {
+  faSpinner,
+  faMagnifyingGlass,
+  faRotate,
+  faCircleExclamation,
+} from "@fortawesome/free-solid-svg-icons";
 
 const ListWellnessHub = () => {
   const [listwellnesshub, setListWellnessHub] = useState([]);
@@ -16,13 +21,18 @@ const ListWellnessHub = () => {
   const navigate = useNavigate();
   const location = useLocation(); // 🌟 เรียกใช้งานระบบพิกัด Location ของเรา
 
+  // 1. เพิ่ม State สำหรับจัดการ Popup ยืนยันการลบ
+  const [showDeletePopup, setShowDeletePopup] = useState(false);
+  const [selectedHub, setSelectedHub] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // --- ส่วนเก็บข้อมูลตัวเลือก และค่าที่ถูกเลือกกรอง ---
   const [categories, setCategories] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
 
-  // 🌟 State ใหม่สำหรับควบคุมการแสดงป๊อปอัพแจ้งเตือนบนหน้า List โดยตรง
+  // 🌟 State สำหรับควบคุมการแสดงป๊อปอัพแจ้งเตือนบนหน้า List
   const [toast, setToast] = useState({ show: false, type: "", message: "" });
 
   // ปรับปรุงฟังก์ชันโหลดข้อมูลให้รองรับการส่งเงื่อนไข Payload ไปหาหลังบ้าน
@@ -69,7 +79,7 @@ const ListWellnessHub = () => {
     const storedName = localStorage.getItem("adminName");
     if (storedName) setAdminName(storedName);
 
-    // 🌟 [จุดสำคัญที่เพิ่มใหม่]: ตรวจจับสเตตัสส่งข้ามมาจากหน้า Edit เพื่อสั่งพ่นป๊อปอัพแจ้งเตือน
+    // 🌟 ตรวจจับสเตตัสส่งข้ามมาจากหน้า Edit เพื่อสั่งพ่นป๊อปอัพแจ้งเตือน
     if (location.state?.showToast) {
       setToast({
         show: true,
@@ -77,7 +87,7 @@ const ListWellnessHub = () => {
         message: location.state.toastMessage,
       });
 
-      // ล้างค่าประวัติสเตตัสใน Window ทันที เพื่อไม่ให้ป๊อปอัพเด้งซ้ำเวลาแอดมินกดรีเฟรชหน้าจอตัวนี้
+      // ล้างค่าประวัติสเตตัสใน Window ทันที เพื่อไม่ให้ป๊อปอัพเด้งซ้ำเวลาแอดมินกดรีเฟรชหน้าจอ
       window.history.replaceState({}, document.title);
 
       // สั่งตั้งเวลาเคลียร์หน้าต่างป๊อปอัพให้หายไปเองอัตโนมัติภายใน 4 วินาที
@@ -86,7 +96,7 @@ const ListWellnessHub = () => {
       }, 4000);
       return () => clearTimeout(timer);
     }
-  }, [location]); // ทำงานใหม่ทุกครั้งที่มีการ Navigate สลับข้ามเพจ
+  }, [location]);
 
   const handleLogout = () => {
     if (window.confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) {
@@ -100,7 +110,7 @@ const ListWellnessHub = () => {
     return [...listwellnesshub].sort((a, b) => {
       const idA = a.licenseId ? parseInt(a.licenseId, 10) : 0;
       const idB = b.licenseId ? parseInt(b.licenseId, 10) : 0;
-      return idA - idB;
+      return idB - idA; // ✅ เรียงตาม ID จากมากไปน้อย
     });
   }, [listwellnesshub]);
 
@@ -109,34 +119,69 @@ const ListWellnessHub = () => {
   const currentRows = filteredData.slice(indexOfFirstRow, indexOfLastRow);
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
 
-  const handleDelete = async (id) => {
-    if (window.confirm("ยืนยันการลบข้อมูลสถานประกอบการนี้?")) {
-      try {
-        await axios.delete(`http://localhost:8080/api/wellness-hubs/${id}`);
+  // 2. ฟังก์ชันยืนยันการลบสถานประกอบการแบบใหม่
+  const confirmDeleteHub = async () => {
+    if (!selectedHub || isDeleting) return;
+
+    try {
+      setIsDeleting(true);
+
+      await axios.delete(
+        `http://localhost:8080/api/wellness-hubs/${selectedHub.licenseId}`,
+      );
+
+      setShowDeletePopup(false);
+      setSelectedHub(null);
+
+      await loadData();
+
+      setToast({
+        show: true,
+        type: "success",
+        message: "ลบข้อมูลสถานประกอบการเสร็จสิ้น",
+      });
+
+      setTimeout(() => {
         setToast({
-          show: true,
-          type: "success",
-          message: "ลบข้อมูลสถานประกอบการเสร็จสิ้น",
+          show: false,
+          type: "",
+          message: "",
         });
-        loadData();
-      } catch (error) {
+      }, 4000);
+    } catch (error) {
+      console.error("เกิดข้อผิดพลาดในการลบสถานประกอบการ", error);
+
+      setShowDeletePopup(false);
+      setSelectedHub(null);
+
+      setToast({
+        show: true,
+        type: "error",
+        message: "ไม่สามารถลบข้อมูลออกจากระบบได้",
+      });
+
+      setTimeout(() => {
         setToast({
-          show: true,
-          type: "error",
-          message: "ไม่สามารถลบข้อมูลออกจากระบบได้",
+          show: false,
+          type: "",
+          message: "",
         });
-      }
+      }, 4000);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <div className="admin-layout">
-      {/* 🌟 [กล่องป๊อปอัพแจ้งเตือนรูปแบบใหม่ด้านบนขวาของหน้าจอ] */}
+      {/* 🌟 กล่องป๊อปอัพแจ้งเตือนรูปแบบใหม่ด้านบนขวาของหน้าจอ */}
       {toast.show && (
         <div className={`gov-toast-alert alert-${toast.type}`}>
           <div className="toast-content-wrapper">
             <i
-              className={`fa-solid ${toast.type === "success" ? "fa-circle-check" : "fa-circle-xmark"}`}
+              className={`fa-solid ${
+                toast.type === "success" ? "fa-circle-check" : "fa-circle-xmark"
+              }`}
             ></i>
             <span>{toast.message}</span>
           </div>
@@ -165,10 +210,10 @@ const ListWellnessHub = () => {
           </div>
 
           <p className="menu-label">เมนูหลัก</p>
-          <Link to="/admin/dashboard" className="menu-item">
+          <Link to="/dashboard" className="menu-item">
             <i className="fa-solid fa-chart-pie"></i> แผงควบคุมหลัก
           </Link>
-          <Link to="/admin/requests" className="menu-item">
+          <Link to="/listAccountRequest" className="menu-item">
             <i className="fa-solid fa-clipboard-check"></i> ตรวจสอบคำขอสิทธิ์
             <span className="badge-counter">5</span>
           </Link>
@@ -176,13 +221,13 @@ const ListWellnessHub = () => {
           <p className="menu-label" style={{ marginTop: "20px" }}>
             การจัดการข้อมูล
           </p>
-          <Link to="/listMainRoute" className="menu-item">
+          <Link to="/listMainRoute" className="menu-item ">
             <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
           </Link>
           <Link to="/listWellnessHub" className="menu-item active">
             <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
           </Link>
-          <Link to="/admin/articles" className="menu-item">
+          <Link to="/listOfficialArticle" className="menu-item">
             <i className="fa-solid fa-newspaper"></i> จัดการบทความ
           </Link>
         </div>
@@ -269,7 +314,7 @@ const ListWellnessHub = () => {
                 loadData(searchQuery, selectedCategory, selectedDistrict);
               }}
             >
-              <i className="fa-solid fa-magnifying-glass"></i> ค้นหา
+              <FontAwesomeIcon icon={faMagnifyingGlass} /> ค้นหา
             </button>
 
             <button
@@ -283,7 +328,7 @@ const ListWellnessHub = () => {
                 loadData("", "", "");
               }}
             >
-              <i className="fa-solid fa-rotate"></i> ล้างค่า
+              <FontAwesomeIcon icon={faRotate} /> ล้างค่า
             </button>
           </div>
 
@@ -313,7 +358,6 @@ const ListWellnessHub = () => {
                         color: "#666",
                       }}
                     >
-                      {/* 🌟 เปลี่ยนมาใช้ Component ของ React FontAwesome พร้อมสั่ง spin */}
                       <FontAwesomeIcon
                         icon={faSpinner}
                         spin
@@ -361,9 +405,14 @@ const ListWellnessHub = () => {
                           >
                             แก้ไข
                           </button>
+                          {/* 3. เปลี่ยนปุ่มลบในตารางให้เปิด Popup ยืนยัน */}
                           <button
+                            type="button"
                             className="btn-delete"
-                            onClick={() => handleDelete(hub.licenseId)}
+                            onClick={() => {
+                              setSelectedHub(hub);
+                              setShowDeletePopup(true);
+                            }}
                           >
                             ลบ
                           </button>
@@ -382,10 +431,10 @@ const ListWellnessHub = () => {
                         fontWeight: "bold",
                       }}
                     >
-                      <i
-                        className="fa-solid fa-circle-exclamation"
+                      <FontAwesomeIcon
+                        icon={faCircleExclamation}
                         style={{ marginRight: "8px" }}
-                      ></i>{" "}
+                      />{" "}
                       ไม่พบข้อมูลสถานประกอบการ
                     </td>
                   </tr>
@@ -415,6 +464,51 @@ const ListWellnessHub = () => {
           )}
         </div>
       </div>
+
+      {/* 4. เพิ่ม Popup ยืนยันการลบก่อนปิด <div className="admin-layout"> */}
+      {showDeletePopup && (
+        <div className="popup-bg">
+          <div className="popup">
+            <div className="popup-icon error">!</div>
+
+            <h3>ยืนยันการลบข้อมูล</h3>
+
+            <p>
+              คุณต้องการลบสถานประกอบการ
+              <span className="popup-route-name">
+                {selectedHub?.wellnessHubName}
+              </span>
+              ใช่หรือไม่?
+              <span className="popup-warning-text">
+                การดำเนินการนี้ไม่สามารถย้อนกลับได้
+              </span>
+            </p>
+
+            <div className="popup-buttons">
+              <button
+                type="button"
+                className="cancel-btn"
+                disabled={isDeleting}
+                onClick={() => {
+                  setShowDeletePopup(false);
+                  setSelectedHub(null);
+                }}
+              >
+                ยกเลิก
+              </button>
+
+              <button
+                type="button"
+                className="delete-btn"
+                disabled={isDeleting}
+                onClick={confirmDeleteHub}
+              >
+                {isDeleting ? "กำลังลบ..." : "ยืนยันลบ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

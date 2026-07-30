@@ -23,6 +23,9 @@ public class MainRoute {
     @Column(name = "route_description", nullable = true, length = 255)
 
     private String routeDescription;
+
+    @Column(name = "pin_count")
+    private Integer pinCount;
     @Column(name = "created_by", length = 100)
     private String createdBy;
 

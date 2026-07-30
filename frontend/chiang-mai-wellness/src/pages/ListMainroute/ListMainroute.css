@@ -1,41 +1,201 @@
-/* ตกแต่งโครงสร้างเลย์เอาต์หน้ารายการข้อมูลรวมเส้นทางหลัก */
+:root {
+  --gov-green-dark: #155724;
+  --gov-green-main: #28a745;
+  --gov-bg: #f4f4f4;
+  --gov-border: #000000;
+  --sidebar-dark: #0b2239;
+  --gov-text: #111111;
+}
+
+/* Layout */
+.gov-admin-layout {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--gov-bg);
+  font-family: "Sarabun", sans-serif;
+}
 
 .gov-main-content {
-  font-family: 'Sarabun', sans-serif; /* ถ้าส่วนกลางมีฟอนต์อยู่แล้ว มันจะดึงมาใช้ให้อัตโนมัติ */
-  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  background: var(--gov-bg);
+  padding: 30px 40px 60px;
+  box-sizing: border-box;
 }
 
-/* หัวข้อและคำอธิบายระบบ */
-.gov-main-content h2 {
-  margin: 0;
-  color: #111;
-  font-size: 22px;
+.gov-container {
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* ปุ่มเพิ่มเส้นทางใหม่ (สไตล์สีเขียวเข้มเกือบดำขวาบนตามรูป) */
-.gov-btn-add-route-new {
-  background-color: #0c2317; 
+/* Sidebar */
+.sidebar-menu {
+  width: 260px;
+  height: 100vh;
+  background: var(--sidebar-dark);
   color: white;
-  text-decoration: none;
-  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-right: 2px solid var(--gov-border);
+}
+
+.sidebar-top {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 20px;
+}
+
+.sidebar-logo {
+  padding: 25px 20px;
+  font-size: 20px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gov-green-main);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-profile-box {
+  background: rgba(0, 0, 0, 0.2);
+  margin: 15px 15px 20px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-profile-box i {
+  font-size: 24px;
+  color: var(--gov-green-main);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-label {
+  font-size: 10px;
+  color: #a0aec0;
+}
+
+.user-name {
   font-size: 14px;
   font-weight: bold;
-  border-radius: 4px;
-  transition: all 0.2s ease-in-out;
+  color: white;
+}
+
+.menu-label {
+  padding: 15px 20px 5px;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: bold;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  gap: 10px;
+  color: #ced4da;
+  text-decoration: none;
+  font-size: 14px;
+  border-left: 4px solid transparent;
+}
+
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.menu-item.active {
+  background: rgba(40, 167, 69, 0.15);
+  color: white;
+  font-weight: bold;
+  border-left: 4px solid var(--gov-green-main);
+}
+
+.badge-counter {
+  background: #dc3545;
+  padding: 2px 6px;
+  font-size: 10px;
+  margin-left: auto;
+  font-weight: bold;
+}
+
+.btn-sidebar-logout {
+  background: #bd2130;
+  color: white;
   border: none;
+  border-top: 1px solid var(--gov-border);
+  padding: 16px;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btn-sidebar-logout:hover {
+  background: #dc3545;
+}
+
+/* Header */
+.gov-header {
+  border-bottom: 3px double var(--gov-green-dark);
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+}
+
+.gov-header h2 {
+  color: var(--gov-green-dark);
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 5px;
+}
+
+.gov-header p {
+  color: #333;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Add Button */
+.action-bar-top {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 18px;
+  width: 100%;
+}
+
+.gov-btn-add-route-new {
+  background: var(--sidebar-dark);
+  color: white;
+  text-decoration: none;
+  padding: 10px 20px;
+  border: 1px solid var(--gov-border);
+  font-size: 14px;
+  font-weight: bold;
   display: inline-flex;
   align-items: center;
+  gap: 8px;
 }
 
 .gov-btn-add-route-new:hover {
-  background-color: #163a27;
+  background: #153554;
 }
 
-/* กล่องครอบตาราง ปรับขอบหนาและสีเขียวดำตามแบบ */
+/* Table */
 .gov-table-container-card {
   background: white;
-  border: 2px solid #0c2317; 
-  margin-top: 25px;
+  border: 2px solid var(--gov-border);
   overflow-x: auto;
 }
 
@@ -45,29 +205,32 @@
   text-align: left;
 }
 
-/* หัวตารางสีเขียวเข้มและเส้นแบ่งสีเขียวสว่างเล็กน้อยตามภาพ */
 .gov-custom-data-table th {
-  background-color: #1c3b1e; 
+  background: var(--gov-green-dark);
   color: white;
-  font-size: 14px;
+  border: 1px solid var(--gov-border);
+  padding: 14px 12px;
+  text-align: center;
   font-weight: bold;
-  padding: 12px 16px;
-  border-right: 1px solid #2d5530;
-}
-
-.gov-custom-data-table th:last-child {
-  border-right: none;
+  font-size: 14px;
 }
 
 .gov-custom-data-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #e2e8f0;
-  font-size: 14px;
-  color: #334155;
+  border: 1px solid var(--gov-border);
+  padding: 12px 15px;
   vertical-align: middle;
+  color: var(--gov-text);
+  font-size: 14px;
 }
 
-/* บรรทัดสถานะตอนกำลังโหลดข้อมูล */
+.gov-custom-data-table tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.gov-custom-data-table tbody tr:hover {
+  background: #f1f5f1;
+}
+
 .gov-loading-row {
   text-align: center;
   padding: 30px 0 !important;
@@ -75,31 +238,194 @@
   font-size: 14px;
 }
 
-/* ปุ่มจัดการข้อมูลในตาราง */
+/* Action Buttons */
 .gov-table-action-btn {
-  border: none;
-  padding: 5px 12px;
-  font-size: 13px;
-  font-family: inherit;
+  padding: 6px 12px;
+  font-size: 12px;
   font-weight: bold;
   cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.15s ease-in-out;
+  background: white;
+  border-radius: 0 !important;
 }
 
 .gov-table-action-btn.edit-blue {
-  background-color: #3b82f6;
-  color: white;
+  color: #0056b3;
+  border: 1px solid #0056b3;
   margin-right: 5px;
 }
+
 .gov-table-action-btn.edit-blue:hover {
-  background-color: #2563eb;
+  background: #0056b3;
+  color: white;
 }
 
 .gov-table-action-btn.delete-red {
-  background-color: #ef4444;
+  color: #c53030;
+  border: 1px solid #c53030;
+}
+
+.gov-table-action-btn.delete-red:hover {
+  background: #c53030;
   color: white;
 }
-.gov-table-action-btn.delete-red:hover {
-  background-color: #dc2626;
+/* =======================================================
+   ป้องกัน CSS หน้าอื่นทับ Layout ของ List Main Route
+======================================================= */
+
+.gov-admin-layout {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Sidebar หน้านี้ต้องอยู่ใน Flex ไม่ใช่ fixed */
+.gov-admin-layout > .sidebar-menu {
+  position: relative;
+  top: auto;
+  left: auto;
+
+  width: 260px;
+  height: 100vh;
+
+  flex: 0 0 260px;
+  display: flex;
+  flex-direction: column;
+
+  margin: 0;
+  overflow: hidden;
+}
+
+/* เมนูด้านบนเลื่อนได้ และเว้นที่ให้ปุ่ม Logout */
+.gov-admin-layout > .sidebar-menu .sidebar-top {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Logout อยู่ล่างของ Sidebar แต่ไม่ใช้ position fixed */
+.gov-admin-layout > .sidebar-menu .btn-sidebar-logout {
+  position: static;
+  width: 100%;
+  height: 55px;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* เนื้อหาห้ามมี margin-left จากหน้าอื่น */
+.gov-admin-layout > .gov-main-content {
+  flex: 1;
+  min-width: 0;
+  margin-left: 0;
+  padding: 30px 40px 60px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* =======================================================
+   Toast แจ้งผลลัพธ์มุมขวาบน
+   ใช้รูปแบบเดียวกับหน้า ListWellnessHub
+======================================================= */
+
+.gov-toast-alert {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  min-width: 320px;
+  max-width: 450px;
+
+  padding: 16px 20px;
+
+  border-radius: 8px;
+  box-sizing: border-box;
+
+  font-family: "Sarabun", sans-serif;
+
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  animation: slideInLeftToast 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.gov-toast-alert.alert-success {
+  background-color: #e6f4ea;
+  border-left: 5px solid #137333;
+  color: #137333;
+}
+
+.gov-toast-alert.alert-error {
+  background-color: #fce8e6;
+  border-left: 5px solid #c5221f;
+  color: #c5221f;
+}
+
+.toast-content-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.toast-content-wrapper i {
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.btn-close-toast {
+  flex-shrink: 0;
+
+  margin-left: 16px;
+  padding: 4px;
+
+  background: none;
+  border: none;
+
+  color: inherit;
+  font-size: 16px;
+
+  opacity: 0.7;
+  cursor: pointer;
+
+  transition: opacity 0.2s;
+}
+
+.btn-close-toast:hover {
+  opacity: 1;
+}
+
+@keyframes slideInLeftToast {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .gov-toast-alert {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+
+    min-width: 0;
+    max-width: none;
+
+    padding: 14px 16px;
+  }
+
+  .toast-content-wrapper {
+    font-size: 13px;
+  }
 }
