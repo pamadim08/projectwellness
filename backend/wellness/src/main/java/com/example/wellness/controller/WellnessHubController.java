@@ -2,71 +2,204 @@ package com.example.wellness.controller;
 
 import com.example.wellness.model.WellnessHub;
 import com.example.wellness.service.WellnessHubService;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
-import java.util.*;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/wellness-hubs")
 @CrossOrigin(origins = "http://localhost:3000")
 public class WellnessHubController {
 
-    @Autowired
-    private WellnessHubService wellnessHubService;
+    private final WellnessHubService wellnessHubService;
 
-    @GetMapping
-    public List<WellnessHub> getAll() {
-        return wellnessHubService.getAllHubs();
+    public WellnessHubController(
+            WellnessHubService wellnessHubService) {
+        this.wellnessHubService = wellnessHubService;
     }
 
-    // ยูสเคสข้อ 4-5: รับเงื่อนไขการค้นหาในรูปแบบ JSON Body ผ่านตัวแปร Map
-    @PostMapping("/search")
-    public ResponseEntity<List<WellnessHub>> getFilteredWellnessHubs(@RequestBody Map<String, Object> payload) {
-        List<WellnessHub> results = wellnessHubService.searchWellnessHubs(payload);
+    /*
+     * =====================================================
+     * ดึงรายการทั้งหมด
+     * =====================================================
+     *
+     * Service จะรวมข้อมูลจาก:
+     * - wellness_hubs
+     * - emergency_services
+     */
+    @GetMapping
+    public ResponseEntity<List<WellnessHub>> getAll() {
+        List<WellnessHub> results = wellnessHubService.getAllHubs();
+
         return ResponseEntity.ok(results);
     }
 
+    /*
+     * =====================================================
+     * ค้นหาสถานประกอบการ
+     * =====================================================
+     *
+     * รองรับทั้ง Wellness Hub และ Emergency Service
+     */
+    @PostMapping("/search")
+    public ResponseEntity<List<WellnessHub>> getFilteredWellnessHubs(
+            @RequestBody(required = false) Map<String, Object> payload) {
+        List<WellnessHub> results = wellnessHubService
+                .searchWellnessHubs(payload);
+
+        return ResponseEntity.ok(results);
+    }
+
+    /*
+     * =====================================================
+     * ดูรายละเอียดตามเลขใบอนุญาต
+     * =====================================================
+     *
+     * Service จะตรวจทั้งสองตาราง
+     */
     @GetMapping("/{id}")
-    public WellnessHub getById(@PathVariable Integer id) {
-        return wellnessHubService.getHubById(id);
+    public ResponseEntity<WellnessHub> getById(
+            @PathVariable Integer id) {
+        WellnessHub result = wellnessHubService.getHubById(id);
+
+        if (result == null) {
+            return ResponseEntity
+                    .notFound()
+                    .build();
+        }
+
+        return ResponseEntity.ok(result);
     }
 
-    // 🌟 ➕ จุดที่เพิ่มใหม่: สร้าง API Endpoint
-    // เพื่อให้กดสั่งแปลงข้อมูลจากข้างนอกได้ตลอดเวลา
-    // @PostMapping("/migrate-old-links")
-    // public ResponseEntity<Map<String, Object>> runMigration() {
-    // wellnessHubService.migrateOldGoogleMapsLinks();
-    // Map<String, Object> report = new HashMap<>();
-    // report.put("status", "completed");
-    // return ResponseEntity.ok(report);
-    // }
-
+    /*
+     * =====================================================
+     * สร้างสถานประกอบการ
+     * =====================================================
+     *
+     * หมวดทั่วไป:
+     * -> wellness_hubs
+     *
+     * EM01 / EM02:
+     * -> emergency_services
+     */
     @PostMapping
-    public WellnessHub create(@RequestBody WellnessHub hub) {
-        return wellnessHubService.createWellnessHub(hub);
+    public ResponseEntity<?> create(
+            @RequestBody WellnessHub hub) {
+        try {
+            WellnessHub createdHub = wellnessHubService
+                    .createWellnessHub(hub);
+
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(createdHub);
+
+        } catch (RuntimeException exception) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(
+                            Map.of(
+                                    "message",
+                                    exception.getMessage()));
+        }
     }
 
+    /*
+     * =====================================================
+     * แก้ไขสถานประกอบการ
+     * =====================================================
+     *
+     * รองรับ:
+     * - Wellness -> Wellness
+     * - Wellness -> Emergency
+     * - Emergency -> Emergency
+     * - Emergency -> Wellness
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<WellnessHub> update(@PathVariable Integer id, @RequestBody WellnessHub hub) {
-        WellnessHub updatedHub = wellnessHubService.updateWellnessHub(id, hub);
-        if (updatedHub == null) {
-            // ส่งสเตตัส 404 บ่งบอกไม่สำเร็จตาม Alternate Flow
-            // "ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้"
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> update(
+            @PathVariable Integer id,
+            @RequestBody WellnessHub hub) {
+        try {
+            WellnessHub updatedHub = wellnessHubService
+                    .updateWellnessHub(
+                            id,
+                            hub);
+
+            if (updatedHub == null) {
+                return ResponseEntity
+                        .notFound()
+                        .build();
+            }
+
+            return ResponseEntity.ok(updatedHub);
+
+        } catch (RuntimeException exception) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(
+                            Map.of(
+                                    "message",
+                                    exception.getMessage()));
         }
-        return ResponseEntity.ok(updatedHub);
     }
 
+    /*
+     * =====================================================
+     * ลบสถานประกอบการ
+     * =====================================================
+     *
+     * Service จะตรวจว่าอยู่ตารางใดแล้วลบให้ถูกต้อง
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        boolean isDeleted = wellnessHubService.deleteWellnessHub(id);
-        if (!isDeleted) {
-            // คืนค่า 404 หากไม่พบ ID ที่ต้องการลบ
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> delete(
+            @PathVariable Integer id) {
+        try {
+            boolean deleted = wellnessHubService
+                    .deleteWellnessHub(id);
+
+            if (!deleted) {
+                return ResponseEntity
+                        .notFound()
+                        .build();
+            }
+
+            return ResponseEntity
+                    .noContent()
+                    .build();
+
+        } catch (RuntimeException exception) {
+            return ResponseEntity
+                    .status(
+                            HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                            Map.of(
+                                    "message",
+                                    exception.getMessage()));
         }
-        // คืนค่า 204 No Content หรือ 200 OK แสดงว่าลบสำเร็จ
-        return ResponseEntity.noContent().build();
     }
+
+    /*
+     * เปิดใช้ชั่วคราวเมื่อต้องการสั่ง Migration เอง
+     *
+     * หลัง Migration สำเร็จ ควรปิด Endpoint นี้
+     */
+    // @PostMapping("/migrate-old-links")
+    // public ResponseEntity<Map<String, Object>>
+    // runMigration() {
+    //
+    // wellnessHubService
+    // .migrateOldGoogleMapsLinks();
+    //
+    // return ResponseEntity.ok(
+    // Map.of(
+    // "status", "completed",
+    // "message",
+    // "ตรวจสอบและอัปเดตพิกัดเรียบร้อยแล้ว"
+    // )
+    // );
+    // }
 }

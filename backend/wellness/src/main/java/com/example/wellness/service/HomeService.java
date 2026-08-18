@@ -2,11 +2,13 @@ package com.example.wellness.service;
 
 import com.example.wellness.model.Category;
 import com.example.wellness.model.District;
+import com.example.wellness.model.EmergencyService;
 import com.example.wellness.model.MainRoute;
 import com.example.wellness.model.MainRouteDetail;
 import com.example.wellness.model.OfficialArticle;
 import com.example.wellness.model.WellnessHub;
 import com.example.wellness.repository.CategoryRepository;
+import com.example.wellness.repository.EmergencyServiceRepository;
 import com.example.wellness.repository.HomeRepository;
 import com.example.wellness.repository.MainRouteRepository;
 import com.example.wellness.repository.WellnessHubRepository;
@@ -19,276 +21,810 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
 public class HomeService {
 
-    private final HomeRepository homeRepository;
-    private final MainRouteRepository mainRouteRepository;
-    private final CategoryRepository categoryRepository;
-    private final WellnessHubRepository wellnessHubRepository;
-    private final ObjectMapper objectMapper;
+        private static final Set<String> ALLOWED_SEARCH_TYPES = Set.of(
+                        "ALL",
+                        "WELLNESS_HUB",
+                        "ROUTE",
+                        "ARTICLE");
 
-    public HomeService(
-            HomeRepository homeRepository,
-            MainRouteRepository mainRouteRepository,
-            CategoryRepository categoryRepository,
-            WellnessHubRepository wellnessHubRepository,
-            ObjectMapper objectMapper) {
-        this.homeRepository = homeRepository;
-        this.mainRouteRepository = mainRouteRepository;
-        this.categoryRepository = categoryRepository;
-        this.wellnessHubRepository = wellnessHubRepository;
-        this.objectMapper = objectMapper;
-    }
+        private final HomeRepository homeRepository;
+        private final MainRouteRepository mainRouteRepository;
+        private final CategoryRepository categoryRepository;
+        private final WellnessHubRepository wellnessHubRepository;
+        private final EmergencyServiceRepository emergencyServiceRepository;
+        private final ObjectMapper objectMapper;
 
-    /*
-     * =====================================================
-     * ดึงข้อมูลทั้งหมดที่ใช้ในหน้า Home
-     * =====================================================
-     */
-    public Map<String, Object> getHomeData() {
-        List<MainRoute> recommendedRoutes = homeRepository.findRecommendedRoutes();
-        List<OfficialArticle> latestArticles = homeRepository.findLatestArticles();
-
-        Map<String, Object> homeData = new LinkedHashMap<>();
-        homeData.put("recommendedRoutes", recommendedRoutes);
-        homeData.put("latestArticles", latestArticles);
-
-        return homeData;
-    }
-
-    public List<MainRoute> getRecommendedRoutes() {
-        return homeRepository.findRecommendedRoutes();
-    }
-
-    public List<OfficialArticle> getLatestArticles() {
-        return homeRepository.findLatestArticles();
-    }
-
-    public List<MainRoute> getAllRoutes() {
-        return homeRepository.findAllRoutes();
-    }
-
-    public List<OfficialArticle> getAllArticles() {
-        return homeRepository.findAllArticles();
-    }
-
-    /*
-     * =====================================================
-     * รายละเอียดเส้นทางท่องเที่ยว
-     * =====================================================
-     */
-    public Map<String, Object> getRouteDetail(Integer routeId) {
-        if (routeId == null || routeId <= 0) {
-            return null;
+        public HomeService(
+                        HomeRepository homeRepository,
+                        MainRouteRepository mainRouteRepository,
+                        CategoryRepository categoryRepository,
+                        WellnessHubRepository wellnessHubRepository,
+                        EmergencyServiceRepository emergencyServiceRepository,
+                        ObjectMapper objectMapper) {
+                this.homeRepository = homeRepository;
+                this.mainRouteRepository = mainRouteRepository;
+                this.categoryRepository = categoryRepository;
+                this.wellnessHubRepository = wellnessHubRepository;
+                this.emergencyServiceRepository = emergencyServiceRepository;
+                this.objectMapper = objectMapper;
         }
 
-        MainRoute route = mainRouteRepository.findById(routeId).orElse(null);
-        if (route == null) {
-            return null;
+        /*
+         * =====================================================
+         * ดึงข้อมูลทั้งหมดที่ใช้ในหน้า Home
+         * =====================================================
+         */
+        public Map<String, Object> getHomeData() {
+                List<MainRoute> recommendedRoutes = homeRepository.findRecommendedRoutes();
+                List<OfficialArticle> latestArticles = homeRepository.findLatestArticles();
+
+                Map<String, Object> homeData = new LinkedHashMap<>();
+                homeData.put("recommendedRoutes", recommendedRoutes);
+                homeData.put("latestArticles", latestArticles);
+
+                return homeData;
         }
 
-        List<MainRouteDetail> sortedDetails = route.getDetails() == null
-                ? new ArrayList<>()
-                : route.getDetails()
-                        .stream()
-                        .filter(detail -> detail != null && detail.getDistrict() != null)
-                        .sorted(
-                                Comparator.comparing(
-                                        MainRouteDetail::getOrderNumber,
-                                        Comparator.nullsLast(Comparator.naturalOrder())))
-                        .toList();
+        public List<Map<String, Object>> getRecommendedRoutes() {
+                List<MainRoute> routes = homeRepository.findRecommendedRoutes();
 
-        List<String> categoryIds = parseCategoryIds(route.getCategoryId());
-
-        List<Integer> districtIds = sortedDetails.stream()
-                .map(MainRouteDetail::getDistrict)
-                .map(District::getDistrictId)
-                .filter(id -> id != null)
-                .distinct()
-                .toList();
-
-        List<Category> categories = categoryIds.isEmpty()
-                ? new ArrayList<>()
-                : categoryRepository.findAllById(categoryIds);
-
-        List<WellnessHub> wellnessHubs;
-
-        if (districtIds.isEmpty() || categoryIds.isEmpty()) {
-            wellnessHubs = new ArrayList<>();
-        } else {
-            wellnessHubs = wellnessHubRepository
-                    .findByDistrict_DistrictIdInAndCategory_CategoryIdIn(
-                            districtIds,
-                            categoryIds)
-                    .stream()
-                    .filter(hub -> hub.getWellnessHubLatitude() != null &&
-                            hub.getWellnessHubLongitude() != null)
-                    .toList();
+                return routes == null
+                                ? new ArrayList<>()
+                                : routes.stream()
+                                                .map(this::convertRouteHomeResult)
+                                                .toList();
         }
 
-        List<Map<String, Object>> districtMaps = new ArrayList<>();
+        private Map<String, Object> convertRouteHomeResult(MainRoute route) {
+                Map<String, Object> map = new LinkedHashMap<>();
 
-        for (MainRouteDetail detail : sortedDetails) {
-            District district = detail.getDistrict();
+                if (route == null) {
+                        return map;
+                }
 
-            Map<String, Object> districtMap = new LinkedHashMap<>();
-            districtMap.put("orderNumber", detail.getOrderNumber());
-            districtMap.put("districtId", district.getDistrictId());
-            districtMap.put("districtName", district.getDistrictName());
-            districtMap.put("latitude", district.getLatitude());
-            districtMap.put("longitude", district.getLongitude());
+                map.put("routeId", route.getRouteId());
+                map.put("routeName", route.getRouteName());
 
-            long wellnessHubCount = wellnessHubs.stream()
-                    .filter(hub -> hub.getDistrict() != null &&
-                            district.getDistrictId().equals(hub.getDistrict().getDistrictId()))
-                    .count();
+                putIfNotBlank(map, "routeDescription", route.getRouteDescription());
 
-            districtMap.put("wellnessHubCount", wellnessHubCount);
-            districtMaps.add(districtMap);
+                map.put("pinCount", route.getPinCount() == null ? 0 : route.getPinCount());
+
+                // districts: ordered by orderNumber (nulls last)
+                List<MainRouteDetail> sortedDetails = route.getDetails() == null
+                                ? new ArrayList<>()
+                                : route.getDetails().stream()
+                                                .filter(detail -> detail != null && detail.getDistrict() != null)
+                                                .sorted(Comparator.comparing(
+                                                                MainRouteDetail::getOrderNumber,
+                                                                Comparator.nullsLast(Comparator.naturalOrder())))
+                                                .toList();
+
+                List<Map<String, Object>> districtMaps = new ArrayList<>();
+
+                for (MainRouteDetail detail : sortedDetails) {
+                        Map<String, Object> d = new LinkedHashMap<>();
+                        d.put("orderNumber", detail.getOrderNumber());
+                        d.put("districtId", detail.getDistrict().getDistrictId());
+                        d.put("districtName", detail.getDistrict().getDistrictName());
+                        districtMaps.add(d);
+                }
+
+                map.put("districts", districtMaps);
+
+                // districtsPassed string
+                String districtsPassed = sortedDetails.stream()
+                                .map(d -> d.getDistrict().getDistrictName())
+                                .filter(name -> name != null && !name.trim().isEmpty())
+                                .distinct()
+                                .collect(Collectors.joining(" → ", "", ""));
+
+                putIfNotBlank(map, "districtsPassed", districtsPassed);
+
+                // categories: parse and lookup
+                List<String> categoryIds = parseCategoryIds(route.getCategoryId());
+
+                List<Category> categories = categoryIds.isEmpty()
+                                ? new ArrayList<>()
+                                : categoryRepository.findAllById(categoryIds);
+
+                List<Map<String, Object>> categoryMaps = categories.stream()
+                                .map(c -> {
+                                        Map<String, Object> cm = new LinkedHashMap<>();
+                                        cm.put("categoryId", c.getCategoryId());
+                                        cm.put("categoryName", c.getCategoryName());
+                                        return cm;
+                                })
+                                .toList();
+
+                map.put("categories", categoryMaps);
+
+                String categoriesPassed = categories.stream()
+                                .map(Category::getCategoryName)
+                                .filter(name -> name != null && !name.trim().isEmpty())
+                                .collect(Collectors.joining(", "));
+
+                putIfNotBlank(map, "categoriesPassed", categoriesPassed);
+
+                return map;
         }
 
-        List<Map<String, Object>> categoryMaps = categories.stream()
-                .map(category -> {
-                    Map<String, Object> categoryMap = new LinkedHashMap<>();
-                    categoryMap.put("categoryId", category.getCategoryId());
-                    categoryMap.put("categoryName", category.getCategoryName());
-                    return categoryMap;
-                })
-                .toList();
-
-        List<Map<String, Object>> wellnessHubMaps = wellnessHubs.stream()
-                .map(this::convertWellnessHubToMap)
-                .toList();
-
-        String startDistrict = districtMaps.isEmpty()
-                ? null
-                : String.valueOf(districtMaps.get(0).get("districtName"));
-
-        String endDistrict = districtMaps.isEmpty()
-                ? null
-                : String.valueOf(districtMaps.get(districtMaps.size() - 1).get("districtName"));
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("routeId", route.getRouteId());
-        result.put("routeName", route.getRouteName());
-
-        putIfNotBlank(result, "routeDescription", route.getRouteDescription());
-
-        if (startDistrict != null) {
-            result.put("startDistrict", startDistrict);
+        public List<OfficialArticle> getLatestArticles() {
+                return homeRepository.findLatestArticles();
         }
 
-        if (endDistrict != null) {
-            result.put("endDistrict", endDistrict);
+        public List<MainRoute> getAllRoutes() {
+                return homeRepository.findAllRoutes();
         }
 
-        result.put("districtCount", districtMaps.size());
-        result.put("wellnessHubCount", wellnessHubMaps.size());
-        result.put("categories", categoryMaps);
-        result.put("districts", districtMaps);
-        result.put("wellnessHubs", wellnessHubMaps);
-
-        if (route.getUpdatedAt() != null) {
-            result.put("updatedAt", route.getUpdatedAt());
+        public List<OfficialArticle> getAllArticles() {
+                return homeRepository.findAllArticles();
         }
 
-        return result;
-    }
+        /*
+         * =====================================================
+         * รายละเอียดเส้นทางท่องเที่ยว
+         * =====================================================
+         */
+        public Map<String, Object> getRouteDetail(Integer routeId) {
+                if (routeId == null || routeId <= 0) {
+                        return null;
+                }
 
-    /*
-     * =====================================================
-     * รายละเอียดสถานประกอบการ
-     * =====================================================
-     */
-    public Map<String, Object> getWellnessHubDetail(Integer licenseId) {
-        if (licenseId == null || licenseId <= 0) {
-            return null;
+                MainRoute route = mainRouteRepository.findById(routeId).orElse(null);
+                if (route == null) {
+                        return null;
+                }
+
+                List<MainRouteDetail> sortedDetails = route.getDetails() == null
+                                ? new ArrayList<>()
+                                : route.getDetails()
+                                                .stream()
+                                                .filter(detail -> detail != null && detail.getDistrict() != null)
+                                                .sorted(
+                                                                Comparator.comparing(
+                                                                                MainRouteDetail::getOrderNumber,
+                                                                                Comparator.nullsLast(Comparator
+                                                                                                .naturalOrder())))
+                                                .toList();
+
+                List<String> categoryIds = parseCategoryIds(route.getCategoryId());
+
+                List<Integer> districtIds = sortedDetails.stream()
+                                .map(MainRouteDetail::getDistrict)
+                                .map(District::getDistrictId)
+                                .filter(id -> id != null)
+                                .distinct()
+                                .toList();
+
+                List<Category> categories = categoryIds.isEmpty()
+                                ? new ArrayList<>()
+                                : categoryRepository.findAllById(categoryIds);
+
+                List<WellnessHub> wellnessHubs = new ArrayList<>();
+
+                if (!districtIds.isEmpty() && !categoryIds.isEmpty()) {
+                        List<WellnessHub> wellnessHubResults = wellnessHubRepository
+                                        .findByDistrict_DistrictIdInAndCategory_CategoryIdIn(
+                                                        districtIds,
+                                                        categoryIds)
+                                        .stream()
+                                        .filter(hub -> hub.getWellnessHubLatitude() != null &&
+                                                        hub.getWellnessHubLongitude() != null)
+                                        .toList();
+
+                        List<WellnessHub> emergencyResults = emergencyServiceRepository
+                                        .findByDistrict_DistrictIdInAndCategory_CategoryIdIn(
+                                                        districtIds,
+                                                        categoryIds)
+                                        .stream()
+                                        .filter(emergencyService -> emergencyService.getWellnessHubLatitude() != null &&
+                                                        emergencyService.getWellnessHubLongitude() != null)
+                                        .map(this::convertEmergencyToWellnessHub)
+                                        .toList();
+
+                        wellnessHubs.addAll(wellnessHubResults);
+                        wellnessHubs.addAll(emergencyResults);
+                }
+
+                List<Map<String, Object>> districtMaps = new ArrayList<>();
+
+                for (MainRouteDetail detail : sortedDetails) {
+                        District district = detail.getDistrict();
+
+                        Map<String, Object> districtMap = new LinkedHashMap<>();
+                        districtMap.put("orderNumber", detail.getOrderNumber());
+                        districtMap.put("districtId", district.getDistrictId());
+                        districtMap.put("districtName", district.getDistrictName());
+                        districtMap.put("latitude", district.getLatitude());
+                        districtMap.put("longitude", district.getLongitude());
+
+                        long wellnessHubCount = wellnessHubs.stream()
+                                        .filter(hub -> hub.getDistrict() != null &&
+                                                        district.getDistrictId().equals(
+                                                                        hub.getDistrict().getDistrictId()))
+                                        .count();
+
+                        districtMap.put("wellnessHubCount", wellnessHubCount);
+                        districtMaps.add(districtMap);
+                }
+
+                List<Map<String, Object>> categoryMaps = categories.stream()
+                                .map(category -> {
+                                        Map<String, Object> categoryMap = new LinkedHashMap<>();
+                                        categoryMap.put("categoryId", category.getCategoryId());
+                                        categoryMap.put("categoryName", category.getCategoryName());
+                                        return categoryMap;
+                                })
+                                .toList();
+
+                List<Map<String, Object>> wellnessHubMaps = wellnessHubs.stream()
+                                .map(this::convertWellnessHubToMap)
+                                .toList();
+
+                String startDistrict = districtMaps.isEmpty()
+                                ? null
+                                : String.valueOf(districtMaps.get(0).get("districtName"));
+
+                String endDistrict = districtMaps.isEmpty()
+                                ? null
+                                : String.valueOf(
+                                                districtMaps.get(districtMaps.size() - 1)
+                                                                .get("districtName"));
+
+                Map<String, Object> result = new LinkedHashMap<>();
+                result.put("routeId", route.getRouteId());
+                result.put("routeName", route.getRouteName());
+
+                putIfNotBlank(result, "routeDescription", route.getRouteDescription());
+
+                if (startDistrict != null) {
+                        result.put("startDistrict", startDistrict);
+                }
+
+                if (endDistrict != null) {
+                        result.put("endDistrict", endDistrict);
+                }
+
+                result.put("districtCount", districtMaps.size());
+                result.put("wellnessHubCount", wellnessHubMaps.size());
+                result.put("categories", categoryMaps);
+                result.put("districts", districtMaps);
+                result.put("wellnessHubs", wellnessHubMaps);
+
+                if (route.getUpdatedAt() != null) {
+                        result.put("updatedAt", route.getUpdatedAt());
+                }
+
+                return result;
         }
 
-        WellnessHub wellnessHub = wellnessHubRepository.findById(licenseId).orElse(null);
+        /*
+         * =====================================================
+         * รายละเอียดสถานประกอบการ
+         * =====================================================
+         */
+        public Map<String, Object> getWellnessHubDetail(Integer licenseId) {
+                if (licenseId == null || licenseId <= 0) {
+                        return null;
+                }
 
-        if (wellnessHub == null) {
-            return null;
+                WellnessHub wellnessHub = wellnessHubRepository
+                                .findById(licenseId)
+                                .orElse(null);
+
+                if (wellnessHub != null) {
+                        return convertWellnessHubToMap(wellnessHub);
+                }
+
+                EmergencyService emergencyService = emergencyServiceRepository
+                                .findById(licenseId)
+                                .orElse(null);
+
+                if (emergencyService != null) {
+                        return convertWellnessHubToMap(
+                                        convertEmergencyToWellnessHub(emergencyService));
+                }
+
+                return null;
         }
 
-        return convertWellnessHubToMap(wellnessHub);
-    }
+        /*
+         * =====================================================
+         * ระบบค้นหา (Search System)
+         * =====================================================
+         */
+        public Map<String, Object> search(
+                        String keyword,
+                        String type) {
+                String normalizedKeyword = keyword == null
+                                ? ""
+                                : keyword.trim();
 
-    /*
-     * =====================================================
-     * Helper Methods
-     * =====================================================
-     */
-    private List<String> parseCategoryIds(String categoryIdValue) {
-        List<String> categoryIds = new ArrayList<>();
+                String normalizedType = type == null
+                                ? "ALL"
+                                : type.trim().toUpperCase(Locale.ROOT);
 
-        if (categoryIdValue == null || categoryIdValue.trim().isEmpty()) {
-            return categoryIds;
+                if (normalizedKeyword.isEmpty()) {
+                        throw new IllegalArgumentException(
+                                        "กรุณากรอกคำค้นหา");
+                }
+
+                if (normalizedKeyword.length() > 100) {
+                        throw new IllegalArgumentException(
+                                        "คำค้นหาต้องไม่เกิน 100 ตัวอักษร");
+                }
+
+                if (!ALLOWED_SEARCH_TYPES.contains(normalizedType)) {
+                        throw new IllegalArgumentException(
+                                        "ประเภทการค้นหาไม่ถูกต้อง");
+                }
+
+                String searchKeyword = normalizedKeyword.toLowerCase(Locale.ROOT);
+
+                List<Map<String, Object>> routeResults = new ArrayList<>();
+                List<Map<String, Object>> wellnessHubResults = new ArrayList<>();
+                List<Map<String, Object>> articleResults = new ArrayList<>();
+
+                /*
+                 * ค้นหาเส้นทาง
+                 */
+                if (normalizedType.equals("ALL") ||
+                                normalizedType.equals("ROUTE")) {
+                        routeResults = homeRepository
+                                        .findAllRoutes()
+                                        .stream()
+                                        .filter(route -> containsKeyword(
+                                                        route.getRouteName(),
+                                                        searchKeyword) ||
+                                                        containsKeyword(
+                                                                        route.getRouteDescription(),
+                                                                        searchKeyword))
+                                        .map(this::convertRouteSearchResult)
+                                        .toList();
+                }
+
+                /*
+                 * ค้นหาสถานประกอบการ
+                 */
+                if (normalizedType.equals("ALL") ||
+                                normalizedType.equals("WELLNESS_HUB")) {
+                        List<WellnessHub> allWellnessHubs = new ArrayList<>(
+                                        wellnessHubRepository.findAll());
+
+                        List<WellnessHub> emergencyResults = emergencyServiceRepository
+                                        .findAll()
+                                        .stream()
+                                        .map(this::convertEmergencyToWellnessHub)
+                                        .toList();
+
+                        allWellnessHubs.addAll(emergencyResults);
+
+                        wellnessHubResults = allWellnessHubs
+                                        .stream()
+                                        .filter(hub -> containsKeyword(
+                                                        hub.getWellnessHubName(),
+                                                        searchKeyword) ||
+                                                        containsKeyword(
+                                                                        hub.getWellnessHubDescription(),
+                                                                        searchKeyword)
+                                                        ||
+                                                        containsKeyword(
+                                                                        hub.getAddress(),
+                                                                        searchKeyword)
+                                                        ||
+                                                        (hub.getCategory() != null &&
+                                                                        containsKeyword(
+                                                                                        hub.getCategory()
+                                                                                                        .getCategoryName(),
+                                                                                        searchKeyword))
+                                                        ||
+                                                        (hub.getDistrict() != null &&
+                                                                        containsKeyword(
+                                                                                        hub.getDistrict()
+                                                                                                        .getDistrictName(),
+                                                                                        searchKeyword)))
+                                        .map(this::convertWellnessHubToSearchResult)
+                                        .toList();
+                }
+
+                /*
+                 * ค้นหาบทความ
+                 */
+                if (normalizedType.equals("ALL") ||
+                                normalizedType.equals("ARTICLE")) {
+                        articleResults = homeRepository
+                                        .findAllArticles()
+                                        .stream()
+                                        .filter(article -> containsKeyword(
+                                                        article.getArticleTitle(),
+                                                        searchKeyword) ||
+                                                        containsKeyword(
+                                                                        article.getArticleDetail(),
+                                                                        searchKeyword)
+                                                        ||
+                                                        containsKeyword(
+                                                                        article.getArticleCategory(),
+                                                                        searchKeyword))
+                                        .map(this::convertArticleSearchResult)
+                                        .toList();
+                }
+
+                int totalResults = routeResults.size() +
+                                wellnessHubResults.size() +
+                                articleResults.size();
+
+                Map<String, Object> response = new LinkedHashMap<>();
+
+                response.put(
+                                "keyword",
+                                normalizedKeyword);
+
+                response.put(
+                                "type",
+                                normalizedType);
+
+                response.put(
+                                "totalResults",
+                                totalResults);
+
+                response.put(
+                                "routeCount",
+                                routeResults.size());
+
+                response.put(
+                                "wellnessHubCount",
+                                wellnessHubResults.size());
+
+                response.put(
+                                "articleCount",
+                                articleResults.size());
+
+                response.put(
+                                "routes",
+                                routeResults);
+
+                response.put(
+                                "wellnessHubs",
+                                wellnessHubResults);
+
+                response.put(
+                                "articles",
+                                articleResults);
+
+                return response;
         }
 
-        try {
-            List<String> parsedCategoryIds = objectMapper.readValue(
-                    categoryIdValue,
-                    new TypeReference<List<String>>() {
-                    });
+        /*
+         * =====================================================
+         * Helper Methods
+         * =====================================================
+         */
+        private boolean containsKeyword(
+                        String value,
+                        String keyword) {
+                if (value == null ||
+                                keyword == null) {
+                        return false;
+                }
 
-            if (parsedCategoryIds != null) {
-                parsedCategoryIds.stream()
-                        .filter(id -> id != null && !id.trim().isEmpty())
-                        .map(String::trim)
-                        .distinct()
-                        .forEach(categoryIds::add);
-            }
-        } catch (Exception exception) {
-            categoryIds.add(categoryIdValue.trim());
+                return value
+                                .toLowerCase(Locale.ROOT)
+                                .contains(keyword);
         }
 
-        return categoryIds;
-    }
+        private Map<String, Object> convertRouteSearchResult(
+                        MainRoute route) {
+                Map<String, Object> map = new LinkedHashMap<>();
 
-    private Map<String, Object> convertWellnessHubToMap(WellnessHub wellnessHub) {
-        Map<String, Object> map = new LinkedHashMap<>();
+                map.put(
+                                "routeId",
+                                route.getRouteId());
 
-        map.put("licenseId", wellnessHub.getLicenseId());
-        map.put("wellnessHubName", wellnessHub.getWellnessHubName());
+                map.put(
+                                "routeName",
+                                route.getRouteName());
 
-        putIfNotBlank(map, "wellnessHubDescription", wellnessHub.getWellnessHubDescription());
-        putIfNotBlank(map, "address", wellnessHub.getAddress());
-        putIfNotBlank(map, "contactInformation", wellnessHub.getContactInformation());
-        putIfNotBlank(map, "telInformation", wellnessHub.getTelInformation());
-        putIfNotBlank(map, "googleMapsLink", wellnessHub.getGoogleMapsLink());
-        putIfNotBlank(map, "wellnessHubImg", wellnessHub.getWellnessHubImg());
-        putIfNotBlank(map, "certificateType", wellnessHub.getCertificateType());
-        putIfNotBlank(map, "operatingHours", wellnessHub.getOperatingHours());
+                putIfNotBlank(
+                                map,
+                                "routeDescription",
+                                route.getRouteDescription());
 
-        if (wellnessHub.getWellnessHubLatitude() != null) {
-            map.put("latitude", wellnessHub.getWellnessHubLatitude());
+                map.put(
+                                "pinCount",
+                                route.getPinCount() == null
+                                                ? 0
+                                                : route.getPinCount());
+
+                if (route.getDetails() != null &&
+                                !route.getDetails().isEmpty()) {
+                        String districtsPassed = route.getDetails()
+                                        .stream()
+                                        .filter(detail -> detail != null &&
+                                                        detail.getDistrict() != null)
+                                        .sorted(
+                                                        Comparator.comparing(
+                                                                        MainRouteDetail::getOrderNumber,
+                                                                        Comparator.nullsLast(
+                                                                                        Comparator.naturalOrder())))
+                                        .map(detail -> "อ." +
+                                                        detail.getDistrict()
+                                                                        .getDistrictName())
+                                        .distinct()
+                                        .reduce(
+                                                        (first, second) -> first + " → " + second)
+                                        .orElse("");
+
+                        putIfNotBlank(
+                                        map,
+                                        "districtsPassed",
+                                        districtsPassed);
+                }
+
+                return map;
         }
 
-        if (wellnessHub.getWellnessHubLongitude() != null) {
-            map.put("longitude", wellnessHub.getWellnessHubLongitude());
+        private Map<String, Object> convertArticleSearchResult(
+                        OfficialArticle article) {
+                Map<String, Object> map = new LinkedHashMap<>();
+
+                map.put(
+                                "articleId",
+                                article.getArticleId());
+
+                map.put(
+                                "articleTitle",
+                                article.getArticleTitle());
+
+                putIfNotBlank(
+                                map,
+                                "articleDetail",
+                                article.getArticleDetail());
+
+                putIfNotBlank(
+                                map,
+                                "articleCategory",
+                                article.getArticleCategory());
+
+                putIfNotBlank(
+                                map,
+                                "img",
+                                article.getImg());
+
+                if (article.getPublishDate() != null) {
+                        map.put(
+                                        "publishDate",
+                                        article.getPublishDate());
+                }
+
+                return map;
         }
 
-        if (wellnessHub.getCategory() != null) {
-            map.put("categoryId", wellnessHub.getCategory().getCategoryId());
-            map.put("categoryName", wellnessHub.getCategory().getCategoryName());
+        private List<String> parseCategoryIds(String categoryIdValue) {
+                List<String> categoryIds = new ArrayList<>();
+
+                if (categoryIdValue == null ||
+                                categoryIdValue.trim().isEmpty()) {
+                        return categoryIds;
+                }
+
+                try {
+                        List<String> parsedCategoryIds = objectMapper.readValue(
+                                        categoryIdValue,
+                                        new TypeReference<List<String>>() {
+                                        });
+
+                        if (parsedCategoryIds != null) {
+                                parsedCategoryIds.stream()
+                                                .filter(id -> id != null &&
+                                                                !id.trim().isEmpty())
+                                                .map(String::trim)
+                                                .distinct()
+                                                .forEach(categoryIds::add);
+                        }
+                } catch (Exception exception) {
+                        categoryIds.add(categoryIdValue.trim());
+                }
+
+                return categoryIds;
         }
 
-        if (wellnessHub.getDistrict() != null) {
-            map.put("districtId", wellnessHub.getDistrict().getDistrictId());
-            map.put("districtName", wellnessHub.getDistrict().getDistrictName());
+        private Map<String, Object> convertWellnessHubToSearchResult(
+                        WellnessHub wellnessHub) {
+                Map<String, Object> map = new LinkedHashMap<>();
+
+                map.put(
+                                "licenseId",
+                                wellnessHub.getLicenseId());
+
+                map.put(
+                                "wellnessHubName",
+                                wellnessHub.getWellnessHubName());
+
+                putIfNotBlank(
+                                map,
+                                "wellnessHubDescription",
+                                wellnessHub.getWellnessHubDescription());
+
+                putIfNotBlank(
+                                map,
+                                "address",
+                                wellnessHub.getAddress());
+
+                if (wellnessHub.getCategory() != null) {
+                        map.put(
+                                        "categoryId",
+                                        wellnessHub.getCategory().getCategoryId());
+
+                        putIfNotBlank(
+                                        map,
+                                        "categoryName",
+                                        wellnessHub.getCategory().getCategoryName());
+                }
+
+                if (wellnessHub.getDistrict() != null) {
+                        map.put(
+                                        "districtId",
+                                        wellnessHub.getDistrict().getDistrictId());
+
+                        putIfNotBlank(
+                                        map,
+                                        "districtName",
+                                        wellnessHub.getDistrict().getDistrictName());
+                }
+
+                return map;
         }
 
-        return map;
-    }
+        private Map<String, Object> convertWellnessHubToMap(
+                        WellnessHub wellnessHub) {
+                Map<String, Object> map = new LinkedHashMap<>();
 
-    private void putIfNotBlank(Map<String, Object> map, String key, String value) {
-        if (value != null && !value.trim().isEmpty()) {
-            map.put(key, value.trim());
+                map.put("licenseId", wellnessHub.getLicenseId());
+                map.put("wellnessHubName", wellnessHub.getWellnessHubName());
+
+                putIfNotBlank(
+                                map,
+                                "wellnessHubDescription",
+                                wellnessHub.getWellnessHubDescription());
+
+                putIfNotBlank(
+                                map,
+                                "address",
+                                wellnessHub.getAddress());
+
+                putIfNotBlank(
+                                map,
+                                "contactInformation",
+                                wellnessHub.getContactInformation());
+
+                putIfNotBlank(
+                                map,
+                                "telInformation",
+                                wellnessHub.getTelInformation());
+
+                putIfNotBlank(
+                                map,
+                                "googleMapsLink",
+                                wellnessHub.getGoogleMapsLink());
+
+                putIfNotBlank(
+                                map,
+                                "wellnessHubImg",
+                                wellnessHub.getWellnessHubImg());
+
+                putIfNotBlank(
+                                map,
+                                "certificateType",
+                                wellnessHub.getCertificateType());
+
+                putIfNotBlank(
+                                map,
+                                "operatingHours",
+                                wellnessHub.getOperatingHours());
+
+                if (wellnessHub.getWellnessHubLatitude() != null) {
+                        map.put(
+                                        "latitude",
+                                        wellnessHub.getWellnessHubLatitude());
+                }
+
+                if (wellnessHub.getWellnessHubLongitude() != null) {
+                        map.put(
+                                        "longitude",
+                                        wellnessHub.getWellnessHubLongitude());
+                }
+
+                if (wellnessHub.getCategory() != null) {
+                        map.put(
+                                        "categoryId",
+                                        wellnessHub.getCategory().getCategoryId());
+
+                        map.put(
+                                        "categoryName",
+                                        wellnessHub.getCategory().getCategoryName());
+                }
+
+                if (wellnessHub.getDistrict() != null) {
+                        map.put(
+                                        "districtId",
+                                        wellnessHub.getDistrict().getDistrictId());
+
+                        map.put(
+                                        "districtName",
+                                        wellnessHub.getDistrict().getDistrictName());
+                }
+
+                return map;
         }
-    }
+
+        private WellnessHub convertEmergencyToWellnessHub(
+                        EmergencyService emergencyService) {
+                WellnessHub wellnessHub = new WellnessHub();
+
+                wellnessHub.setLicenseId(
+                                emergencyService.getLicenseId());
+
+                wellnessHub.setWellnessHubName(
+                                emergencyService.getWellnessHubName());
+
+                wellnessHub.setAddress(
+                                emergencyService.getAddress());
+
+                wellnessHub.setContactInformation(
+                                emergencyService.getContactInformation());
+
+                wellnessHub.setTelInformation(
+                                emergencyService.getTelInformation());
+
+                wellnessHub.setGoogleMapsLink(
+                                emergencyService.getGoogleMapsLink());
+
+                wellnessHub.setWellnessHubDescription(
+                                emergencyService.getWellnessHubDescription());
+
+                wellnessHub.setWellnessHubImg(
+                                emergencyService.getWellnessHubImg());
+
+                wellnessHub.setWellnessHubLatitude(
+                                emergencyService.getWellnessHubLatitude());
+
+                wellnessHub.setWellnessHubLongitude(
+                                emergencyService.getWellnessHubLongitude());
+
+                wellnessHub.setCertificateType(
+                                emergencyService.getCertificateType());
+
+                wellnessHub.setOperatingHours(
+                                emergencyService.getOperatingHours());
+
+                wellnessHub.setCategory(
+                                emergencyService.getCategory());
+
+                wellnessHub.setDistrict(
+                                emergencyService.getDistrict());
+
+                wellnessHub.setStatus(
+                                emergencyService.getStatus());
+
+                return wellnessHub;
+        }
+
+        private void putIfNotBlank(
+                        Map<String, Object> map,
+                        String key,
+                        String value) {
+                if (value != null &&
+                                !value.trim().isEmpty()) {
+                        map.put(key, value.trim());
+                }
+        }
 }

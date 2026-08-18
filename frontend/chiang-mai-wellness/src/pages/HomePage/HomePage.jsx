@@ -55,6 +55,67 @@ const SEARCH_TYPES = [
   { value: "ARTICLE", label: "บทความสุขภาพ" },
 ];
 
+// Mapping for route category display (Thai name, color, background)
+const ROUTE_CATEGORY_DISPLAY = {
+  C01: {
+    name: "นวด/สปาเพื่อสุขภาพ",
+    color: "#2E9D62",
+    background: "#EEF8F2",
+  },
+  C02: {
+    name: "คลินิก/สถานพยาบาล",
+    color: "#2563A6",
+    background: "#EEF4FB",
+  },
+  C03: {
+    name: "อาหารและเครื่องดื่ม",
+    color: "#F28C28",
+    background: "#FFF6EC",
+  },
+  C04: {
+    name: "ที่พักฟื้นฟูสุขภาพ",
+    color: "#7C63D9",
+    background: "#F3F0FC",
+  },
+  C05: {
+    name: "สถานที่ท่องเที่ยว",
+    color: "#28A9D8",
+    background: "#EDF8FC",
+  },
+  EM01: {
+    name: "หน่วยกู้ภัย",
+    color: "#E0A000",
+    background: "#FFF8E8",
+  },
+  EM02: {
+    name: "โรงพยาบาล",
+    color: "#D9434E",
+    background: "#FDEFF0",
+  },
+};
+
+function getRouteCategoryDisplay(category) {
+  const categoryId = String(category?.categoryId || "")
+    .trim()
+    .toUpperCase();
+
+  const display = ROUTE_CATEGORY_DISPLAY[categoryId];
+
+  if (display) {
+    return {
+      ...display,
+      categoryId,
+    };
+  }
+
+  return {
+    categoryId,
+    name: category?.categoryName || "หมวดหมู่อื่น",
+    color: "#64748B",
+    background: "#F1F5F9",
+  };
+}
+
 function getErrorMessage(error, fallbackMessage) {
   return error.response?.data?.message || fallbackMessage;
 }
@@ -465,6 +526,37 @@ export default function HomePage() {
                         {routeDescription}
                       </p>
 
+                      {Array.isArray(route.categories) &&
+                        route.categories.length > 0 && (
+                          <div className="homepage-card__categories">
+                            {route.categories.map((category) => {
+                              const categoryDisplay =
+                                getRouteCategoryDisplay(category);
+
+                              return (
+                                <span
+                                  key={category.categoryId}
+                                  className="homepage-card__category-chip"
+                                  style={{
+                                    color: categoryDisplay.color,
+                                    backgroundColor: categoryDisplay.background,
+                                    borderColor: categoryDisplay.color,
+                                  }}
+                                >
+                                  <span
+                                    className="homepage-card__category-dot"
+                                    style={{
+                                      backgroundColor: categoryDisplay.color,
+                                    }}
+                                  />
+
+                                  {categoryDisplay.name}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+
                       {route.districtsPassed && (
                         <p className="homepage-card__meta">
                           <MapPin />
@@ -473,7 +565,7 @@ export default function HomePage() {
                       )}
 
                       <Link
-                       to={`/wellness-routes/${routeId}`}
+                        to={`/wellness-routes/${routeId}`}
                         className="homepage-card__link"
                       >
                         ดูรายละเอียดเส้นทาง

@@ -6,28 +6,42 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faShieldHeart,
   faCircleUser,
-  faChartPie,
   faClipboardCheck,
-  faRoute,
-  faShop,
-  faNewspaper,
   faRightFromBracket,
   faBuilding,
   faMapLocationDot,
   faFileCircleCheck,
   faClock,
-  faCircleCheck,
-  faCircleXmark,
   faSpinner,
   faTriangleExclamation,
   faRotate,
   faLocationDot,
   faArrowTrendUp,
+  faChartPie,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./Dashboard.css";
 
 const DASHBOARD_API = "http://localhost:8080/api/admin/dashboard";
+
+const CATEGORY_COLORS = {
+  C01: "#2E9D62",
+  C02: "#2563A6",
+  C03: "#F28C28",
+  C04: "#7C63D9",
+  C05: "#28A9D8",
+  EM01: "#E0A000",
+  EM02: "#D9434E",
+};
+
+const FALLBACK_CATEGORY_COLORS = [
+  "#64748B",
+  "#0F766E",
+  "#7C3AED",
+  "#BE123C",
+  "#0369A1",
+  "#4D7C0F",
+];
 
 const EMPTY_DASHBOARD = {
   totalWellnessHubs: 0,
@@ -39,6 +53,7 @@ const EMPTY_DASHBOARD = {
   pendingPercentage: 0,
   approvedPercentage: 0,
   rejectedPercentage: 0,
+  wellnessHubsByCategory: [],
   wellnessHubsByDistrict: [],
 };
 
@@ -78,6 +93,10 @@ function Dashboard() {
 
         rejectedPercentage: Number(data.rejectedPercentage) || 0,
 
+        wellnessHubsByCategory: Array.isArray(data.wellnessHubsByCategory)
+          ? data.wellnessHubsByCategory
+          : [],
+
         wellnessHubsByDistrict: Array.isArray(data.wellnessHubsByDistrict)
           ? data.wellnessHubsByDistrict
           : [],
@@ -102,12 +121,40 @@ function Dashboard() {
     loadDashboard();
   }, []);
 
+  const categoryData = useMemo(() => {
+    return [...dashboard.wellnessHubsByCategory]
+      .map((category, index) => ({
+        categoryId: category.categoryId,
+        categoryName: category.categoryName || "ไม่ระบุหมวดหมู่",
+        wellnessHubCount: Number(category.wellnessHubCount) || 0,
+        percentage: Number(category.percentage) || 0,
+        color:
+          CATEGORY_COLORS[String(category.categoryId)] ||
+          FALLBACK_CATEGORY_COLORS[index % FALLBACK_CATEGORY_COLORS.length],
+      }))
+      .sort(
+        (first, second) => second.wellnessHubCount - first.wellnessHubCount,
+      );
+  }, [dashboard.wellnessHubsByCategory]);
+
   const districtData = useMemo(() => {
     return [...dashboard.wellnessHubsByDistrict]
       .map((district) => ({
         districtId: district.districtId,
         districtName: district.districtName || "ไม่ระบุอำเภอ",
         wellnessHubCount: Number(district.wellnessHubCount) || 0,
+        categoryList: Array.isArray(district.categoryList)
+          ? district.categoryList
+              .map((category) => ({
+                categoryId: category.categoryId,
+                categoryName: category.categoryName || "ไม่ระบุหมวดหมู่",
+                wellnessHubCount: Number(category.wellnessHubCount) || 0,
+              }))
+              .sort(
+                (first, second) =>
+                  second.wellnessHubCount - first.wellnessHubCount,
+              )
+          : [],
       }))
       .sort(
         (first, second) => second.wellnessHubCount - first.wellnessHubCount,
@@ -126,15 +173,6 @@ function Dashboard() {
 
   const formatNumber = (value) => {
     return Number(value || 0).toLocaleString("th-TH");
-  };
-
-  const formatPercentage = (value) => {
-    const numberValue = Number(value) || 0;
-
-    return numberValue.toLocaleString("th-TH", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
   };
 
   const handleLogout = () => {
@@ -179,6 +217,7 @@ function Dashboard() {
           <Link to="/dashboard" className="menu-item active">
             <i className="fa-solid fa-chart-pie"></i> แผงควบคุมหลัก
           </Link>
+
           <Link to="/listAccountRequest" className="menu-item">
             <i className="fa-solid fa-clipboard-check"></i> ตรวจสอบคำขอสิทธิ์
             <span className="badge-counter">5</span>
@@ -187,12 +226,15 @@ function Dashboard() {
           <p className="menu-label" style={{ marginTop: "20px" }}>
             การจัดการข้อมูล
           </p>
+
           <Link to="/listMainRoute" className="menu-item">
             <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
           </Link>
+
           <Link to="/listWellnessHub" className="menu-item">
             <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
           </Link>
+
           <Link to="/listOfficialArticle" className="menu-item">
             <i className="fa-solid fa-newspaper"></i> จัดการบทความ
           </Link>
@@ -290,7 +332,7 @@ function Dashboard() {
 
                 <h2>ภาพรวมสถานะคำขอเปิดบัญชี</h2>
 
-                <p>แสดงสัดส่วนคำขออนุมัติ ไม่อนุมัติ และคำขอที่รอพิจารณา</p>
+                <p>สรุปจำนวนและร้อยละของคำขอในแต่ละสถานะ</p>
               </div>
 
               <FontAwesomeIcon
@@ -299,68 +341,82 @@ function Dashboard() {
               />
             </div>
 
-            <div className="request-overview-layout">
-              <div className="percentage-chart-grid">
-                <PercentageCircle
-                  title="อนุมัติ"
-                  value={dashboard.approvedPercentage}
-                  amount={dashboard.approvedAccountRequests}
-                  icon={faCircleCheck}
-                  type="approved"
-                />
+            <div
+              className="request-number-panel"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+              }}
+            >
+              <div className="request-number-header">
+                <div>
+                  <span>จำนวนคำขอทั้งหมด</span>
 
-                <PercentageCircle
-                  title="ไม่อนุมัติ"
-                  value={dashboard.rejectedPercentage}
-                  amount={dashboard.rejectedAccountRequests}
-                  icon={faCircleXmark}
-                  type="rejected"
-                />
-
-                <PercentageCircle
-                  title="รอพิจารณา"
-                  value={dashboard.pendingPercentage}
-                  amount={dashboard.pendingAccountRequests}
-                  icon={faClock}
-                  type="pending"
-                />
-              </div>
-
-              <div className="request-number-panel">
-                <div className="request-number-header">
-                  <div>
-                    <span>จำนวนคำขอทั้งหมด</span>
-
-                    <strong>
-                      {formatNumber(dashboard.totalAccountRequests)}
-                    </strong>
-                  </div>
-
-                  <FontAwesomeIcon icon={faClipboardCheck} />
+                  <strong>
+                    {formatNumber(dashboard.totalAccountRequests)}
+                  </strong>
                 </div>
 
-                <RequestStatusRow
-                  title="อนุมัติแล้ว"
-                  value={dashboard.approvedAccountRequests}
-                  percentage={dashboard.approvedPercentage}
-                  type="approved"
-                />
-
-                <RequestStatusRow
-                  title="ไม่อนุมัติ"
-                  value={dashboard.rejectedAccountRequests}
-                  percentage={dashboard.rejectedPercentage}
-                  type="rejected"
-                />
-
-                <RequestStatusRow
-                  title="รอการตรวจสอบ"
-                  value={dashboard.pendingAccountRequests}
-                  percentage={dashboard.pendingPercentage}
-                  type="pending"
-                />
+                <FontAwesomeIcon icon={faClipboardCheck} />
               </div>
+
+              <RequestStatusRow
+                title="อนุมัติแล้ว"
+                value={dashboard.approvedAccountRequests}
+                percentage={dashboard.approvedPercentage}
+                type="approved"
+              />
+
+              <RequestStatusRow
+                title="ไม่อนุมัติ"
+                value={dashboard.rejectedAccountRequests}
+                percentage={dashboard.rejectedPercentage}
+                type="rejected"
+              />
+
+              <RequestStatusRow
+                title="รอการตรวจสอบ"
+                value={dashboard.pendingAccountRequests}
+                percentage={dashboard.pendingPercentage}
+                type="pending"
+              />
             </div>
+          </section>
+
+          <section className="dashboard-section">
+            <div className="dashboard-section-heading">
+              <div>
+                <span className="section-overline">
+                  WELLNESS HUB CATEGORIES
+                </span>
+
+                <h2>สัดส่วนสถานประกอบการตามหมวดหมู่</h2>
+
+                <p>
+                  แสดงจำนวนและร้อยละของสถานประกอบการแต่ละประเภทจากทั้งหมดในระบบ
+                </p>
+              </div>
+
+              <FontAwesomeIcon
+                icon={faChartPie}
+                className="section-heading-icon"
+              />
+            </div>
+
+            {categoryData.length > 0 ? (
+              <CategoryDistribution
+                categories={categoryData}
+                totalWellnessHubs={dashboard.totalWellnessHubs}
+              />
+            ) : (
+              <div className="dashboard-empty">
+                <FontAwesomeIcon icon={faChartPie} />
+
+                <strong>ยังไม่มีข้อมูลสถานประกอบการตามหมวดหมู่</strong>
+
+                <span>กรุณาตรวจสอบข้อมูลสถานประกอบการในระบบ</span>
+              </div>
+            )}
           </section>
 
           <section className="dashboard-section">
@@ -372,7 +428,10 @@ function Dashboard() {
 
                 <h2>จำนวนสถานประกอบการแยกตามอำเภอ</h2>
 
-                <p>เรียงลำดับจากอำเภอที่มี สถานประกอบการมากที่สุด</p>
+                <p>
+                  เรียงจากอำเภอที่มีสถานประกอบการมากที่สุด
+                  พร้อมรายละเอียดจำนวนในแต่ละหมวดหมู่
+                </p>
               </div>
 
               <FontAwesomeIcon
@@ -398,7 +457,7 @@ function Dashboard() {
 
                 <strong>ยังไม่มีข้อมูลสถานประกอบการรายอำเภอ</strong>
 
-                <span>กรุณาตรวจสอบข้อมูลอำเภอและ สถานประกอบการในระบบ</span>
+                <span>กรุณาตรวจสอบข้อมูลอำเภอและสถานประกอบการในระบบ</span>
               </div>
             )}
           </section>
@@ -437,65 +496,6 @@ function SummaryCard({
   );
 }
 
-function PercentageCircle({ title, value, amount, icon, type }) {
-  const safePercentage = Math.min(100, Math.max(0, Number(value) || 0));
-
-  const radius = 54;
-  const circumference = 2 * Math.PI * radius;
-
-  const progressOffset = circumference - (safePercentage / 100) * circumference;
-
-  return (
-    <article className={`percentage-card percentage-card-${type}`}>
-      <div className="percentage-circle-wrapper">
-        <svg
-          className="percentage-circle"
-          viewBox="0 0 140 140"
-          aria-label={`${title} ${safePercentage}%`}
-        >
-          <circle
-            className="percentage-circle-background"
-            cx="70"
-            cy="70"
-            r={radius}
-          />
-
-          <circle
-            className="percentage-circle-progress"
-            cx="70"
-            cy="70"
-            r={radius}
-            strokeDasharray={circumference}
-            strokeDashoffset={progressOffset}
-          />
-        </svg>
-
-        <div className="percentage-circle-value">
-          <strong>
-            {safePercentage.toLocaleString("th-TH", {
-              maximumFractionDigits: 2,
-            })}
-          </strong>
-
-          <span>%</span>
-        </div>
-      </div>
-
-      <div className="percentage-card-detail">
-        <div className="percentage-card-title">
-          <FontAwesomeIcon icon={icon} />
-          <h3>{title}</h3>
-        </div>
-
-        <p>
-          จำนวน <strong>{Number(amount || 0).toLocaleString("th-TH")}</strong>{" "}
-          คำขอ
-        </p>
-      </div>
-    </article>
-  );
-}
-
 function RequestStatusRow({ title, value, percentage, type }) {
   const safePercentage = Math.min(100, Math.max(0, Number(percentage) || 0));
 
@@ -527,7 +527,403 @@ function RequestStatusRow({ title, value, percentage, type }) {
   );
 }
 
+function CategoryDistribution({ categories, totalWellnessHubs }) {
+  const centerX = 180;
+  const centerY = 180;
+
+  const radius = 92;
+  const strokeWidth = 30;
+
+  const circumference = 2 * Math.PI * radius;
+
+  const lineStartRadius = radius + strokeWidth / 2 + 3;
+  const lineMiddleRadius = radius + strokeWidth / 2 + 24;
+  const lineEndDistance = 42;
+
+  let accumulatedPercentage = 0;
+
+  // ตัวแปรสำหรับจำตำแหน่ง Y ล่าสุด เพื่อป้องกันการทับกันของข้อความ
+  let lastRightY = -999;
+  let lastLeftY = 999;
+
+  const chartSegments = categories.map((category, index) => {
+    const safePercentage = Math.min(
+      100,
+      Math.max(0, Number(category.percentage) || 0),
+    );
+
+    const startPercentage = accumulatedPercentage;
+    const endPercentage = startPercentage + safePercentage;
+
+    const middlePercentage = startPercentage + safePercentage / 2;
+
+    accumulatedPercentage = endPercentage;
+
+    const segmentLength = (safePercentage / 100) * circumference;
+    const segmentOffset = (startPercentage / 100) * circumference;
+
+    const angle = (middlePercentage / 100) * Math.PI * 2 - Math.PI / 2;
+
+    const startX = centerX + Math.cos(angle) * lineStartRadius;
+    const startY = centerY + Math.sin(angle) * lineStartRadius;
+
+    let middleX = centerX + Math.cos(angle) * lineMiddleRadius;
+    let middleY = centerY + Math.sin(angle) * lineMiddleRadius;
+
+    const isRightSide = Math.cos(angle) >= 0;
+
+    // ระยะห่างแนวตั้งขั้นต่ำระหว่างเส้นชี้แต่ละเส้น
+    const minGap = 24;
+
+    // ป้องกัน Y Collision แยกฝั่งซ้าย-ขวา
+    if (isRightSide) {
+      if (lastRightY !== -999 && middleY - lastRightY < minGap) {
+        middleY = lastRightY + minGap;
+      }
+      lastRightY = middleY;
+    } else {
+      // ฝั่งซ้ายข้อมูลจะถูกวาดจากล่างขึ้นบน (Y มีค่าลดลงเรื่อยๆ)
+      if (lastLeftY !== 999 && lastLeftY - middleY < minGap) {
+        middleY = lastLeftY - minGap;
+      }
+      lastLeftY = middleY;
+    }
+
+    const endX = middleX + (isRightSide ? lineEndDistance : -lineEndDistance);
+
+    const endY = middleY;
+
+    return {
+      ...category,
+      safePercentage,
+      segmentLength,
+      segmentOffset,
+      startX,
+      startY,
+      middleX,
+      middleY,
+      endX,
+      endY,
+      isRightSide,
+      animationDelay: index * 0.12,
+    };
+  });
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(430px, 1fr) minmax(420px, 1.15fr)",
+        gap: "50px",
+        alignItems: "center",
+        padding: "28px 30px 32px",
+      }}
+    >
+      {/* ==========================================
+          Donut Chart
+      ========================================== */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "430px",
+        }}
+      >
+        <div
+          style={{
+            position: "relative",
+            width: "430px",
+            maxWidth: "100%",
+          }}
+        >
+          <svg
+            viewBox="0 0 360 360"
+            style={{
+              display: "block",
+              width: "100%",
+              height: "auto",
+              overflow: "visible",
+            }}
+            role="img"
+            aria-label="กราฟวงกลมแสดงสัดส่วนสถานประกอบการตามหมวดหมู่"
+          >
+            {/* วงพื้นหลัง */}
+            <circle
+              cx={centerX}
+              cy={centerY}
+              r={radius}
+              fill="none"
+              stroke="#edf1f4"
+              strokeWidth={strokeWidth}
+            />
+
+            {/* ชิ้นส่วนของ Donut */}
+            <g
+              style={{
+                transform: `rotate(-90deg)`,
+                transformOrigin: `${centerX}px ${centerY}px`,
+              }}
+            >
+              {chartSegments.map((category) => (
+                <circle
+                  key={`segment-${category.categoryId}`}
+                  cx={centerX}
+                  cy={centerY}
+                  r={radius}
+                  fill="none"
+                  stroke={category.color}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={`${category.segmentLength} ${
+                    circumference - category.segmentLength
+                  }`}
+                  strokeDashoffset={-category.segmentOffset}
+                  strokeLinecap="butt"
+                >
+                  <animate
+                    attributeName="stroke-dasharray"
+                    from={`0 ${circumference}`}
+                    to={`${category.segmentLength} ${
+                      circumference - category.segmentLength
+                    }`}
+                    dur="0.9s"
+                    begin={`${category.animationDelay}s`}
+                    fill="freeze"
+                    calcMode="spline"
+                    keySplines="0.22 1 0.36 1"
+                  />
+                </circle>
+              ))}
+            </g>
+
+            {/* ==========================================
+                เส้นลาก + Percentage
+            ========================================== */}
+            {chartSegments.map((category) => (
+              <g key={`label-${category.categoryId}`} opacity="0">
+                <polyline
+                  points={`
+                    ${category.startX},${category.startY}
+                    ${category.middleX},${category.middleY}
+                    ${category.endX},${category.endY}
+                  `}
+                  fill="none"
+                  stroke={category.color}
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+
+                <circle
+                  cx={category.startX}
+                  cy={category.startY}
+                  r="3"
+                  fill={category.color}
+                />
+
+                <text
+                  x={
+                    category.isRightSide ? category.endX + 7 : category.endX - 7
+                  }
+                  y={category.endY + 5}
+                  textAnchor={category.isRightSide ? "start" : "end"}
+                  fill={category.color}
+                  fontSize="14"
+                  fontWeight="800"
+                  fontFamily="'Sarabun', sans-serif"
+                >
+                  {category.safePercentage.toLocaleString("th-TH", {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2,
+                  })}
+                  %
+                </text>
+
+                <animate
+                  attributeName="opacity"
+                  from="0"
+                  to="1"
+                  dur="0.45s"
+                  begin={`${0.65 + category.animationDelay}s`}
+                  fill="freeze"
+                />
+              </g>
+            ))}
+
+            {/* วงกลาง */}
+            <circle cx={centerX} cy={centerY} r="65" fill="#ffffff">
+              <animate
+                attributeName="r"
+                from="54"
+                to="65"
+                dur="0.65s"
+                begin="0.25s"
+                fill="freeze"
+                calcMode="spline"
+                keySplines="0.22 1 0.36 1"
+              />
+            </circle>
+
+            {/* จำนวนรวม */}
+            <g opacity="0">
+              <text
+                x={centerX}
+                y={centerY - 1}
+                textAnchor="middle"
+                fill="#0f172a"
+                fontSize="34"
+                fontWeight="800"
+                fontFamily="'Sarabun', sans-serif"
+              >
+                {Number(totalWellnessHubs || 0).toLocaleString("th-TH")}
+              </text>
+
+              <text
+                x={centerX}
+                y={centerY + 24}
+                textAnchor="middle"
+                fill="#64748b"
+                fontSize="12"
+                fontWeight="600"
+                fontFamily="'Sarabun', sans-serif"
+              >
+                สถานประกอบการ
+              </text>
+
+              <animate
+                attributeName="opacity"
+                from="0"
+                to="1"
+                dur="0.5s"
+                begin="0.55s"
+                fill="freeze"
+              />
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      {/* ==========================================
+          Category Detail
+      ========================================== */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          minWidth: 0,
+        }}
+      >
+        {categories.map((category, index) => (
+          <div
+            key={category.categoryId}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "12px minmax(0, 1fr) auto auto",
+              gap: "14px",
+              alignItems: "center",
+              padding: "15px 4px",
+              borderBottom:
+                index < categories.length - 1 ? "1px solid #e2e8f0" : "none",
+              opacity: 0,
+              animation: `dashboardCategoryItemEnter 0.5s ease ${
+                0.15 + index * 0.08
+              }s forwards`,
+            }}
+          >
+            <span
+              style={{
+                width: "10px",
+                height: "10px",
+                borderRadius: "50%",
+                background: category.color,
+                boxShadow: `0 0 0 4px ${category.color}12`,
+              }}
+            />
+
+            <div
+              style={{
+                minWidth: 0,
+              }}
+            >
+              <strong
+                style={{
+                  display: "block",
+                  color: "#1e293b",
+                  fontSize: "14px",
+                  fontWeight: "800",
+                }}
+              >
+                {category.categoryName}
+              </strong>
+
+              <span
+                style={{
+                  color: "#94a3b8",
+                  fontSize: "11px",
+                }}
+              >
+                {category.categoryId}
+              </span>
+            </div>
+
+            <strong
+              style={{
+                color: "#334155",
+                fontSize: "14px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {category.wellnessHubCount.toLocaleString("th-TH")} แห่ง
+            </strong>
+
+            <span
+              style={{
+                minWidth: "62px",
+                color: category.color,
+                textAlign: "right",
+                fontSize: "14px",
+                fontWeight: "800",
+              }}
+            >
+              {category.percentage.toLocaleString("th-TH", {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2,
+              })}
+              %
+            </span>
+          </div>
+        ))}
+
+        <style>
+          {`
+            @keyframes dashboardCategoryItemEnter {
+              from {
+                opacity: 0;
+                transform: translateX(18px);
+              }
+
+              to {
+                opacity: 1;
+                transform: translateX(0);
+              }
+            }
+
+            @media (max-width: 1050px) {
+              .admin-dashboard-page .dashboard-section {
+                overflow: hidden;
+              }
+            }
+          `}
+        </style>
+      </div>
+    </div>
+  );
+}
+
 function DistrictRow({ rank, district, maximumCount }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const barLevel =
     maximumCount > 0
       ? Math.max(
@@ -535,6 +931,10 @@ function DistrictRow({ rank, district, maximumCount }) {
           Math.round((district.wellnessHubCount / maximumCount) * 100),
         )
       : 0;
+
+  const handleToggleCategory = () => {
+    setIsExpanded((previous) => !previous);
+  };
 
   return (
     <article className="district-row">
@@ -557,6 +957,121 @@ function DistrictRow({ rank, district, maximumCount }) {
         <div className="district-progress-track">
           <div className="district-progress-value" data-level={barLevel} />
         </div>
+
+        {district.categoryList.length > 0 && (
+          <div
+            style={{
+              marginTop: "12px",
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleToggleCategory}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "7px",
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                color: "#64748b",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              <i
+                className={
+                  isExpanded
+                    ? "fa-solid fa-chevron-up"
+                    : "fa-solid fa-chevron-down"
+                }
+              ></i>
+
+              {isExpanded
+                ? "ซ่อนรายละเอียดหมวดหมู่"
+                : `ดูรายละเอียดหมวดหมู่ (${district.categoryList.length})`}
+            </button>
+
+            {isExpanded && (
+              <div
+                style={{
+                  marginTop: "12px",
+                  paddingTop: "10px",
+                  borderTop: "1px solid #e2e8f0",
+                }}
+              >
+                {district.categoryList.map((category, index) => {
+                  const categoryColor =
+                    CATEGORY_COLORS[String(category.categoryId)] ||
+                    FALLBACK_CATEGORY_COLORS[
+                      index % FALLBACK_CATEGORY_COLORS.length
+                    ];
+
+                  return (
+                    <div
+                      key={category.categoryId}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "16px",
+                        padding: "7px 4px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "9px",
+                          minWidth: 0,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            flexShrink: 0,
+                            borderRadius: "50%",
+                            background: categoryColor,
+                          }}
+                        />
+
+                        <span
+                          style={{
+                            color: "#475569",
+                            fontSize: "13px",
+                          }}
+                        >
+                          {category.categoryName}
+                        </span>
+
+                        <span
+                          style={{
+                            color: "#94a3b8",
+                            fontSize: "11px",
+                          }}
+                        >
+                          {category.categoryId}
+                        </span>
+                      </div>
+
+                      <strong
+                        style={{
+                          color: categoryColor,
+                          fontSize: "13px",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {category.wellnessHubCount.toLocaleString("th-TH")} แห่ง
+                      </strong>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </article>
   );

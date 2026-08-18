@@ -4,11 +4,11 @@ import com.example.wellness.model.MainRoute;
 import com.example.wellness.model.MainRouteDetail;
 import com.example.wellness.model.District;
 import com.example.wellness.model.Category;
-import com.example.wellness.model.WellnessHub;
 import com.example.wellness.repository.MainRouteRepository;
 import com.example.wellness.repository.DistrictRepository;
 import com.example.wellness.repository.CategoryRepository;
 import com.example.wellness.repository.WellnessHubRepository;
+import com.example.wellness.repository.EmergencyServiceRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +36,9 @@ public class MainRouteService {
 
     @Autowired
     private WellnessHubRepository wellnessHubRepository;
+
+    @Autowired
+    private EmergencyServiceRepository emergencyServiceRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -136,17 +139,20 @@ public class MainRouteService {
         return resultList;
     }
 
-    // 🌟 7. แก้การนับหมุดให้ปลอดภัย
+    // 🌟 7. แก้การนับหมุดให้รวมทั้ง wellness_hubs และ emergency_services
     private void calculatePinCount(MainRoute route) {
 
         final List<String> categoryIds = new ArrayList<>();
 
         try {
-            if (route.getCategoryId() != null && !route.getCategoryId().trim().isEmpty()) {
+            if (route.getCategoryId() != null
+                    && !route.getCategoryId().trim().isEmpty()) {
+
                 List<String> parsed = objectMapper.readValue(
                         route.getCategoryId(),
                         new TypeReference<List<String>>() {
                         });
+
                 if (parsed != null) {
                     categoryIds.addAll(parsed);
                 }
@@ -157,7 +163,7 @@ public class MainRouteService {
             }
         }
 
-        // รวม EM01 และ EM02 เพื่อการคำนวณที่แม่นยำ
+        // รวม EM01 และ EM02 เสมอ
         categoryIds.addAll(REQUIRED_EMERGENCY_CATEGORY_IDS);
 
         List<String> distinctCategoryIds = categoryIds.stream()
@@ -169,23 +175,53 @@ public class MainRouteService {
 
         List<Integer> districtIds = route.getDetails()
                 .stream()
-                .map(d -> d.getDistrict().getDistrictId())
+                .filter(detail -> detail.getDistrict() != null)
+                .map(detail -> detail.getDistrict().getDistrictId())
+                .filter(Objects::nonNull)
+                .distinct()
                 .collect(Collectors.toList());
 
-        long count = wellnessHubRepository.findAll()
+        long wellnessHubCount = wellnessHubRepository.findAll()
                 .stream()
-                .filter(h -> h.getDistrict() != null &&
-                        districtIds.contains(
+                .filter(h -> h.getDistrict() != null
+                        && districtIds.contains(
                                 h.getDistrict().getDistrictId()))
-                .filter(h -> h.getCategory() != null &&
-                        distinctCategoryIds.contains(
+                .filter(h -> h.getCategory() != null
+                        && distinctCategoryIds.contains(
                                 String.valueOf(
                                         h.getCategory().getCategoryId())))
-                .filter(h -> h.getWellnessHubLatitude() != null &&
-                        h.getWellnessHubLongitude() != null)
+                .filter(h -> isValidCoordinate(
+                        h.getWellnessHubLatitude(),
+                        h.getWellnessHubLongitude()))
                 .count();
 
-        route.setPinCount((int) count);
+        long emergencyServiceCount = emergencyServiceRepository.findAll()
+                .stream()
+                .filter(e -> e.getDistrict() != null
+                        && districtIds.contains(
+                                e.getDistrict().getDistrictId()))
+                .filter(e -> e.getCategory() != null
+                        && distinctCategoryIds.contains(
+                                String.valueOf(
+                                        e.getCategory().getCategoryId())))
+                .filter(e -> isValidCoordinate(
+                        e.getWellnessHubLatitude(),
+                        e.getWellnessHubLongitude()))
+                .count();
+
+        route.setPinCount(
+                (int) (wellnessHubCount + emergencyServiceCount));
+    }
+
+    private boolean isValidCoordinate(
+            Double latitude,
+            Double longitude) {
+        return latitude != null
+                && longitude != null
+                && latitude >= -90
+                && latitude <= 90
+                && longitude >= -180
+                && longitude <= 180;
     }
 
     // 🟢 เมธอดสร้างเส้นทางท่องเที่ยวใหม่
@@ -203,7 +239,9 @@ public class MainRouteService {
                 detail.setMainRoute(route);
             }
         }
+
         calculatePinCount(route);
+
         return mainRouteRepository.save(route);
     }
 
@@ -211,6 +249,7 @@ public class MainRouteService {
     @Transactional
     public MainRoute updateMainRoute(Integer id, Map<String, Object> payload) {
         MainRoute oldRoute = mainRouteRepository.findById(id).orElse(null);
+
         if (oldRoute != null) {
             MainRoute incomingRoute = convertPayloadToEntity(payload);
 
@@ -219,25 +258,33 @@ public class MainRouteService {
             oldRoute.setCategoryId(incomingRoute.getCategoryId());
 
             oldRoute.getDetails().clear();
+
             if (incomingRoute.getDetails() != null) {
                 for (MainRouteDetail detail : incomingRoute.getDetails()) {
                     detail.setMainRoute(oldRoute);
                     oldRoute.getDetails().add(detail);
                 }
             }
+
             oldRoute.setUpdatedAt(LocalDateTime.now());
+
             calculatePinCount(oldRoute);
+
             return mainRouteRepository.save(oldRoute);
         }
+
         return null;
     }
 
     // 🛠️ 6. ปรับปรุงตรรกะแปลง Payload เป็น Entity ให้บังคับเซฟ EM01, EM02 เสมอ
     private MainRoute convertPayloadToEntity(Map<String, Object> payload) {
         MainRoute route = new MainRoute();
+
         route.setRouteName(payload.get("routeName").toString());
         route.setRouteDescription(
-                payload.get("routeDescription") != null ? payload.get("routeDescription").toString() : "");
+                payload.get("routeDescription") != null
+                        ? payload.get("routeDescription").toString()
+                        : "");
 
         try {
             List<String> categoryIds = normalizeCategoryIds(payload.get("categoryIds"));
@@ -251,20 +298,29 @@ public class MainRouteService {
 
         List<MainRouteDetail> detailList = new ArrayList<>();
         List<Map<String, Object>> detailsRaw = (List<Map<String, Object>>) payload.get("details");
+
         if (detailsRaw != null) {
             for (Map<String, Object> raw : detailsRaw) {
                 MainRouteDetail detail = new MainRouteDetail();
-                detail.setOrderNumber(Integer.parseInt(raw.get("orderNumber").toString()));
 
-                District dist = districtRepository.findById(Integer.parseInt(raw.get("districtId").toString()))
+                detail.setOrderNumber(
+                        Integer.parseInt(
+                                raw.get("orderNumber").toString()));
+
+                District dist = districtRepository.findById(
+                        Integer.parseInt(
+                                raw.get("districtId").toString()))
                         .orElse(null);
+
                 if (dist != null) {
                     detail.setDistrict(dist);
                     detailList.add(detail);
                 }
             }
         }
+
         route.setDetails(detailList);
+
         return route;
     }
 
@@ -275,6 +331,7 @@ public class MainRouteService {
             mainRouteRepository.deleteById(id);
             return true;
         }
+
         return false;
     }
 }

@@ -237,7 +237,7 @@ const ListMainRoute = () => {
           <table className="gov-custom-data-table">
             <thead>
               <tr>
-                <th style={{ width: "5%", textAlign: "center" }}>รหัสระบบ</th>
+                <th style={{ width: "5%", textAlign: "center" }}>ลำดับเส้นทาง</th>
                 <th style={{ width: "18%" }}>ชื่อเส้นทางสุขภาพ</th>
                 <th style={{ width: "18%" }}>หมวดหมู่ทั้งหมดในเส้นทาง</th>
                 <th style={{ width: "15%" }}>อำเภอในเส้นทาง</th>

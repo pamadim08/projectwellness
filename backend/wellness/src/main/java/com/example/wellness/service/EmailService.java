@@ -4,89 +4,82 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
-
 @Service
 public class EmailService {
 
-
     private final JavaMailSender mailSender;
 
-
     public EmailService(
-        JavaMailSender mailSender
-    ){
+            JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 
-
-
     public void sendApproveEmail(
-        String email,
-        String username,
-        String password
-    ){
+            String email,
+            String wellnessHubName,
+            Integer licenseId,
+            String username,
+            String password) {
 
-        SimpleMailMessage message =
-                new SimpleMailMessage();
-
+        SimpleMailMessage message = new SimpleMailMessage();
 
         message.setTo(email);
 
         message.setSubject(
-            "ผลการอนุมัติบัญชี Wellness Hub"
-        );
-
+                "ผลการอนุมัติบัญชีสถานประกอบการ");
 
         message.setText(
-            """
-            ระบบได้อนุมัติบัญชีของคุณแล้ว
+                """
+                        ระบบได้อนุมัติบัญชีสถานประกอบการของคุณแล้ว
 
-            Username:
-            %s
+                        ชื่อสถานประกอบการ:
+                        %s
 
-            Password:
-            %s
+                        รหัสใบอนุญาตสถานประกอบการ:
+                        %s
 
-            กรุณาเข้าสู่ระบบและเปลี่ยนรหัสผ่านเพื่อความปลอดภัย
-            """
-            .formatted(username,password)
-        );
+                        Username:
+                        %s
 
+                        Password:
+                        %s
+
+                        """
+                        .formatted(wellnessHubName, String.valueOf(licenseId), username, password));
 
         mailSender.send(message);
 
     }
 
-
-
     public void sendRejectEmail(
-        String email,
-        String reason
-    ){
+            String email,
+            String wellnessHubName,
+            Integer licenseId,
+            String reason) {
 
-        SimpleMailMessage message =
-                new SimpleMailMessage();
-
+        SimpleMailMessage message = new SimpleMailMessage();
 
         message.setTo(email);
 
         message.setSubject(
-            "ผลการพิจารณาคำร้องบัญชี Wellness Hub"
-        );
-
+                "ผลการพิจารณาคำร้องสถานประกอบการ");
 
         message.setText(
-            """
-            คำร้องของคุณไม่ได้รับการอนุมัติ
+                """
+                        คำร้องของสถานประกอบการไม่ได้รับการอนุมัติ
 
-            เหตุผล:
-            %s
+                        ชื่อสถานประกอบการ:
+                        %s
 
-            กรุณาตรวจสอบข้อมูลและดำเนินการใหม่
-            """
-            .formatted(reason)
-        );
+                        รหัสใบอนุญาตสถานประกอบการ:
+                        %s
 
+                        เหตุผล:
+                        %s
+
+                        กรุณาตรวจสอบข้อมูลและดำเนินการใหม่
+                        """
+                        .formatted(wellnessHubName, String.valueOf(licenseId), reason));
 
         mailSender.send(message);
 

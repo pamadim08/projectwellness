@@ -38,7 +38,7 @@ function ListOfficialArticle() {
   const [adminName, setAdminName] = useState("Admin");
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. เพิ่ม State สำหรับ Popup ยืนยันลบ
+  // State สำหรับ Popup ยืนยันลบ
   const [deletingId, setDeletingId] = useState(null);
   const [showDeletePopup, setShowDeletePopup] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState(null);
@@ -144,7 +144,6 @@ function ListOfficialArticle() {
     navigate("/login");
   };
 
-  // 2. เปลี่ยน handleDeleteArticle ใหม่ (ลบ window.confirm)
   const handleDeleteArticle = async () => {
     if (!selectedArticle || deletingId !== null) {
       return;
@@ -308,7 +307,7 @@ function ListOfficialArticle() {
         </div>
       )}
 
-      {/* 4. เพิ่ม Popup ยืนยันลบตรงกลาง (วางต่อจาก Toast และก่อน sidebar-menu) */}
+      {/* Popup ยืนยันลบ */}
       {showDeletePopup && selectedArticle && (
         <div
           className="article-delete-popup-overlay"
@@ -496,7 +495,8 @@ function ListOfficialArticle() {
             <table className="official-article-table">
               <thead>
                 <tr>
-                  <th className="article-column-id">รหัสระบบ</th>
+                  {/* เปลี่ยนหัวตารางให้สอดคล้องกับ ลำดับบทความ */}
+                  <th className="article-column-id">ลำดับบทความ</th>
 
                   <th className="article-column-cover">รูปหน้าปก</th>
 
@@ -523,70 +523,74 @@ function ListOfficialArticle() {
                     </td>
                   </tr>
                 ) : currentRows.length > 0 ? (
-                  currentRows.map((article, index) => (
-                    <tr key={article.articleId}>
-                      <td className="text-center article-id-cell">
-                        {article.articleId || firstRowIndex + index + 1}
-                      </td>
+                  currentRows.map((article, index) => {
+                    // คำนวณอันดับรายการโดยไม่อิง articleId
+                    const displayRank = firstRowIndex + index + 1;
 
-                      <td className="article-cover-cell">
-                        {renderCoverImage(article)}
-                      </td>
+                    return (
+                      <tr key={article.articleId || index}>
+                        <td className="text-center article-id-cell">
+                          {displayRank}
+                        </td>
 
-                      <td>
-                        <strong>
-                          {article.articleTitle || "ไม่ระบุชื่อบทความ"}
-                        </strong>
-                      </td>
+                        <td className="article-cover-cell">
+                          {renderCoverImage(article)}
+                        </td>
 
-                      <td className="text-center">
-                        {article.articleCategory || "-"}
-                      </td>
+                        <td>
+                          <strong>
+                            {article.articleTitle || "ไม่ระบุชื่อบทความ"}
+                          </strong>
+                        </td>
 
-                      <td className="text-center">{article.author || "-"}</td>
+                        <td className="text-center">
+                          {article.articleCategory || "-"}
+                        </td>
 
-                      <td className="text-center">
-                        {formatPublishDate(article.publishDate)}
-                      </td>
+                        <td className="text-center">{article.author || "-"}</td>
 
-                      <td className="text-center">
-                        <span className="article-status-active">
-                          [ เผยแพร่แล้ว ]
-                        </span>
-                      </td>
+                        <td className="text-center">
+                          {formatPublishDate(article.publishDate)}
+                        </td>
 
-                      <td>
-                        <div className="article-action-group">
-                          <button
-                            type="button"
-                            className="btn-edit-article"
-                            onClick={() =>
-                              navigate(
-                                `/editOfficialArticle/${article.articleId}`,
-                              )
-                            }
-                          >
-                            <FontAwesomeIcon icon={faPenToSquare} />
-                            แก้ไข
-                          </button>
+                        <td className="text-center">
+                          <span className="article-status-active">
+                            [ เผยแพร่แล้ว ]
+                          </span>
+                        </td>
 
-                          {/* 3. แก้ปุ่มลบในตารางให้เรียกเปิด Popup */}
-                          <button
-                            type="button"
-                            className="btn-delete-article"
-                            disabled={deletingId === article.articleId}
-                            onClick={() => {
-                              setSelectedArticle(article);
-                              setShowDeletePopup(true);
-                            }}
-                          >
-                            <FontAwesomeIcon icon={faTrashCan} />
-                            ลบ
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        <td>
+                          <div className="article-action-group">
+                            <button
+                              type="button"
+                              className="btn-edit-article"
+                              onClick={() =>
+                                navigate(
+                                  `/editOfficialArticle/${article.articleId}`,
+                                )
+                              }
+                            >
+                              <FontAwesomeIcon icon={faPenToSquare} />
+                              แก้ไข
+                            </button>
+
+                            <button
+                              type="button"
+                              className="btn-delete-article"
+                              disabled={deletingId === article.articleId}
+                              onClick={() => {
+                                setSelectedArticle(article);
+                                setShowDeletePopup(true);
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faTrashCan} />
+                              ลบ
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan="8" className="official-article-empty">

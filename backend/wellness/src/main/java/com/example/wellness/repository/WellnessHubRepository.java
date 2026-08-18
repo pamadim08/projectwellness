@@ -10,8 +10,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface WellnessHubRepository extends JpaRepository<WellnessHub, Integer> {
+public interface WellnessHubRepository
+        extends JpaRepository<WellnessHub, Integer> {
+
     boolean existsByUsername(String username);
+
+    WellnessHub findByUsername(String username);
 
     @Query("""
             SELECT new map(

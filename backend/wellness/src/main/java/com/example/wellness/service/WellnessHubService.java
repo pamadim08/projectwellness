@@ -2,19 +2,17 @@ package com.example.wellness.service;
 
 import com.example.wellness.model.Category;
 import com.example.wellness.model.District;
-import com.example.wellness.model.OperatingHour;
+import com.example.wellness.model.EmergencyService;
 import com.example.wellness.model.WellnessHub;
+import com.example.wellness.repository.AccountRequestRepository;
 import com.example.wellness.repository.CategoryRepository;
-import com.example.wellness.repository.WellnessHubRepository;
 import com.example.wellness.repository.DistrictRepository;
-import com.example.wellness.repository.OperatingHourRepository;
-import com.example.wellness.repository.AccountRequestRepository; // 👈 แทรกเพิ่มตรงนี้
-import jakarta.annotation.PostConstruct; // 🌟 เพิ่ม Import ตัวนี้เพื่อใช้ทำระบบกวาดข้อมูลเก่าตอนรันเซิร์ฟเวอร์
+import com.example.wellness.repository.EmergencyServiceRepository;
+import com.example.wellness.repository.WellnessHubRepository;
+
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.BeanWrapper;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -32,59 +30,146 @@ public class WellnessHubService {
     private WellnessHubRepository wellnessHubRepository;
 
     @Autowired
-    private AccountRequestRepository accountRequestRepository; // 🌟 เพิ่ม Repository ของ AccountRequest
+    private EmergencyServiceRepository emergencyServiceRepository;
+
+    @Autowired
+    private AccountRequestRepository accountRequestRepository;
+
     @Autowired
     private CategoryRepository categoryRepository;
+
     @Autowired
     private DistrictRepository districtRepository;
 
-    @Autowired
-    private OperatingHourRepository operatingHourRepository; // 👈 แทรกเพิ่มตรงนี้
+    private static final Set<String> EMERGENCY_CATEGORY_IDS = Set.of("EM01", "EM02");
+
+    private boolean isEmergencyCategory(Category category) {
+        return category != null
+                && category.getCategoryId() != null
+                && EMERGENCY_CATEGORY_IDS.contains(
+                        category.getCategoryId().toUpperCase());
+    }
 
     public List<WellnessHub> getAllHubs() {
-        return wellnessHubRepository.findAll();
+        List<WellnessHub> results = new ArrayList<>(wellnessHubRepository.findAll());
+
+        List<WellnessHub> emergencyResults = emergencyServiceRepository.findAll()
+                .stream()
+                .map(this::convertEmergencyToWellnessHub)
+                .toList();
+
+        results.addAll(emergencyResults);
+
+        return results;
     }
 
     public List<WellnessHub> searchWellnessHubs(Map<String, Object> payload) {
-        if (payload == null)
+        if (payload == null) {
             return getAllHubs();
-        String keyword = payload.get("search") != null ? payload.get("search").toString().trim() : null;
-        String categoryIdStr = payload.get("categoryId") != null ? payload.get("categoryId").toString() : null;
-        String districtIdStr = payload.get("districtId") != null ? payload.get("districtId").toString() : null;
+        }
 
-        return getAllHubs().stream()
-                .filter(w -> keyword == null || keyword.isEmpty()
-                        || (w.getWellnessHubName() != null
-                                && w.getWellnessHubName().toLowerCase().contains(keyword.toLowerCase())))
-                .filter(w -> categoryIdStr == null || categoryIdStr.isEmpty()
-                        || (w.getCategory() != null
-                                && w.getCategory().getCategoryId().toString().equals(categoryIdStr)))
-                .filter(w -> districtIdStr == null || districtIdStr.isEmpty()
-                        || (w.getDistrict() != null
-                                && w.getDistrict().getDistrictId().toString().equals(districtIdStr)))
+        String keyword = payload.get("search") != null
+                ? payload.get("search").toString().trim()
+                : null;
+
+        String categoryIdStr = payload.get("categoryId") != null
+                ? payload.get("categoryId").toString().trim()
+                : null;
+
+        String districtIdStr = payload.get("districtId") != null
+                ? payload.get("districtId").toString().trim()
+                : null;
+
+        return getAllHubs()
+                .stream()
+                .filter(hub -> keyword == null ||
+                        keyword.isEmpty() ||
+                        (hub.getWellnessHubName() != null &&
+                                hub.getWellnessHubName()
+                                        .toLowerCase()
+                                        .contains(keyword.toLowerCase())))
+                .filter(hub -> categoryIdStr == null ||
+                        categoryIdStr.isEmpty() ||
+                        (hub.getCategory() != null &&
+                                categoryIdStr.equalsIgnoreCase(
+                                        hub.getCategory().getCategoryId())))
+                .filter(hub -> districtIdStr == null ||
+                        districtIdStr.isEmpty() ||
+                        (hub.getDistrict() != null &&
+                                districtIdStr.equals(
+                                        String.valueOf(
+                                                hub.getDistrict().getDistrictId()))))
                 .toList();
     }
 
     public WellnessHub getHubById(Integer id) {
-        return wellnessHubRepository.findById(id).orElse(null);
+        if (id == null || id <= 0) {
+            return null;
+        }
+
+        WellnessHub wellnessHub = wellnessHubRepository
+                .findById(id)
+                .orElse(null);
+
+        if (wellnessHub != null) {
+            return wellnessHub;
+        }
+
+        EmergencyService emergencyService = emergencyServiceRepository
+                .findById(id)
+                .orElse(null);
+
+        if (emergencyService != null) {
+            return convertEmergencyToWellnessHub(emergencyService);
+        }
+
+        return null;
     }
 
-    // 🌟 เมธอดบันทึกข้อมูลใหม่ (รองรับทั้งลิงก์เต็มและลิงก์ย่ออย่างปลอดภัย)
+    @Transactional
     public WellnessHub createWellnessHub(WellnessHub wellnessHub) {
+        if (wellnessHub.getLicenseId() == null) {
+            throw new RuntimeException("กรุณาระบุเลขใบอนุญาต");
+        }
+        Integer licenseId = wellnessHub.getLicenseId();
+        if (wellnessHubRepository.existsById(licenseId)
+                || emergencyServiceRepository.existsById(licenseId)) {
+            throw new RuntimeException("เลขใบอนุญาตนี้มีอยู่ในระบบแล้ว");
+        }
+
+        if (wellnessHub.getCategory() == null || wellnessHub.getCategory().getCategoryId() == null) {
+            throw new RuntimeException("กรุณาเลือกหมวดหมู่");
+        }
+        String categoryId = wellnessHub.getCategory().getCategoryId().trim().toUpperCase();
+        Category managedCategory = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("ไม่พบหมวดหมู่รหัส " + categoryId));
+        wellnessHub.setCategory(managedCategory);
+
+        if (wellnessHub.getDistrict() == null || wellnessHub.getDistrict().getDistrictId() == null) {
+            throw new RuntimeException("กรุณาเลือกอำเภอ");
+        }
+        Integer districtId = wellnessHub.getDistrict().getDistrictId();
+        District managedDistrict = districtRepository.findById(districtId)
+                .orElseThrow(() -> new RuntimeException("ไม่พบอำเภอรหัส " + districtId));
+        wellnessHub.setDistrict(managedDistrict);
+
         if (wellnessHub.getStatus() == null) {
             wellnessHub.setStatus("active");
         }
 
-        if (wellnessHub.getGoogleMapsLink() != null && !wellnessHub.getGoogleMapsLink().isEmpty()) {
+        if (wellnessHub.getGoogleMapsLink() != null && !wellnessHub.getGoogleMapsLink().trim().isEmpty()) {
             extractCoordinates(wellnessHub);
+        }
+
+        if (isEmergencyCategory(wellnessHub.getCategory())) {
+            EmergencyService emergency = convertToEmergency(wellnessHub);
+            emergencyServiceRepository.save(emergency);
+            return wellnessHub;
         }
 
         return wellnessHubRepository.save(wellnessHub);
     }
 
-    // ===================================================
-    // 🛠️ ฟังก์ชันแกะพิกัดอัจฉริยะ (ตรวจจับและขยายลิงก์ย่อก่อน)
-    // ===================================================
     private void extractCoordinates(WellnessHub hub) {
         String originalUrl = hub.getGoogleMapsLink();
 
@@ -100,15 +185,12 @@ public class WellnessHubService {
             finalUrl = expandShortUrl(finalUrl);
         }
 
-        // 1) พิกัดสถานที่จริงจาก Google Maps: !3d18.xxxxx!4d98.xxxxx
         Pattern patternPlace = Pattern.compile("!3d(-?\\d+\\.\\d+)!4d(-?\\d+\\.\\d+)");
         Matcher matcherPlace = patternPlace.matcher(finalUrl);
 
-        // 2) พิกัดจาก @ ส่วนใหญ่เป็น viewport / map center
         Pattern patternAt = Pattern.compile("@(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
         Matcher matcherAt = patternAt.matcher(finalUrl);
 
-        // 3) พิกัดจาก query q=lat,lng
         Pattern patternQuery = Pattern.compile("[?&]q=(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
         Matcher matcherQuery = patternQuery.matcher(finalUrl);
 
@@ -139,6 +221,52 @@ public class WellnessHubService {
         }
     }
 
+    private void extractCoordinates(EmergencyService emergency) {
+        String originalUrl = emergency.getGoogleMapsLink();
+
+        if (originalUrl == null || originalUrl.trim().isEmpty()) {
+            emergency.setWellnessHubLatitude(null);
+            emergency.setWellnessHubLongitude(null);
+            return;
+        }
+
+        String finalUrl = originalUrl.trim();
+
+        if (finalUrl.contains("goo.gl") || finalUrl.contains("maps.app.goo.gl")) {
+            finalUrl = expandShortUrl(finalUrl);
+        }
+
+        Pattern patternPlace = Pattern.compile("!3d(-?\\d+(?:\\.\\d+)?)!4d(-?\\d+(?:\\.\\d+)?)");
+        Pattern patternQuery = Pattern.compile("[?&]q=(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+        Pattern patternAt = Pattern.compile("@(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+
+        Matcher matcherPlace = patternPlace.matcher(finalUrl);
+        Matcher matcherQuery = patternQuery.matcher(finalUrl);
+        Matcher matcherAt = patternAt.matcher(finalUrl);
+
+        Double latitude = null;
+        Double longitude = null;
+
+        if (matcherPlace.find()) {
+            latitude = Double.parseDouble(matcherPlace.group(1));
+            longitude = Double.parseDouble(matcherPlace.group(2));
+        } else if (matcherQuery.find()) {
+            latitude = Double.parseDouble(matcherQuery.group(1));
+            longitude = Double.parseDouble(matcherQuery.group(2));
+        } else if (matcherAt.find()) {
+            latitude = Double.parseDouble(matcherAt.group(1));
+            longitude = Double.parseDouble(matcherAt.group(2));
+        }
+
+        if (isValidCoordinate(latitude, longitude)) {
+            emergency.setWellnessHubLatitude(latitude);
+            emergency.setWellnessHubLongitude(longitude);
+        } else {
+            emergency.setWellnessHubLatitude(null);
+            emergency.setWellnessHubLongitude(null);
+        }
+    }
+
     private boolean isValidCoordinate(Double lat, Double lng) {
         return lat != null
                 && lng != null
@@ -146,8 +274,6 @@ public class WellnessHubService {
                 && lng >= -180 && lng <= 180;
     }
 
-    // ฟังก์ชันยิงแกะลิงก์ย่อด้วย HttpURLConnection ป้องกันเออร์เรอร์ค้างด้วย
-    // try-catch
     private String expandShortUrl(String shortenedUrl) {
         try {
             if (!shortenedUrl.startsWith("http://") && !shortenedUrl.startsWith("https://")) {
@@ -155,7 +281,7 @@ public class WellnessHubService {
             }
             URL url = new URL(shortenedUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setInstanceFollowRedirects(false); // เอาแค่หัว Header ไม่เอาเนื้อหาหน้าเว็บ
+            connection.setInstanceFollowRedirects(false);
             connection.setRequestMethod("HEAD");
             connection.setConnectTimeout(3000);
             connection.setReadTimeout(3000);
@@ -164,7 +290,6 @@ public class WellnessHubService {
             String expandedUrl = connection.getHeaderField("Location");
             connection.disconnect();
 
-            // ถ้าได้ลิงก์เต็มคืนมาให้ส่งออกไป ถ้าไม่ได้ให้ส่งลิงก์เดิมกลับไปลุ้นต่อ
             return (expandedUrl != null) ? expandedUrl : shortenedUrl;
         } catch (IOException e) {
             System.err.println("❌ ไม่สามารถเชื่อมต่อเพื่อขยายลิงก์ย่อได้: " + e.getMessage());
@@ -172,213 +297,379 @@ public class WellnessHubService {
         }
     }
 
-    // 🌟 [เวอร์ชันแก้ไขสมบูรณ์] เมธอดแก้ไขอัปเดตข้อมูลสถานประกอบการ (Edit) แยก
-    // DataType เคลียร์บั๊กหมวดหมู่และอำเภอ
-    public WellnessHub updateWellnessHub(Integer id, WellnessHub updatedData) {
-        // 1. ดึงข้อมูลเดิมในฐานข้อมูลมาตั้งต้นก่อนเสมอ
-        WellnessHub oldHub = wellnessHubRepository.findById(id).orElse(null);
-        if (oldHub == null)
+    @Transactional
+    public WellnessHub updateWellnessHub(
+            Integer id,
+            WellnessHub updatedData) {
+        if (id == null || updatedData == null) {
             return null;
+        }
 
-        // 2. จัดการเรื่องลิงก์ Google Maps และพิกัดภูมิศาสตร์
-        if (updatedData.getGoogleMapsLink() != null && !updatedData.getGoogleMapsLink().trim().isEmpty()) {
-            if (!updatedData.getGoogleMapsLink().equals(oldHub.getGoogleMapsLink())) {
-                oldHub.setGoogleMapsLink(updatedData.getGoogleMapsLink().trim());
-                // extractCoordinates(oldHub);
+        WellnessHub oldHub = wellnessHubRepository.findById(id).orElse(null);
+        EmergencyService oldEmergency = emergencyServiceRepository.findById(id).orElse(null);
+
+        if (oldHub == null && oldEmergency == null) {
+            return null;
+        }
+
+        if (updatedData.getLicenseId() != null && !id.equals(updatedData.getLicenseId())) {
+            throw new RuntimeException("ไม่สามารถเปลี่ยนเลขใบอนุญาตได้");
+        }
+
+        Category targetCategory;
+        if (updatedData.getCategory() != null
+                && updatedData.getCategory().getCategoryId() != null
+                && !updatedData.getCategory().getCategoryId().trim().isEmpty()) {
+
+            String categoryId = updatedData.getCategory().getCategoryId().trim().toUpperCase();
+            targetCategory = categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new RuntimeException("ไม่พบหมวดหมู่รหัส " + categoryId));
+
+        } else if (oldHub != null) {
+            targetCategory = oldHub.getCategory();
+        } else {
+            targetCategory = oldEmergency.getCategory();
+        }
+
+        District targetDistrict;
+        if (updatedData.getDistrict() != null
+                && updatedData.getDistrict().getDistrictId() != null) {
+
+            Integer districtId = updatedData.getDistrict().getDistrictId();
+            targetDistrict = districtRepository.findById(districtId)
+                    .orElseThrow(() -> new RuntimeException("ไม่พบอำเภอรหัส " + districtId));
+
+        } else if (oldHub != null) {
+            targetDistrict = oldHub.getDistrict();
+        } else {
+            targetDistrict = oldEmergency.getDistrict();
+        }
+
+        boolean targetIsEmergency = isEmergencyCategory(targetCategory);
+
+        if (oldEmergency != null && targetIsEmergency) {
+            updateEmergencyFields(oldEmergency, updatedData);
+
+            oldEmergency.setCategory(targetCategory);
+            oldEmergency.setDistrict(targetDistrict);
+
+            if (updatedData.getGoogleMapsLink() != null) {
+                extractCoordinates(oldEmergency);
             }
-        } else if (updatedData.getGoogleMapsLink() != null && updatedData.getGoogleMapsLink().trim().isEmpty()) {
-            oldHub.setGoogleMapsLink(null);
-            oldHub.setWellnessHubLatitude(null);
-            oldHub.setWellnessHubLongitude(null);
+
+            EmergencyService savedEmergency = emergencyServiceRepository.save(oldEmergency);
+
+            return convertEmergencyToWellnessHub(savedEmergency);
         }
 
-        // 🌟 3. ตรรกะตรวจเช็ค Category (หมวดหมู่) -> รองรับรหัสคีย์หลักที่เป็น String
-        // ทรงประสิทธิภาพ
-        if (updatedData.getCategory() != null) {
-            String incomingCatId = updatedData.getCategory().getCategoryId();
+        if (oldEmergency != null && !targetIsEmergency) {
+            updateEmergencyFields(oldEmergency, updatedData);
 
-            if (incomingCatId != null && !incomingCatId.trim().isEmpty()) {
-                // อัปเดตเปลี่ยนหมวดหมู่ใหม่เฉพาะกรณีที่ของเดิมเป็น null
-                // หรือรหัสใหม่ไม่ตรงกับรหัสเก่าใน DB เท่านั้น
-                if (oldHub.getCategory() == null || !incomingCatId.equals(oldHub.getCategory().getCategoryId())) {
-                    Category managedCategory = categoryRepository.findById(incomingCatId).orElse(null);
-                    if (managedCategory != null) {
-                        oldHub.setCategory(managedCategory);
-                        System.out.println("✅ หลังบ้านผูกสัมพันธ์หมวดหมู่สำเร็จ คีย์รหัส (String): " + incomingCatId);
-                    }
-                }
+            oldEmergency.setCategory(targetCategory);
+            oldEmergency.setDistrict(targetDistrict);
+
+            if (updatedData.getGoogleMapsLink() != null) {
+                extractCoordinates(oldEmergency);
             }
+
+            WellnessHub newHub = convertEmergencyToWellnessHub(oldEmergency);
+
+            newHub.setLicenseId(id);
+            newHub.setCategory(targetCategory);
+            newHub.setDistrict(targetDistrict);
+
+            emergencyServiceRepository.delete(oldEmergency);
+
+            WellnessHub savedHub = wellnessHubRepository.save(newHub);
+
+            return wellnessHubRepository.save(savedHub);
         }
 
-        // 🌟 4. ตรรกะตรวจเช็ค District (อำเภอ) -> รองรับรหัสคีย์หลักที่เป็น Integer
-        // ตามแอนทิตีจริง
-        if (updatedData.getDistrict() != null) {
-            Integer incomingDistId = updatedData.getDistrict().getDistrictId();
+        if (oldHub != null && targetIsEmergency) {
+            applyWellnessHubUpdates(oldHub, updatedData);
 
-            if (incomingDistId != null) {
-                // อัปเดตเปลี่ยนอำเภอใหม่เฉพาะกรณีที่ของเดิมเป็น null
-                // หรือรหัสใหม่ไม่ตรงกับรหัสเก่าใน DB เท่านั้น
-                if (oldHub.getDistrict() == null || !incomingDistId.equals(oldHub.getDistrict().getDistrictId())) {
-                    District managedDistrict = districtRepository.findById(incomingDistId).orElse(null);
-                    if (managedDistrict != null) {
-                        oldHub.setDistrict(managedDistrict);
-                        System.out.println("✅ หลังบ้านผูกสัมพันธ์อำเภอสำเร็จ คีย์รหัส (Integer): " + incomingDistId);
-                    }
-                }
-            }
+            oldHub.setCategory(targetCategory);
+            oldHub.setDistrict(targetDistrict);
+
+            EmergencyService emergency = convertToEmergency(oldHub);
+
+            emergency.setLicenseId(id);
+            emergency.setCategory(targetCategory);
+            emergency.setDistrict(targetDistrict);
+
+            accountRequestRepository.deleteByWellnessHub_LicenseId(id);
+
+            wellnessHubRepository.delete(oldHub);
+
+            EmergencyService savedEmergency = emergencyServiceRepository.save(emergency);
+
+            return convertEmergencyToWellnessHub(savedEmergency);
         }
 
-        // 🌟 5. คัดลอกเฉพาะข้อมูลพื้นฐานทั่วไปด้วยมือตรงๆ เพื่อความแม่นยำ
-        // ป้องกันบั๊กค่า null ล้างข้อมูลเก่า
-        if (updatedData.getWellnessHubName() != null && !updatedData.getWellnessHubName().trim().isEmpty()) {
-            oldHub.setWellnessHubName(updatedData.getWellnessHubName().trim());
-        }
-        if (updatedData.getAddress() != null && !updatedData.getAddress().trim().isEmpty()) {
-            oldHub.setAddress(updatedData.getAddress().trim());
-        }
-        if (updatedData.getTelInformation() != null && !updatedData.getTelInformation().trim().isEmpty()) {
-            oldHub.setTelInformation(updatedData.getTelInformation().trim());
-        }
-        if (updatedData.getWellnessHubDescription() != null) {
-            oldHub.setWellnessHubDescription(updatedData.getWellnessHubDescription().trim());
-        }
-        if (updatedData.getWellnessHubImg() != null) {
-            oldHub.setWellnessHubImg(updatedData.getWellnessHubImg());
-        }
-        if (updatedData.getCertificateType() != null) {
-            oldHub.setCertificateType(updatedData.getCertificateType());
-        }
-        if (updatedData.getStatus() != null) {
-            oldHub.setStatus(updatedData.getStatus());
-        }
-        if (updatedData.getContactInformation() != null) {
-            oldHub.setContactInformation(updatedData.getContactInformation());
-        }
+        applyWellnessHubUpdates(oldHub, updatedData);
 
-        // 6. จัดการบันทึกข้อมูลเวลาทำการ (Operating Hours) สไตล์เคลียร์สล็อตเก่า
-        if (updatedData.getOperatingHours() != null && !updatedData.getOperatingHours().trim().isEmpty()) {
-            try {
-                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                Map<String, Map<String, Object>> hoursMap = mapper.readValue(
-                        updatedData.getOperatingHours(),
-                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Map<String, Object>>>() {
-                        });
+        oldHub.setCategory(targetCategory);
+        oldHub.setDistrict(targetDistrict);
 
-                operatingHourRepository.deleteByWellnessHub(oldHub);
-
-                Map<String, String> dayNamesThai = new HashMap<>();
-                dayNamesThai.put("monday", "วันจันทร์");
-                dayNamesThai.put("tuesday", "วันอังคาร");
-                dayNamesThai.put("wednesday", "วันพุธ");
-                dayNamesThai.put("thursday", "วันพฤหัสบดี");
-                dayNamesThai.put("friday", "วันศุกร์");
-                dayNamesThai.put("saturday", "วันเสาร์");
-                dayNamesThai.put("sunday", "วันอาทิตย์");
-
-                for (Map.Entry<String, Map<String, Object>> entry : hoursMap.entrySet()) {
-                    Map<String, Object> dayData = entry.getValue();
-                    Boolean isActive = (Boolean) dayData.get("active");
-
-                    if (isActive != null && isActive) {
-                        OperatingHour oph = new OperatingHour();
-                        oph.setDayOfWeek(dayNamesThai.get(entry.getKey()));
-                        oph.setOpenTime(java.time.LocalTime.parse((String) dayData.get("open")));
-                        oph.setCloseTime(java.time.LocalTime.parse((String) dayData.get("close")));
-                        oph.setWellnessHub(oldHub);
-
-                        operatingHourRepository.save(oph);
-                    }
-                }
-
-                oldHub.setOperatingHours(updatedData.getOperatingHours());
-
-            } catch (Exception e) {
-                System.err.println("❌ ไม่สามารถบันทึกเวลาเปิดปิดลงตารางคู่ขนานได้: " + e.getMessage());
-            }
-        }
-
-        // 7. บันทึกข้อมูลที่ประกอบและกรองเสร็จสิ้นลงตารางใน Supabase
         return wellnessHubRepository.save(oldHub);
     }
 
-    @Transactional // 🌟 นำเข้า org.springframework.transaction.annotation.Transactional
+    private void applyWellnessHubUpdates(
+            WellnessHub target,
+            WellnessHub updatedData) {
+
+        if (updatedData.getGoogleMapsLink() != null && !updatedData.getGoogleMapsLink().trim().isEmpty()) {
+            if (!updatedData.getGoogleMapsLink().equals(target.getGoogleMapsLink())) {
+                target.setGoogleMapsLink(updatedData.getGoogleMapsLink().trim());
+                extractCoordinates(target);
+            }
+        } else if (updatedData.getGoogleMapsLink() != null && updatedData.getGoogleMapsLink().trim().isEmpty()) {
+            target.setGoogleMapsLink(null);
+            target.setWellnessHubLatitude(null);
+            target.setWellnessHubLongitude(null);
+        }
+
+        if (updatedData.getWellnessHubName() != null && !updatedData.getWellnessHubName().trim().isEmpty()) {
+            target.setWellnessHubName(updatedData.getWellnessHubName().trim());
+        }
+        if (updatedData.getAddress() != null && !updatedData.getAddress().trim().isEmpty()) {
+            target.setAddress(updatedData.getAddress().trim());
+        }
+        if (updatedData.getTelInformation() != null && !updatedData.getTelInformation().trim().isEmpty()) {
+            target.setTelInformation(updatedData.getTelInformation().trim());
+        }
+        if (updatedData.getWellnessHubDescription() != null) {
+            target.setWellnessHubDescription(updatedData.getWellnessHubDescription().trim());
+        }
+        if (updatedData.getWellnessHubImg() != null) {
+            target.setWellnessHubImg(updatedData.getWellnessHubImg());
+        }
+        if (updatedData.getCertificateType() != null) {
+            target.setCertificateType(updatedData.getCertificateType());
+        }
+        if (updatedData.getStatus() != null) {
+            target.setStatus(updatedData.getStatus());
+        }
+        if (updatedData.getContactInformation() != null) {
+            target.setContactInformation(updatedData.getContactInformation());
+        }
+
+        if (updatedData.getOperatingHours() != null) {
+            target.setOperatingHours(updatedData.getOperatingHours());
+        }
+    }
+
+    private void updateEmergencyFields(EmergencyService target, WellnessHub source) {
+        if (source.getWellnessHubName() != null)
+            target.setWellnessHubName(source.getWellnessHubName());
+        if (source.getAddress() != null)
+            target.setAddress(source.getAddress());
+        if (source.getContactInformation() != null)
+            target.setContactInformation(source.getContactInformation());
+        if (source.getTelInformation() != null)
+            target.setTelInformation(source.getTelInformation());
+        if (source.getGoogleMapsLink() != null)
+            target.setGoogleMapsLink(source.getGoogleMapsLink());
+        if (source.getWellnessHubDescription() != null)
+            target.setWellnessHubDescription(source.getWellnessHubDescription());
+        if (source.getWellnessHubImg() != null)
+            target.setWellnessHubImg(source.getWellnessHubImg());
+        if (source.getCertificateType() != null)
+            target.setCertificateType(source.getCertificateType());
+        if (source.getOperatingHours() != null)
+            target.setOperatingHours(source.getOperatingHours());
+        if (source.getStatus() != null)
+            target.setStatus(source.getStatus());
+
+        if (source.getWellnessHubLatitude() != null) {
+            target.setWellnessHubLatitude(source.getWellnessHubLatitude());
+        }
+        if (source.getWellnessHubLongitude() != null) {
+            target.setWellnessHubLongitude(source.getWellnessHubLongitude());
+        }
+    }
+
+    @Transactional
     public boolean deleteWellnessHub(Integer id) {
-        // 1. ค้นหาข้อมูลเดิมก่อน
+        if (emergencyServiceRepository.existsById(id)) {
+            emergencyServiceRepository.deleteById(id);
+            return true;
+        }
+
         WellnessHub hub = wellnessHubRepository.findById(id).orElse(null);
 
         if (hub != null) {
-            // 2. ลบคำขอในตาราง account_requests ที่ผูกกับ licenseId นี้ออกก่อน
             accountRequestRepository.deleteByWellnessHub_LicenseId(id);
-
-            // 3. 🌟 เพิ่มบรรทัดนี้: ลบเวลาทำการในตาราง operating_hours ที่ผูกกับ Hub
-            // นี้ออกด้วย
-            operatingHourRepository.deleteByWellnessHub(hub);
-
-            // 4. ลบข้อมูลสถานประกอบการในตารางหลัก wellness_hubs
             wellnessHubRepository.delete(hub);
             return true;
         }
         return false;
     }
 
-    // // // //
-    // // =========================================================================
-    // // // // ➕ ส่วนที่เพิ่มเข้าไปใหม่: จัดการกวาดข้อมูลเก่าในฐานข้อมูล (Data
-    // // Migration)
-    // // // //
-    // // =========================================================================
+    private EmergencyService convertToEmergency(WellnessHub hub) {
+        EmergencyService emergency = new EmergencyService();
+
+        emergency.setLicenseId(hub.getLicenseId());
+        emergency.setWellnessHubName(hub.getWellnessHubName());
+        emergency.setAddress(hub.getAddress());
+        emergency.setContactInformation(hub.getContactInformation());
+        emergency.setTelInformation(hub.getTelInformation());
+        emergency.setGoogleMapsLink(hub.getGoogleMapsLink());
+        emergency.setWellnessHubDescription(hub.getWellnessHubDescription());
+        emergency.setWellnessHubImg(hub.getWellnessHubImg());
+        emergency.setWellnessHubLatitude(hub.getWellnessHubLatitude());
+        emergency.setWellnessHubLongitude(hub.getWellnessHubLongitude());
+        emergency.setCertificateType(hub.getCertificateType());
+        emergency.setOperatingHours(hub.getOperatingHours());
+        emergency.setCategory(hub.getCategory());
+        emergency.setDistrict(hub.getDistrict());
+        emergency.setStatus(hub.getStatus() != null ? hub.getStatus() : "active");
+
+        return emergency;
+    }
+
+    private WellnessHub convertEmergencyToWellnessHub(EmergencyService emergency) {
+        WellnessHub hub = new WellnessHub();
+
+        hub.setLicenseId(emergency.getLicenseId());
+        hub.setWellnessHubName(emergency.getWellnessHubName());
+        hub.setAddress(emergency.getAddress());
+        hub.setContactInformation(emergency.getContactInformation());
+        hub.setTelInformation(emergency.getTelInformation());
+        hub.setGoogleMapsLink(emergency.getGoogleMapsLink());
+        hub.setWellnessHubDescription(emergency.getWellnessHubDescription());
+        hub.setWellnessHubImg(emergency.getWellnessHubImg());
+        hub.setWellnessHubLatitude(emergency.getWellnessHubLatitude());
+        hub.setWellnessHubLongitude(emergency.getWellnessHubLongitude());
+        hub.setCertificateType(emergency.getCertificateType());
+        hub.setOperatingHours(emergency.getOperatingHours());
+        hub.setCategory(emergency.getCategory());
+        hub.setDistrict(emergency.getDistrict());
+        hub.setStatus(emergency.getStatus());
+
+        return hub;
+    }
+
     // @PostConstruct
     // public void migrateOldGoogleMapsLinks() {
-    //     System.out.println("🔄 [Data Migration]\nเริ่มตรวจสอบและแปลงพิกัดสำหรับข้อมูลเก่าในตาราง...");
-    //     List<WellnessHub> allHubs = wellnessHubRepository.findAll();
+    // System.out.println("==================================================");
+    // System.out.println("🔄 [Data Migration] เริ่มตรวจสอบพิกัดข้อมูลเก่า");
 
-    //     int successCount = 0;
-    //     int failedCount = 0;
+    // int wellnessSuccessCount = 0;
+    // int wellnessFailedCount = 0;
 
-    //     for (WellnessHub hub : allHubs) {
-    //         // เงื่อนไข: คัดเลือกเฉพาะแถวที่มี "ลิงก์แผนที่ตัวจริง" และ
-    //         // "พิกัดในฐานข้อมูลยังคงเป็นค่าว่าง (null)"
-    //         if (hub.getGoogleMapsLink() != null
-    //                 && !hub.getGoogleMapsLink().isEmpty()
-    //                 && (hub.getGoogleMapsLink().trim().startsWith("http://")
-    //                 || hub.getGoogleMapsLink().trim().startsWith("https://"))
-    //                 && (hub.getWellnessHubLatitude() == null || hub.getWellnessHubLongitude() == null)) {
+    // int emergencySuccessCount = 0;
+    // int emergencyFailedCount = 0;
 
-    //             try {
-    //                 // เรียกใช้งานฟังก์ชันตัวเดิมของคุณแกะพิกัดให้
-    //                 extractCoordinates(hub);
+    // List<WellnessHub> allHubs = wellnessHubRepository.findAll();
 
-    //                 // เช็คผลลัพธ์: ถ้าพิกัดที่ได้กลับมาไม่เป็น null
-    //                 // แปลว่าแกะพิกัดจริงจากลิงก์สำเร็จ
-    //                 if (hub.getWellnessHubLatitude() != null) {
-    //                     successCount++;
-    //                     System.out.println("✅ ร้านเก่า: [" + hub.getWellnessHubName() + "]\nอัปเดตพิกัดจริงสำเร็จ");
-    //                 } else {
-    //                     failedCount++;
-    //                     System.out.println("🟡 ร้านเก่า: [" + hub.getWellnessHubName() + "]\nสกัดพิกัดไม่สำเร็จ ➡️ ปล่อยเป็นค่าว่าง (NULL)");
-    //                 }
-
-    //                 // บันทึกความเปลี่ยนแปลงของร้านเก่ากลับลงตารางใน Supabase
-    //                 wellnessHubRepository.save(hub);
-
-    //                 // สั่งให้ระบบหยุดพักเป็นเวลา 500 มิลลิวินาที (0.5 วินาที)
-    //                 // ก่อนก้าวไปทำรายการถัดไป เพื่อหลบการโดนตรวจจับจาก Google
-    //                 Thread.sleep(500);
-
-    //             } catch (InterruptedException ie) {
-    //                 System.err.println("❌ ระบบถูกขัดจังหวะการพักงาน (Thread interrupted): " + ie.getMessage());
-    //                 Thread.currentThread().interrupt();
-    //             } catch (Exception e) {
-    //                 System.err.println("❌ เกิดข้อผิดพลาดที่ข้อมูลเก่าร้าน " + hub.getWellnessHubName() + " : " + e.getMessage());
-    //             }
-    //         }
-    //     } // 🟢 ปิดบล็อกลูป for อย่างถูกต้องตรงนี้
-
-    //     // รายงานสถิติตัวเลขสรุปผลการ Migration ออกทางหน้าจอคอนโซลหลังบ้าน
-    //     System.out.println("==================================================");
-    //     System.out.println("🎉 [Data Migration]\nเสร็จสิ้นกระบวนการตรวจเช็คข้อมูลเก่า!");
-    //     System.out.println("🟢 ดึงพิกัดเฉพาะร้านเก่าสำเร็จ: " + successCount + " รายการ");
-    //     System.out.println("🟡 ดึงไม่สำเร็จ (ปล่อยเป็นค่าว่าง NULL): " + failedCount + " รายการ");
-    //     System.out.println("==================================================");
+    // for (WellnessHub hub : allHubs) {
+    // if (!shouldMigrateCoordinates(
+    // hub.getGoogleMapsLink(),
+    // hub.getWellnessHubLatitude(),
+    // hub.getWellnessHubLongitude())) {
+    // continue;
     // }
+
+    // try {
+    // extractCoordinates(hub);
+
+    // if (hub.getWellnessHubLatitude() != null && hub.getWellnessHubLongitude() !=
+    // null) {
+    // wellnessSuccessCount++;
+    // System.out.println("✅ Wellness Hub: [" + hub.getWellnessHubName() + "]
+    // อัปเดตพิกัดสำเร็จ");
+    // } else {
+    // wellnessFailedCount++;
+    // System.out.println("🟡 Wellness Hub: [" + hub.getWellnessHubName() + "]
+    // ไม่สามารถสกัดพิกัดได้");
+    // }
+
+    // wellnessHubRepository.save(hub);
+    // Thread.sleep(500);
+
+    // } catch (InterruptedException exception) {
+    // System.err.println("❌ การ Migration ถูกขัดจังหวะ: " +
+    // exception.getMessage());
+    // Thread.currentThread().interrupt();
+    // break;
+    // } catch (Exception exception) {
+    // wellnessFailedCount++;
+    // System.err.println("❌ เกิดข้อผิดพลาดที่ Wellness Hub [" +
+    // hub.getWellnessHubName() + "]: "
+    // + exception.getMessage());
+    // }
+    // }
+
+    // List<EmergencyService> allEmergencyServices =
+    // emergencyServiceRepository.findAll();
+
+    // for (EmergencyService emergency : allEmergencyServices) {
+    // if (!shouldMigrateCoordinates(
+    // emergency.getGoogleMapsLink(),
+    // emergency.getWellnessHubLatitude(),
+    // emergency.getWellnessHubLongitude())) {
+    // continue;
+    // }
+
+    // try {
+    // extractCoordinates(emergency);
+
+    // if (emergency.getWellnessHubLatitude() != null &&
+    // emergency.getWellnessHubLongitude() != null) {
+    // emergencySuccessCount++;
+    // System.out
+    // .println("✅ Emergency Service: [" + emergency.getWellnessHubName() + "]
+    // อัปเดตพิกัดสำเร็จ");
+    // } else {
+    // emergencyFailedCount++;
+    // System.out.println(
+    // "🟡 Emergency Service: [" + emergency.getWellnessHubName() + "]
+    // ไม่สามารถสกัดพิกัดได้");
+    // }
+
+    // emergencyServiceRepository.save(emergency);
+    // Thread.sleep(500);
+
+    // } catch (InterruptedException exception) {
+    // System.err.println("❌ การ Migration ถูกขัดจังหวะ: " +
+    // exception.getMessage());
+    // Thread.currentThread().interrupt();
+    // break;
+    // } catch (Exception exception) {
+    // emergencyFailedCount++;
+    // System.err.println("❌ เกิดข้อผิดพลาดที่ Emergency Service [" +
+    // emergency.getWellnessHubName() + "]: "
+    // + exception.getMessage());
+    // }
+    // }
+
+    // System.out.println("==================================================");
+    // System.out.println("🎉 [Data Migration] ตรวจสอบข้อมูลเก่าเสร็จสิ้น");
+    // System.out.println("🟢 Wellness Hub สำเร็จ: " + wellnessSuccessCount + "
+    // รายการ");
+    // System.out.println("🟡 Wellness Hub ไม่สำเร็จ: " + wellnessFailedCount + "
+    // รายการ");
+    // System.out.println("🟢 Emergency Service สำเร็จ: " + emergencySuccessCount +
+    // " รายการ");
+    // System.out.println("🟡 Emergency Service ไม่สำเร็จ: " + emergencyFailedCount
+    // + " รายการ");
+    // System.out.println("==================================================");
+    // }
+
+    private boolean shouldMigrateCoordinates(
+            String googleMapsLink,
+            Double latitude,
+            Double longitude) {
+        if (googleMapsLink == null || googleMapsLink.trim().isEmpty()) {
+            return false;
+        }
+
+        String normalizedLink = googleMapsLink.trim().toLowerCase();
+
+        boolean validUrl = normalizedLink.startsWith("http://") || normalizedLink.startsWith("https://");
+        boolean missingCoordinates = latitude == null || longitude == null;
+
+        return validUrl && missingCoordinates;
+    }
 }

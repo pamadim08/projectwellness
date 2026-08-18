@@ -43,6 +43,25 @@ public class HomeController {
         return ResponseEntity.ok(homeData);
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<?> search(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "ALL") String type) {
+        try {
+            Map<String, Object> result = homeService.search(q, type);
+
+            return ResponseEntity.ok(result);
+
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(
+                            Map.of(
+                                    "message",
+                                    exception.getMessage()));
+        }
+    }
+
     /*
      * =====================================================
      * API ดึงเฉพาะเส้นทางแนะนำ
@@ -51,8 +70,8 @@ public class HomeController {
      * GET /api/home/recommended-routes
      */
     @GetMapping("/recommended-routes")
-    public ResponseEntity<List<MainRoute>> getRecommendedRoutes() {
-        List<MainRoute> recommendedRoutes = homeService.getRecommendedRoutes();
+    public ResponseEntity<List<Map<String, Object>>> getRecommendedRoutes() {
+        List<Map<String, Object>> recommendedRoutes = homeService.getRecommendedRoutes();
         return ResponseEntity.ok(recommendedRoutes);
     }
 

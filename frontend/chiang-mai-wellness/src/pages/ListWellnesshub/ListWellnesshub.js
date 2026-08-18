@@ -337,7 +337,7 @@ const ListWellnessHub = () => {
               <thead>
                 <tr>
                   <th width="10%" className="text-center">
-                    รหัสระบบ
+                    รหัสสถานประกอบการ
                   </th>
                   <th width="35%">ชื่อสถานประกอบการ</th>
                   <th width="20%">หมวดหมู่</th>

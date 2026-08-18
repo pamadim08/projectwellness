@@ -18,7 +18,8 @@ public class AccountRequest {
     // ============================
     // ข้อมูลผู้สมัคร
     // ============================
-
+    @Column(name = "requester_name", nullable = false, length = 255)
+    private String requesterName;
     @Column(name = "user_email", nullable = false, length = 255)
     private String userEmail;
 
@@ -46,6 +47,8 @@ public class AccountRequest {
 
     @Column(name = "wellness_hub_img", columnDefinition = "TEXT")
     private String wellnessHubImg;
+    @Column(name = "wellness_hub_gallery", columnDefinition = "TEXT")
+    private String wellnessHubGallery;
 
     @Column(name = "wellness_hub_latitude")
     private Double wellnessHubLatitude;
@@ -62,7 +65,8 @@ public class AccountRequest {
     // ============================
     // เอกสารประกอบ
     // ============================
-
+    @Column(name = "verification_document_name", columnDefinition = "TEXT")
+    private String verificationDocumentName;
     @Column(name = "verification_documents", columnDefinition = "TEXT")
     private String verificationDocuments;
 
@@ -71,9 +75,9 @@ public class AccountRequest {
     // ============================
 
     /*
-        PENDING
-        APPROVED
-        REJECTED
+     * PENDING
+     * APPROVED
+     * REJECTED
      */
     @Column(name = "request_status", nullable = false, length = 20)
     private String requestStatus;
@@ -99,5 +103,8 @@ public class AccountRequest {
     @ManyToOne
     @JoinColumn(name = "license_id")
     private WellnessHub wellnessHub;
+    @ManyToOne
+    @JoinColumn(name = "emergency_license_id")
+    private EmergencyService emergencyService;
 
 }

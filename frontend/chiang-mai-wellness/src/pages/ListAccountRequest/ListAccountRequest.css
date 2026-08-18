@@ -587,6 +587,151 @@
   font-size: 14px;
   font-weight: 700;
 }
+/* =====================================================
+   POPUP
+===================================================== */
+
+.popup-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+
+  box-sizing: border-box;
+}
+
+.popup {
+  width: 100%;
+  max-width: 430px;
+  padding: 28px;
+
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+  text-align: center;
+
+  box-sizing: border-box;
+}
+
+.popup h3 {
+  margin: 0 0 10px;
+
+  color: #1e293b;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.popup p {
+  margin: 0;
+
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.popup-icon {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  font-size: 25px;
+}
+
+.popup-icon.error {
+  color: #c82333;
+  background: #fde8ea;
+}
+
+.popup-icon.logout {
+  color: #b52b24;
+  background: #fde8e7;
+}
+
+.popup-buttons {
+  margin-top: 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.confirm-btn,
+.cancel-btn,
+.logout-confirm-btn {
+  min-width: 120px;
+  min-height: 40px;
+  padding: 8px 18px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  border-radius: 4px;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.confirm-btn {
+  color: #ffffff;
+  background: var(--request-green);
+  border: 1px solid #1e7e34;
+}
+
+.confirm-btn:hover {
+  background: #218838;
+}
+
+.cancel-btn {
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+}
+
+.cancel-btn:hover {
+  color: #1e293b;
+  background: #f1f5f9;
+  border-color: #64748b;
+}
+
+.logout-confirm-popup {
+  max-width: 420px;
+}
+
+.logout-confirm-btn {
+  color: #ffffff;
+  background: #b52b24;
+  border: 1px solid #99231e;
+}
+
+.logout-confirm-btn:hover {
+  background: #99231e;
+}
 
 /* =====================================================
    RESPONSIVE

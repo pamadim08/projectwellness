@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -15,8 +15,8 @@ import {
   faRotate,
   faSpinner,
   faCircleExclamation,
-  faEye,
   faPenToSquare,
+  faCircleCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./ListAccountRequest.css";
@@ -24,18 +24,45 @@ import "./ListAccountRequest.css";
 const API_URL = "http://localhost:8080/api/account-requests";
 const ROWS_PER_PAGE = 10;
 
+// 🌟 Cache ข้อมูลไว้ระหว่างการเปลี่ยนหน้า
+// เมื่อ Refresh Browser ค่า Cache จะถูกล้างและโหลดข้อมูลใหม่จาก Backend
+let accountRequestCache = null;
+
 function ListAccountRequest() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [accountRequests, setAccountRequests] = useState([]);
+  const [accountRequests, setAccountRequests] = useState(
+    Array.isArray(accountRequestCache) ? accountRequestCache : [],
+  );
+
   const [adminName, setAdminName] = useState("Admin");
 
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const [isLoading, setIsLoading] = useState(
+    !Array.isArray(accountRequestCache),
+  );
+
   const [errorMessage, setErrorMessage] = useState("");
+
+  // 🌟 State สำหรับแสดง Toast ที่ส่งมาจากหน้า Approve
+  const [popupAlert, setPopupAlert] = useState({
+    show: false,
+    message: "",
+    isSuccess: true,
+  });
+
+  // 🌟 State สำหรับ Popup ดูเหตุผลที่ไม่อนุมัติ
+  const [showRejectReasonPopup, setShowRejectReasonPopup] = useState(false);
+
+  const [selectedRejectRequest, setSelectedRejectRequest] = useState(null);
+
+  // 🌟 State สำหรับ Popup ยืนยันออกจากระบบ
+  const [showLogoutPopup, setShowLogoutPopup] = useState(false);
 
   useEffect(() => {
     const storedAdminName = localStorage.getItem("adminName");
@@ -44,8 +71,74 @@ function ListAccountRequest() {
       setAdminName(storedAdminName);
     }
 
-    fetchAccountRequests();
+    // 🌟 โหลดจาก Backend เฉพาะครั้งแรกที่ยังไม่มี Cache
+    if (!Array.isArray(accountRequestCache)) {
+      fetchAccountRequests();
+    }
   }, []);
+
+  // 🌟 รับข้อมูลสถานะที่เปลี่ยนจากหน้าพิจารณา
+  // เพื่ออัปเดตเฉพาะรายการนั้นโดยไม่ต้องโหลด List ใหม่ทั้งหมด
+  useEffect(() => {
+    if (!location.state?.updatedRequestId || !location.state?.requestStatus) {
+      return;
+    }
+
+    const updatedRequestId = Number(location.state.updatedRequestId);
+
+    const requestStatus = normalizeStatus(location.state.requestStatus);
+
+    setAccountRequests((previousRequests) => {
+      const updatedRequests = previousRequests.map((request) => {
+        if (Number(request.requestId) !== updatedRequestId) {
+          return request;
+        }
+
+        return {
+          ...request,
+          requestStatus,
+          rejectionReason:
+            requestStatus === "REJECTED"
+              ? location.state.rejectionReason || request.rejectionReason
+              : null,
+        };
+      });
+
+      accountRequestCache = updatedRequests;
+
+      return updatedRequests;
+    });
+  }, [
+    location.state?.updatedRequestId,
+    location.state?.requestStatus,
+    location.state?.rejectionReason,
+  ]);
+
+  // 🌟 รับ Toast จากหน้า Approve หรือหน้าอื่นผ่าน location.state
+  useEffect(() => {
+    if (location.state?.showToast) {
+      setPopupAlert({
+        show: true,
+        message: location.state.toastMessage,
+        isSuccess: location.state.toastType === "success",
+      });
+
+      // ล้าง state เพื่อป้องกัน Toast แสดงซ้ำเมื่อ Refresh
+      navigate(location.pathname, {
+        replace: true,
+      });
+
+      const timer = setTimeout(() => {
+        setPopupAlert({
+          show: false,
+          message: "",
+          isSuccess: true,
+        });
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [location.state, location.pathname, navigate]);
 
   const fetchAccountRequests = async () => {
     try {
@@ -60,11 +153,19 @@ function ListAccountRequest() {
 
       const data = await response.json();
 
-      setAccountRequests(Array.isArray(data) ? data : []);
+      const normalizedData = Array.isArray(data) ? data : [];
+
+      setAccountRequests(normalizedData);
+
+      // 🌟 บันทึกข้อมูลไว้ใน Cache
+      accountRequestCache = normalizedData;
     } catch (error) {
       console.error("เกิดข้อผิดพลาดในการโหลดคำร้อง:", error);
 
       setAccountRequests([]);
+
+      accountRequestCache = null;
+
       setErrorMessage(error.message || "เกิดข้อผิดพลาดในการโหลดข้อมูลคำร้อง");
     } finally {
       setIsLoading(false);
@@ -112,17 +213,30 @@ function ListAccountRequest() {
   };
 
   const getLicenseId = (request) => {
-    return request.licenseId ?? request.wellnessHub?.licenseId ?? "-";
+    return (
+      request.licenseId ??
+      request.wellnessHub?.licenseId ??
+      request.emergencyService?.licenseId ??
+      "-"
+    );
   };
 
   const getWellnessHubName = (request) => {
     return (
-      request.wellnessHubName ?? request.wellnessHub?.wellnessHubName ?? "-"
+      request.wellnessHubName ??
+      request.wellnessHub?.wellnessHubName ??
+      request.emergencyService?.wellnessHubName ??
+      "-"
     );
   };
 
   const getTelephone = (request) => {
-    return request.telInformation ?? request.tellInformation ?? "-";
+    return (
+      request.telInformation ??
+      request.tellInformation ??
+      request.emergencyService?.telInformation ??
+      "-"
+    );
   };
 
   const filteredRequests = useMemo(() => {
@@ -184,27 +298,161 @@ function ListAccountRequest() {
     setCurrentPage(1);
   };
 
-  const handleViewRequest = (requestId) => {
-    navigate(`/account-requests/${requestId}`);
-  };
-
   const handleApproveRequest = (requestId) => {
     navigate(`/account-requests/${requestId}/approve`);
   };
 
+  const handleShowRejectReason = (request) => {
+    setSelectedRejectRequest(request);
+    setShowRejectReasonPopup(true);
+  };
+
+  const handleCloseRejectReason = () => {
+    setShowRejectReasonPopup(false);
+    setSelectedRejectRequest(null);
+  };
+
+  // 🌟 เปิด Popup ยืนยันออกจากระบบ
   const handleLogout = () => {
-    const confirmed = window.confirm("คุณต้องการออกจากระบบใช่หรือไม่?");
+    setShowLogoutPopup(true);
+  };
 
-    if (!confirmed) {
-      return;
-    }
-
+  // 🌟 ยืนยันออกจากระบบ
+  const handleConfirmLogout = () => {
     localStorage.clear();
+
+    // 🌟 ล้าง Cache เมื่อออกจากระบบ
+    accountRequestCache = null;
+
+    setShowLogoutPopup(false);
+
     navigate("/login");
   };
 
   return (
     <div className="account-request-page">
+      {/* 🌟 Toast แจ้งผลหลังกลับมาจากหน้า Approve */}
+      {popupAlert.show && (
+        <div
+          className={`gov-toast-alert ${
+            popupAlert.isSuccess ? "alert-success" : "alert-error"
+          }`}
+        >
+          <div className="toast-content-wrapper">
+            <i
+              className={
+                popupAlert.isSuccess
+                  ? "fa-solid fa-circle-check"
+                  : "fa-solid fa-circle-exclamation"
+              }
+            ></i>
+
+            <span>{popupAlert.message}</span>
+          </div>
+
+          <button
+            type="button"
+            className="btn-close-toast"
+            onClick={() =>
+              setPopupAlert({
+                show: false,
+                message: "",
+                isSuccess: true,
+              })
+            }
+            aria-label="ปิดข้อความแจ้งเตือน"
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      )}
+
+      {/* 🌟 Popup ยืนยันออกจากระบบ */}
+      {showLogoutPopup && (
+        <div
+          className="popup-bg"
+          onClick={() => setShowLogoutPopup(false)}
+        >
+          <div
+            className="popup logout-confirm-popup"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="popup-icon logout">
+              <FontAwesomeIcon icon={faRightFromBracket} />
+            </div>
+
+            <h3>ยืนยันการออกจากระบบ</h3>
+
+            <p>คุณต้องการออกจากระบบใช่หรือไม่?</p>
+
+            <div className="popup-buttons">
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={() => setShowLogoutPopup(false)}
+              >
+                ยกเลิก
+              </button>
+
+              <button
+                type="button"
+                className="logout-confirm-btn"
+                onClick={handleConfirmLogout}
+              >
+                <FontAwesomeIcon icon={faRightFromBracket} />
+                ออกจากระบบ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 Popup แสดงเหตุผลที่ไม่อนุมัติ */}
+      {showRejectReasonPopup && selectedRejectRequest && (
+        <div className="popup-bg" onClick={handleCloseRejectReason}>
+          <div
+            className="popup reject-popup"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="popup-icon error">
+              <FontAwesomeIcon icon={faCircleExclamation} />
+            </div>
+
+            <h3>เหตุผลที่ไม่อนุมัติคำร้อง</h3>
+
+            <p>
+              สถานประกอบการ{" "}
+              <strong>{getWellnessHubName(selectedRejectRequest)}</strong>
+            </p>
+
+            <div
+              style={{
+                marginTop: "16px",
+                padding: "14px 16px",
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+                color: "#334155",
+                lineHeight: "1.7",
+                textAlign: "left",
+              }}
+            >
+              {selectedRejectRequest.rejectionReason || "ไม่ได้ระบุเหตุผล"}
+            </div>
+
+            <div className="popup-buttons">
+              <button
+                type="button"
+                className="confirm-btn"
+                onClick={handleCloseRejectReason}
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <nav className="account-request-sidebar">
         <div className="account-request-sidebar-top">
           <div className="account-request-sidebar-logo">
@@ -229,6 +477,7 @@ function ListAccountRequest() {
           <Link to="/dashboard" className="menu-item">
             <i className="fa-solid fa-chart-pie"></i> แผงควบคุมหลัก
           </Link>
+
           <Link to="/listAccountRequest" className="menu-item active">
             <i className="fa-solid fa-clipboard-check"></i> ตรวจสอบคำขอสิทธิ์
             <span className="badge-counter">5</span>
@@ -237,12 +486,15 @@ function ListAccountRequest() {
           <p className="menu-label" style={{ marginTop: "20px" }}>
             การจัดการข้อมูล
           </p>
+
           <Link to="/listMainRoute" className="menu-item">
             <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
           </Link>
+
           <Link to="/listWellnessHub" className="menu-item">
             <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
           </Link>
+
           <Link to="/listOfficialArticle" className="menu-item">
             <i className="fa-solid fa-newspaper"></i> จัดการบทความ
           </Link>
@@ -292,11 +544,8 @@ function ListAccountRequest() {
               }}
             >
               <option value="">-- สถานะทั้งหมด --</option>
-
               <option value="PENDING">รอพิจารณา</option>
-
               <option value="APPROVED">อนุมัติแล้ว</option>
-
               <option value="REJECTED">ไม่อนุมัติ</option>
             </select>
 
@@ -336,20 +585,13 @@ function ListAccountRequest() {
               <thead>
                 <tr>
                   <th className="request-column-number">ลำดับ</th>
-
                   <th className="request-column-license">เลขใบอนุญาต</th>
-
                   <th className="request-column-name">ชื่อสถานประกอบการ</th>
-
                   <th className="request-column-contact">ผู้ติดต่อ</th>
-
                   <th className="request-column-tel">เบอร์โทรศัพท์</th>
-
                   <th className="request-column-email">อีเมล</th>
-
                   <th className="request-column-status">สถานะ</th>
-
-                  <th className="request-column-action">การจัดการ</th>
+                  <th className="request-column-action">การพิจารณา</th>
                 </tr>
               </thead>
 
@@ -395,17 +637,6 @@ function ListAccountRequest() {
 
                         <td>
                           <div className="account-request-action-group">
-                            <button
-                              type="button"
-                              className="account-request-view-button"
-                              onClick={() =>
-                                handleViewRequest(request.requestId)
-                              }
-                            >
-                              <FontAwesomeIcon icon={faEye} />
-                              ดู
-                            </button>
-
                             {status === "PENDING" && (
                               <button
                                 type="button"
@@ -416,6 +647,33 @@ function ListAccountRequest() {
                               >
                                 <FontAwesomeIcon icon={faPenToSquare} />
                                 พิจารณา
+                              </button>
+                            )}
+
+                            {status === "APPROVED" && (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  color: "#15803d",
+                                  fontWeight: "600",
+                                  fontSize: "13px",
+                                }}
+                              >
+                                <FontAwesomeIcon icon={faCircleCheck} />
+                                อนุมัติแล้ว
+                              </span>
+                            )}
+
+                            {status === "REJECTED" && (
+                              <button
+                                type="button"
+                                className="account-request-view-button"
+                                onClick={() => handleShowRejectReason(request)}
+                              >
+                                <FontAwesomeIcon icon={faCircleExclamation} />
+                                ดูเหตุผล
                               </button>
                             )}
                           </div>

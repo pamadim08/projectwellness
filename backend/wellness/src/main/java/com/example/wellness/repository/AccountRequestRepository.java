@@ -8,19 +8,51 @@ import java.util.List;
 
 @Repository
 public interface AccountRequestRepository
-        extends JpaRepository<AccountRequest, Integer> {
+                extends JpaRepository<AccountRequest, Integer> {
 
-    // เรียงคำร้องล่าสุดก่อน
-    List<AccountRequest> findAllByOrderByRequestIdDesc();
+        List<AccountRequest> findAllByOrderByRequestIdDesc();
 
-    // กรองตามสถานะ เช่น PENDING, APPROVED, REJECTED
-    List<AccountRequest> findByRequestStatusOrderByRequestIdDesc(
-            String requestStatus
-    );
+        List<AccountRequest> findByRequestStatusOrderByRequestIdDesc(
+                        String requestStatus);
 
-    // นับจำนวนคำร้องตามสถานะ สำหรับ Dashboard/Badge
-    long countByRequestStatus(String requestStatus);
+        long countByRequestStatus(
+                        String requestStatus);
 
-    void deleteByWellnessHub_LicenseId(Integer licenseId);
-    long countByRequestStatusIgnoreCase(String requestStatus);
+        long countByRequestStatusIgnoreCase(
+                        String requestStatus);
+
+        boolean existsByWellnessHub_LicenseIdAndRequestStatus(
+                        Integer licenseId,
+                        String requestStatus);
+
+        long deleteByWellnessHub_LicenseIdAndRequestStatus(
+                        Integer licenseId,
+                        String requestStatus);
+
+        void deleteByWellnessHub_LicenseId(
+                        Integer licenseId);
+
+        List<AccountRequest> findByWellnessHubNameContainingIgnoreCaseOrderByRequestIdDesc(
+                        String wellnessHubName);
+
+        List<AccountRequest> findByWellnessHub_LicenseIdOrderByRequestIdDesc(
+                        Integer licenseId);
+
+        // =============================
+        // Emergency Service
+        // =============================
+
+        boolean existsByEmergencyService_LicenseIdAndRequestStatus(
+                        Integer licenseId,
+                        String requestStatus);
+
+        long deleteByEmergencyService_LicenseIdAndRequestStatus(
+                        Integer licenseId,
+                        String requestStatus);
+
+        List<AccountRequest> findByEmergencyService_LicenseIdOrderByRequestIdDesc(
+                        Integer licenseId);
+
+        List<AccountRequest> findByEmergencyService_WellnessHubNameContainingIgnoreCaseOrderByRequestIdDesc(
+                        String wellnessHubName);
 }

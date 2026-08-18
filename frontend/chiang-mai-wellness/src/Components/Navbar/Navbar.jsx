@@ -15,13 +15,15 @@ function Navbar() {
       path: "/wellness-routes",
       label: "เส้นทางท่องเที่ยว",
     },
-    {
-      path: "/track-status",
-      label: "ติดตามสถานะคำขอ",
-    },
+
     {
       path: "/articles",
       label: "บทความ",
+    },
+
+    {
+      path: "/track-status",
+      label: "ติดตามสถานะคำขอ",
     },
   ];
 
@@ -32,30 +34,20 @@ function Navbar() {
   return (
     <header className="navbar">
       <div className="navbar__container">
-        <Link
-          to="/"
-          className="navbar__brand"
-          onClick={closeMenu}
-        >
+        <Link to="/" className="navbar__brand" onClick={closeMenu}>
           <div className="navbar__logo" aria-hidden="true">
             ☘
           </div>
 
           <div className="navbar__brand-text">
-            <span className="navbar__brand-title">
-              CHIANG MAI
-            </span>
+            <span className="navbar__brand-title">CHIANG MAI</span>
 
-            <span className="navbar__brand-subtitle">
-              WELLNESS
-            </span>
+            <span className="navbar__brand-subtitle">WELLNESS</span>
           </div>
         </Link>
 
         <nav
-          className={`navbar__menu ${
-            isMenuOpen ? "navbar__menu--open" : ""
-          }`}
+          className={`navbar__menu ${isMenuOpen ? "navbar__menu--open" : ""}`}
           aria-label="เมนูหลัก"
         >
           {menuItems.map((item) => (
@@ -64,9 +56,7 @@ function Navbar() {
               to={item.path}
               end={item.end}
               className={({ isActive }) =>
-                isActive
-                  ? "navbar__link navbar__link--active"
-                  : "navbar__link"
+                isActive ? "navbar__link navbar__link--active" : "navbar__link"
               }
               onClick={closeMenu}
             >
@@ -75,7 +65,7 @@ function Navbar() {
           ))}
 
           <Link
-            to="/login"
+            to="/provider/login"
             className="navbar__login-button"
             onClick={closeMenu}
           >
@@ -87,9 +77,7 @@ function Navbar() {
         <button
           type="button"
           className="navbar__toggle"
-          aria-label={
-            isMenuOpen ? "ปิดเมนู" : "เปิดเมนู"
-          }
+          aria-label={isMenuOpen ? "ปิดเมนู" : "เปิดเมนู"}
           aria-expanded={isMenuOpen}
           onClick={() => setIsMenuOpen((previous) => !previous)}
         >

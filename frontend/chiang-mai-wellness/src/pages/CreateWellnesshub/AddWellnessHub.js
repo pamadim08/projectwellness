@@ -131,10 +131,10 @@ const AddWellnessHub = () => {
           </div>
 
           <p className="menu-label">เมนูหลัก</p>
-          <Link to="/admin/dashboard" className="menu-item">
+          <Link to="/dashboard" className="menu-item">
             <i className="fa-solid fa-chart-pie"></i> แผงควบคุมหลัก
           </Link>
-          <Link to="/admin/requests" className="menu-item">
+          <Link to="/listAccountRequest" className="menu-item ">
             <i className="fa-solid fa-clipboard-check"></i> ตรวจสอบคำขอสิทธิ์
             <span className="badge-counter">5</span>
           </Link>
@@ -142,13 +142,13 @@ const AddWellnessHub = () => {
           <p className="menu-label" style={{ marginTop: "20px" }}>
             การจัดการข้อมูล
           </p>
-          <Link to="/createMainRoute" className="menu-item">
+          <Link to="/listMainRoute" className="menu-item">
             <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
           </Link>
-          <Link to="/listWellnesshub" className="menu-item active">
+          <Link to="/listWellnessHub" className="menu-item">
             <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
           </Link>
-          <Link to="/admin/articles" className="menu-item">
+          <Link to="/listOfficialArticle" className="menu-item">
             <i className="fa-solid fa-newspaper"></i> จัดการบทความ
           </Link>
         </div>
