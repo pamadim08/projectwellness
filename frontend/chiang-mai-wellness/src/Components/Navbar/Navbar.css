@@ -3,9 +3,11 @@
   top: 0;
   z-index: 1000;
   width: 100%;
-  background: rgba(17, 67, 53, 0.97);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 5px 20px rgba(11, 45, 35, 0.16);
+
+  background: rgba(248, 249, 250, 0.96);
+
+  border-bottom: 1px solid #dde3de;
+
   backdrop-filter: blur(12px);
 }
 
@@ -13,22 +15,31 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: min(100% - 40px, 1280px);
-  min-height: 78px;
+
+  width: min(calc(100% - 48px), 1184px);
+  min-height: 76px;
+
   margin: 0 auto;
 }
+
+/* ==========================================================================
+   BRAND
+   ========================================================================== */
 
 .navbar__brand {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #ffffff;
+
+  color: #1b4332;
+
   text-decoration: none;
-  border-radius: 8px;
+
+  border-radius: 6px;
 }
 
 .navbar__brand:focus-visible {
-  outline: 2px solid #8ee0b5;
+  outline: 3px solid #74c69d;
   outline-offset: 4px;
 }
 
@@ -36,161 +47,241 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 43px;
-  height: 43px;
-  color: #8ee0b5;
-  font-size: 24px;
-  background: rgba(101, 211, 153, 0.12);
-  border: 1px solid rgba(142, 224, 181, 0.3);
-  border-radius: 50%;
+
+  width: 42px;
+  height: 42px;
+
+  color: #1b4332;
+
+  background: #edf5ef;
+
+  border: 1px solid #c9d8ce;
+  border-radius: 8px;
+
+  font-size: 22px;
+
   transition:
-    transform 0.3s ease,
-    background-color 0.3s ease;
+    color 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    background 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .navbar__brand:hover .navbar__logo {
-  background: rgba(101, 211, 153, 0.2);
-  transform: rotate(8deg);
+  color: #ffffff;
+  background: #2d6a4f;
+  border-color: #2d6a4f;
 }
 
 .navbar__brand-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.15;
+
+  line-height: 1.1;
 }
 
 .navbar__brand-title {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 2.5px;
+  color: #1b4332;
+
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
 }
 
 .navbar__brand-subtitle {
-  margin-top: 4px;
-  color: #81ddb0;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 4px;
+  margin-top: 5px;
+
+  color: #2d6a4f;
+
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
 }
+
+/* ==========================================================================
+   MENU
+   ========================================================================== */
 
 .navbar__menu {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .navbar__link {
   position: relative;
-  padding: 12px 15px;
-  color: #dcece5;
-  font-size: 15px;
-  text-decoration: none;
-  border-radius: 10px;
-  transition:
-    color 0.25s ease,
-    background-color 0.25s ease;
-}
 
-.navbar__link:focus-visible {
-  outline: 2px solid #8ee0b5;
-  outline-offset: 2px;
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 42px;
+  padding: 0 14px;
+
+  color: #53645b;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  text-decoration: none;
+
+  border-radius: 6px;
+
+  transition:
+    color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    background 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .navbar__link::after {
   position: absolute;
-  right: 15px;
-  bottom: 6px;
-  left: 15px;
+
+  right: 14px;
+  bottom: 4px;
+  left: 14px;
+
   height: 2px;
-  background: #79d9aa;
-  border-radius: 20px;
+
+  background: #2d6a4f;
+
   content: "";
+
   transform: scaleX(0);
   transform-origin: center;
-  transition: transform 0.25s ease;
+
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .navbar__link:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.07);
+  color: #1b4332;
+
+  background: #f0f4f1;
 }
 
-.navbar__link:hover::after,
+.navbar__link:hover::after {
+  transform: scaleX(0.45);
+}
+
+.navbar__link--active {
+  color: #1b4332;
+
+  background: transparent;
+
+  font-weight: 700;
+}
+
 .navbar__link--active::after {
   transform: scaleX(1);
 }
 
-.navbar__link--active {
-  color: #8ee0b5;
-  background: rgba(121, 217, 170, 0.1);
-}
-
-.navbar__login-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 12px;
-  padding: 11px 20px;
-  color: #123e31;
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: none;
-  background: #8ee0b5;
-  border: 1px solid #8ee0b5;
-  border-radius: 12px;
-  transition:
-    background-color 0.25s ease,
-    box-shadow 0.25s ease,
-    transform 0.25s ease;
-}
-
-.navbar__login-button:hover {
-  background: #a4ebc5;
-  box-shadow: 0 8px 20px rgba(85, 201, 142, 0.25);
-  transform: translateY(-2px);
-}
-
-.navbar__login-button:active {
-  transform: translateY(0) scale(0.97);
-}
-
-.navbar__login-button:focus-visible {
-  outline: 2px solid #ffffff;
+.navbar__link:focus-visible {
+  outline: 3px solid #74c69d;
   outline-offset: 2px;
 }
 
+/* ==========================================================================
+   LOGIN BUTTON
+   ========================================================================== */
+
+.navbar__login-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  min-height: 42px;
+  margin-left: 12px;
+  padding: 0 18px;
+
+  color: #ffffff;
+
+  background: #1b4332;
+
+  border: 1px solid #1b4332;
+  border-radius: 6px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  text-decoration: none;
+
+  transition:
+    background 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar__login-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.navbar__login-button:hover {
+  background: #2d6a4f;
+  border-color: #2d6a4f;
+
+  transform: translateY(-1px);
+}
+
+.navbar__login-button:active {
+  transform: translateY(0);
+}
+
+.navbar__login-button:focus-visible {
+  outline: 3px solid #74c69d;
+  outline-offset: 3px;
+}
+
+/* ==========================================================================
+   MOBILE TOGGLE
+   ========================================================================== */
+
 .navbar__toggle {
   display: none;
+
   flex-direction: column;
+  align-items: center;
   justify-content: center;
   gap: 5px;
-  width: 44px;
-  height: 44px;
-  padding: 10px;
+
+  width: 42px;
+  height: 42px;
+  padding: 9px;
+
+  color: #1b4332;
+
   background: transparent;
-  border: 0;
-  border-radius: 10px;
+
+  border: 1px solid #d1dad4;
+  border-radius: 6px;
+
   cursor: pointer;
+
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
 }
 
 .navbar__toggle:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: #edf3ef;
+  border-color: #aebfb4;
 }
 
 .navbar__toggle:focus-visible {
-  outline: 2px solid #8ee0b5;
+  outline: 3px solid #74c69d;
   outline-offset: 2px;
 }
 
 .navbar__toggle-line {
   display: block;
-  width: 24px;
+
+  width: 22px;
   height: 2px;
-  background: #ffffff;
-  border-radius: 5px;
+
+  background: #1b4332;
+
+  border-radius: 2px;
+
   transition:
-    transform 0.25s ease,
-    opacity 0.25s ease;
+    transform 250ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 200ms ease;
 }
 
 .navbar__toggle-line--first {
@@ -205,9 +296,14 @@
   transform: translateY(-7px) rotate(-45deg);
 }
 
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
 @media (max-width: 900px) {
   .navbar__container {
     position: relative;
+
     min-height: 70px;
   }
 
@@ -217,67 +313,127 @@
 
   .navbar__menu {
     position: absolute;
+
     top: 70px;
     right: -20px;
     left: -20px;
+
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 4px;
+
     max-height: 0;
     padding: 0 20px;
+
     overflow: hidden;
     visibility: hidden;
-    background: #114335;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 15px 25px rgba(9, 38, 29, 0.18);
+
+    background: #f8f9fa;
+
+    border-top: 1px solid #dde3de;
+    border-bottom: 1px solid #dde3de;
+
+    box-shadow: 0 14px 28px rgba(27, 67, 50, 0.08);
+
     opacity: 0;
+
     transition:
-      max-height 0.35s ease,
-      padding 0.35s ease,
-      opacity 0.25s ease,
-      visibility 0.25s ease;
+      max-height 320ms cubic-bezier(0.4, 0, 0.2, 1),
+      padding 320ms cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 200ms ease,
+      visibility 200ms ease;
   }
 
   .navbar__menu--open {
     max-height: 430px;
-    padding-top: 14px;
-    padding-bottom: 20px;
+
+    padding-top: 12px;
+    padding-bottom: 18px;
+
     visibility: visible;
+
     opacity: 1;
   }
 
   .navbar__link {
     width: 100%;
-    padding: 13px 15px;
+    min-height: 46px;
+
+    padding: 0 14px;
   }
 
   .navbar__link::after {
-    display: none;
+    right: auto;
+    bottom: 8px;
+    left: 14px;
+
+    width: 28px;
+  }
+
+  .navbar__link:hover::after {
+    transform: scaleX(1);
+  }
+
+  .navbar__link--active {
+    background: #edf3ef;
   }
 
   .navbar__login-button {
-    justify-content: center;
+    width: 100%;
+    min-height: 46px;
+
     margin: 8px 0 0;
   }
 }
 
 @media (max-width: 480px) {
   .navbar__container {
-    width: min(100% - 28px, 1280px);
+    width: calc(100% - 24px);
   }
 
-  .navbar__brand-title {
-    font-size: 14px;
-  }
-
-  .navbar__brand-subtitle {
-    font-size: 10px;
-    letter-spacing: 3px;
+  .navbar__brand {
+    gap: 9px;
   }
 
   .navbar__logo {
-    width: 39px;
-    height: 39px;
+    width: 38px;
+    height: 38px;
+
+    font-size: 20px;
+  }
+
+  .navbar__brand-title {
+    font-size: 13px;
+    letter-spacing: 0.12em;
+  }
+
+  .navbar__brand-subtitle {
+    margin-top: 4px;
+
+    font-size: 9px;
+    letter-spacing: 0.22em;
+  }
+
+  .navbar__menu {
+    right: -12px;
+    left: -12px;
+
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}
+
+/* ==========================================================================
+   REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar *,
+  .navbar *::before,
+  .navbar *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

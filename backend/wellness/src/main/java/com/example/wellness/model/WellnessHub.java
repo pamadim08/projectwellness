@@ -39,6 +39,9 @@ public class WellnessHub {
     @Column(name = "wellness_hub_img", columnDefinition = "TEXT")
     private String wellnessHubImg;
 
+    @Column(name = "wellness_hub_gallery", columnDefinition = "TEXT")
+    private String wellnessHubGallery;
+
     @Column(name = "wellness_hub_latitude")
     private Double wellnessHubLatitude;
 

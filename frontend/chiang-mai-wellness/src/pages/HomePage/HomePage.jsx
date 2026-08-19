@@ -4,7 +4,9 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
+  Flag,
   MapPin,
+  Navigation,
   Newspaper,
   RefreshCw,
   Search,
@@ -22,7 +24,7 @@ const HERO_SLIDES = [
     description:
       "รวมเส้นทางท่องเที่ยวเชิงสุขภาพ สถานประกอบการ และภูมิปัญญาท้องถิ่น เพื่อให้คุณวางแผนการเดินทางได้ง่ายขึ้น",
     image:
-      "https://images.unsplash.com/photo-1599708153386-62bf3f035ee9?auto=format&fit=crop&w=1920&q=85",
+      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSjGvEU3vRnZVrbUZ0ZcWGjjfgPdSWVQs_Di0fFDj4MNGQgEdbNDt8uzA4&s=10",
     link: "#recommended-routes",
     buttonText: "สำรวจเส้นทางแนะนำ",
   },
@@ -59,38 +61,38 @@ const SEARCH_TYPES = [
 const ROUTE_CATEGORY_DISPLAY = {
   C01: {
     name: "นวด/สปาเพื่อสุขภาพ",
-    color: "#2E9D62",
-    background: "#EEF8F2",
+    color: "#2E7D57",
+    background: "#EDF6F0",
   },
   C02: {
     name: "คลินิก/สถานพยาบาล",
-    color: "#2563A6",
-    background: "#EEF4FB",
+    color: "#315F82",
+    background: "#EFF4F7",
   },
   C03: {
     name: "อาหารและเครื่องดื่ม",
-    color: "#F28C28",
-    background: "#FFF6EC",
+    color: "#8A6325",
+    background: "#F8F3E9",
   },
   C04: {
     name: "ที่พักฟื้นฟูสุขภาพ",
-    color: "#7C63D9",
-    background: "#F3F0FC",
+    color: "#695680",
+    background: "#F3F0F6",
   },
   C05: {
     name: "สถานที่ท่องเที่ยว",
-    color: "#28A9D8",
-    background: "#EDF8FC",
+    color: "#317182",
+    background: "#EDF5F6",
   },
   EM01: {
     name: "หน่วยกู้ภัย",
-    color: "#E0A000",
-    background: "#FFF8E8",
+    color: "#896A20",
+    background: "#FAF5E8",
   },
   EM02: {
     name: "โรงพยาบาล",
-    color: "#D9434E",
-    background: "#FDEFF0",
+    color: "#A43D46",
+    background: "#FAEFF0",
   },
 };
 
@@ -111,8 +113,8 @@ function getRouteCategoryDisplay(category) {
   return {
     categoryId,
     name: category?.categoryName || "หมวดหมู่อื่น",
-    color: "#64748B",
-    background: "#F1F5F9",
+    color: "#56635B",
+    background: "#F1F3F1",
   };
 }
 
@@ -304,95 +306,118 @@ export default function HomePage() {
         onMouseEnter={() => setPauseSlider(true)}
         onMouseLeave={() => setPauseSlider(false)}
       >
-        {HERO_SLIDES.map((slide, index) => (
-          <article
-            key={slide.id}
-            className={`homepage-hero__slide ${
-              index === activeSlide ? "homepage-hero__slide--active" : ""
-            }`}
-            aria-hidden={index !== activeSlide}
-          >
-            <img src={slide.image} alt="" className="homepage-hero__image" />
+        <div className="homepage-container homepage-hero__layout">
+          <div className="homepage-hero__content">
+            <p className="homepage-hero__eyebrow">CHIANG MAI WELLNESS</p>
 
-            <div className="homepage-hero__overlay" />
-
-            <div className="homepage-container homepage-hero__content">
-              <p className="homepage-hero__eyebrow">CHIANG MAI WELLNESS</p>
-
-              <h1>{slide.title}</h1>
-
-              <p className="homepage-hero__description">{slide.description}</p>
-
-              {/* ข้อ 4: เปลี่ยนจาก <Link> เป็น <a> */}
-              <a
-                href={slide.link}
-                className="homepage-primary-button"
-                tabIndex={index === activeSlide ? 0 : -1}
+            {HERO_SLIDES.map((slide, index) => (
+              <article
+                key={slide.id}
+                className={`homepage-hero__copy ${
+                  index === activeSlide ? "homepage-hero__copy--active" : ""
+                }`}
+                aria-hidden={index !== activeSlide}
               >
-                {slide.buttonText}
-                <ArrowRight aria-hidden="true" />
-              </a>
+                <h1>{slide.title}</h1>
+
+                <p className="homepage-hero__description">
+                  {slide.description}
+                </p>
+
+                <a
+                  href={slide.link}
+                  className="homepage-primary-button"
+                  tabIndex={index === activeSlide ? 0 : -1}
+                >
+                  <span>{slide.buttonText}</span>
+                  <ArrowRight aria-hidden="true" />
+                </a>
+              </article>
+            ))}
+
+            <div className="homepage-hero__controls">
+              <button
+                type="button"
+                className="homepage-hero__arrow"
+                onClick={() => changeSlide(-1)}
+                aria-label="สไลด์ก่อนหน้า"
+              >
+                <ArrowLeft />
+              </button>
+
+              <div className="homepage-hero__dots" aria-label="เลือกสไลด์">
+                {HERO_SLIDES.map((slide, index) => (
+                  <button
+                    key={slide.id}
+                    type="button"
+                    className={`homepage-hero__dot ${
+                      index === activeSlide ? "homepage-hero__dot--active" : ""
+                    }`}
+                    onClick={() => setActiveSlide(index)}
+                    aria-label={`แสดงสไลด์ที่ ${index + 1}`}
+                    aria-current={index === activeSlide ? "true" : undefined}
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className="homepage-hero__arrow"
+                onClick={() => changeSlide(1)}
+                aria-label="สไลด์ถัดไป"
+              >
+                <ArrowRight />
+              </button>
             </div>
-          </article>
-        ))}
+          </div>
 
-        <button
-          type="button"
-          className="homepage-hero__arrow homepage-hero__arrow--left"
-          onClick={() => changeSlide(-1)}
-          aria-label="สไลด์ก่อนหน้า"
-        >
-          <ArrowLeft />
-        </button>
-
-        <button
-          type="button"
-          className="homepage-hero__arrow homepage-hero__arrow--right"
-          onClick={() => changeSlide(1)}
-          aria-label="สไลด์ถัดไป"
-        >
-          <ArrowRight />
-        </button>
-
-        <div className="homepage-hero__dots">
-          {HERO_SLIDES.map((slide, index) => (
-            <button
-              key={slide.id}
-              type="button"
-              className={`homepage-hero__dot ${
-                index === activeSlide ? "homepage-hero__dot--active" : ""
-              }`}
-              onClick={() => setActiveSlide(index)}
-              aria-label={`แสดงสไลด์ที่ ${index + 1}`}
-            />
-          ))}
+          <div className="homepage-hero__visual">
+            {HERO_SLIDES.map((slide, index) => (
+              <div
+                key={slide.id}
+                className={`homepage-hero__image-frame ${
+                  index === activeSlide
+                    ? "homepage-hero__image-frame--active"
+                    : ""
+                }`}
+                aria-hidden={index !== activeSlide}
+              >
+                <img
+                  src={slide.image}
+                  alt=""
+                  className="homepage-hero__image"
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Global Search */}
       <section id="home-search" className="homepage-search">
         <div className="homepage-container">
-          <div className="homepage-search__panel">
-            <div className="homepage-search__heading">
-              <div className="homepage-search__heading-icon">
-                <Search />
-              </div>
-
-              <div>
-                <h2>ค้นหาข้อมูลที่คุณสนใจ</h2>
-                <p>ค้นหาสถานประกอบการ เส้นทางท่องเที่ยว และบทความสุขภาพ</p>
-              </div>
+          <div className="homepage-search__heading">
+            <div>
+              <h2>ค้นหาสิ่งที่คุณสนใจ</h2>
+              <p>
+                ค้นหาสถานประกอบการ เส้นทางท่องเที่ยว
+                หรือบทความสุขภาพได้จากที่เดียว
+              </p>
             </div>
+          </div>
 
-            <form
-              className="homepage-search__form"
-              onSubmit={handleSearch}
-              noValidate
-            >
+          <form
+            className="homepage-search__form"
+            onSubmit={handleSearch}
+            noValidate
+          >
+            <div className="homepage-search__field homepage-search__field--type">
+              <label htmlFor="homepage-search-type">ประเภทข้อมูล</label>
+
               <select
+                id="homepage-search-type"
                 value={searchType}
                 onChange={(event) => setSearchType(event.target.value)}
-                aria-label="เลือกประเภทข้อมูล"
               >
                 {SEARCH_TYPES.map((type) => (
                   <option key={type.value} value={type.value}>
@@ -400,15 +425,20 @@ export default function HomePage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="homepage-search__field homepage-search__field--keyword">
+              <label htmlFor="homepage-search-keyword">คำค้นหา</label>
 
               <div className="homepage-search__input">
                 <Search aria-hidden="true" />
 
                 <input
+                  id="homepage-search-keyword"
                   type="text"
                   value={keyword}
                   maxLength={100}
-                  placeholder="พิมพ์ชื่อสถานที่ เส้นทาง หรือบทความ..."
+                  placeholder="ชื่อสถานที่ เส้นทาง หรือบทความ..."
                   onChange={(event) => {
                     setKeyword(event.target.value);
 
@@ -416,60 +446,74 @@ export default function HomePage() {
                       setSearchError("");
                     }
                   }}
-                  aria-label="คำค้นหา"
                   aria-invalid={Boolean(searchError)}
+                  aria-describedby={
+                    searchError ? "homepage-search-error" : undefined
+                  }
                 />
               </div>
+            </div>
 
-              <button type="submit">
-                <Search />
-                ค้นหา
-              </button>
-            </form>
+            <button type="submit" className="homepage-search__button">
+              <Search aria-hidden="true" />
+              <span>ค้นหา</span>
+            </button>
+          </form>
 
-            {searchError && (
-              <p className="homepage-search__error" role="alert">
-                {searchError}
-              </p>
-            )}
-          </div>
+          {searchError && (
+            <p
+              id="homepage-search-error"
+              className="homepage-search__error"
+              role="alert"
+            >
+              {searchError}
+            </p>
+          )}
         </div>
       </section>
 
       {/* Recommended Routes */}
-      {/* ข้อ 4: เพิ่ม id="recommended-routes" */}
-      <section id="recommended-routes" className="homepage-section">
+      <section
+        id="recommended-routes"
+        className="homepage-section homepage-section--routes"
+      >
         <div className="homepage-container">
           <div className="homepage-section__heading">
             <div>
-              <p className="homepage-section__eyebrow">CURATED JOURNEYS</p>
               <h2>เส้นทางแนะนำ</h2>
-              <p>เส้นทางที่คัดสรรเพื่อให้คุณค้นพบประสบการณ์สุขภาพในเชียงใหม่</p>
+
+              <p>
+                เลือกเส้นทางท่องเที่ยวเชิงสุขภาพที่เหมาะกับรูปแบบ
+                และความสนใจของคุณ
+              </p>
             </div>
 
-            {/* ข้อ 4: เปลี่ยนลิงก์ดูทั้งหมดเป็น <a> และป้องกันการเปลี่ยนหน้า */}
             <a
               href="#recommended-routes"
               className="homepage-section__link"
               onClick={(event) => event.preventDefault()}
             >
-              ดูทั้งหมด
+              <span>ดูเส้นทางทั้งหมด</span>
               <ArrowRight />
             </a>
           </div>
 
           {routesLoading && (
             <div
-              className="homepage-card-grid"
+              className="homepage-route-grid"
               aria-label="กำลังโหลดเส้นทางแนะนำ"
               aria-busy="true"
             >
               {[1, 2, 3].map((item) => (
-                <div key={item} className="homepage-skeleton">
-                  <div className="homepage-skeleton__image" />
-                  <div className="homepage-skeleton__line homepage-skeleton__line--title" />
-                  <div className="homepage-skeleton__line" />
-                  <div className="homepage-skeleton__line homepage-skeleton__line--short" />
+                <div key={item} className="homepage-route-skeleton">
+                  <div className="homepage-route-skeleton__rail" />
+
+                  <div className="homepage-skeleton__content">
+                    <div className="homepage-skeleton__line homepage-skeleton__line--label" />
+                    <div className="homepage-skeleton__line homepage-skeleton__line--title" />
+                    <div className="homepage-skeleton__line" />
+                    <div className="homepage-skeleton__line homepage-skeleton__line--short" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -489,21 +533,26 @@ export default function HomePage() {
           {!routesLoading && !routesError && routes.length === 0 && (
             <div className="homepage-state">
               <MapPin className="homepage-state__icon" />
+
               <h3>ยังไม่มีเส้นทางแนะนำ</h3>
+
               <p>เมื่อผู้ดูแลเพิ่มเส้นทางแล้ว ข้อมูลจะแสดงในส่วนนี้</p>
             </div>
           )}
 
           {!routesLoading && !routesError && routes.length > 0 && (
-            <div className="homepage-card-grid">
+            <div className="homepage-route-grid">
               {routes.map((route) => {
                 const routeId = route.routeId || route.id;
+
                 const routeName =
                   route.routeName || route.name || "เส้นทางสุขภาพ";
+
                 const routeDescription =
                   route.routeDescription ||
                   route.description ||
                   "ค้นพบประสบการณ์การท่องเที่ยวเชิงสุขภาพในเชียงใหม่";
+
                 const pinCount =
                   route.pinCount ||
                   route.wellnessHubCount ||
@@ -511,31 +560,74 @@ export default function HomePage() {
                   0;
 
                 return (
-                  <article key={routeId} className="homepage-card">
-                    <div className="homepage-card__route-cover">
-                      <MapPin aria-hidden="true" />
-                      <span>{pinCount} จุดแนะนำ</span>
-                    </div>
+                  <article key={routeId} className="homepage-route-card">
+                    <aside
+                      className="homepage-route-card__rail"
+                      aria-label={`เส้นทางนี้มี ${pinCount} จุดแนะนำ`}
+                    >
+                      <div className="homepage-route-card__rail-heading">
+                        <Navigation aria-hidden="true" />
+                        <span>เส้นทาง</span>
+                      </div>
 
-                    <div className="homepage-card__body">
-                      <p className="homepage-card__category">WELLNESS ROUTE</p>
+                      <div
+                        className="homepage-route-card__rail-path"
+                        aria-hidden="true"
+                      >
+                        <div className="homepage-route-card__rail-stop">
+                          <span className="homepage-route-card__rail-dot homepage-route-card__rail-dot--start" />
+                          <span>เริ่มต้น</span>
+                        </div>
+
+                        <span className="homepage-route-card__rail-line" />
+
+                        <div className="homepage-route-card__rail-stop">
+                          <span className="homepage-route-card__rail-dot" />
+                          <span>จุดแวะ</span>
+                        </div>
+
+                        <span className="homepage-route-card__rail-line" />
+
+                        <div className="homepage-route-card__rail-stop">
+                          <span className="homepage-route-card__rail-finish">
+                            <Flag />
+                          </span>
+                          <span>ปลายทาง</span>
+                        </div>
+                      </div>
+
+                      <div className="homepage-route-card__rail-count">
+                        <strong>{pinCount}</strong>
+                        <span>จุดแนะนำ</span>
+                      </div>
+                    </aside>
+
+                    <div className="homepage-route-card__content">
+                      <p className="homepage-route-card__label">
+                        เส้นทางท่องเที่ยวเชิงสุขภาพ
+                      </p>
 
                       <h3>{routeName}</h3>
 
-                      <p className="homepage-card__description">
+                      <p className="homepage-route-card__description">
                         {routeDescription}
                       </p>
 
                       {Array.isArray(route.categories) &&
                         route.categories.length > 0 && (
-                          <div className="homepage-card__categories">
-                            {route.categories.map((category) => {
+                          <div
+                            className="homepage-card__categories"
+                            aria-label="หมวดหมู่ของเส้นทาง"
+                          >
+                            {route.categories.map((category, index) => {
                               const categoryDisplay =
                                 getRouteCategoryDisplay(category);
 
                               return (
                                 <span
-                                  key={category.categoryId}
+                                  key={`${
+                                    category.categoryId || "category"
+                                  }-${index}`}
                                   className="homepage-card__category-chip"
                                   style={{
                                     color: categoryDisplay.color,
@@ -558,17 +650,26 @@ export default function HomePage() {
                         )}
 
                       {route.districtsPassed && (
-                        <p className="homepage-card__meta">
-                          <MapPin />
-                          {route.districtsPassed}
-                        </p>
+                        <div className="homepage-route-card__location">
+                          <MapPin aria-hidden="true" />
+
+                          <div>
+                            <span className="homepage-route-card__location-label">
+                              พื้นที่ที่เดินทางผ่าน
+                            </span>
+
+                            <span className="homepage-route-card__location-value">
+                              {route.districtsPassed}
+                            </span>
+                          </div>
+                        </div>
                       )}
 
                       <Link
                         to={`/wellness-routes/${routeId}`}
-                        className="homepage-card__link"
+                        className="homepage-route-card__link"
                       >
-                        ดูรายละเอียดเส้นทาง
+                        <span>ดูรายละเอียดเส้นทาง</span>
                         <ArrowRight />
                       </Link>
                     </div>
@@ -581,7 +682,6 @@ export default function HomePage() {
       </section>
 
       {/* Latest Articles */}
-      {/* ข้อ 4: เพิ่ม id="latest-articles" */}
       <section
         id="latest-articles"
         className="homepage-section homepage-section--articles"
@@ -589,36 +689,39 @@ export default function HomePage() {
         <div className="homepage-container">
           <div className="homepage-section__heading">
             <div>
-              <p className="homepage-section__eyebrow">WELLNESS STORIES</p>
               <h2>บทความสุขภาพล่าสุด</h2>
+
               <p>
-                เรื่องราวและความรู้ที่ช่วยให้ทุกการเดินทางเป็นส่วนหนึ่งของการดูแลตัวเอง
+                อ่านเรื่องราว ความรู้ และข้อมูลที่ช่วยให้คุณ
+                เตรียมตัวก่อนออกเดินทางได้ดียิ่งขึ้น
               </p>
             </div>
 
-            {/* ข้อ 4: เปลี่ยนลิงก์ดูทั้งหมดเป็น <a> และป้องกันการเปลี่ยนหน้า */}
             <a
               href="#latest-articles"
               className="homepage-section__link"
               onClick={(event) => event.preventDefault()}
             >
-              ดูทั้งหมด
+              <span>ดูบทความทั้งหมด</span>
               <ArrowRight />
             </a>
           </div>
 
           {articlesLoading && (
             <div
-              className="homepage-card-grid"
+              className="homepage-article-grid"
               aria-label="กำลังโหลดบทความล่าสุด"
               aria-busy="true"
             >
               {[1, 2, 3].map((item) => (
-                <div key={item} className="homepage-skeleton">
-                  <div className="homepage-skeleton__image" />
-                  <div className="homepage-skeleton__line homepage-skeleton__line--title" />
-                  <div className="homepage-skeleton__line" />
-                  <div className="homepage-skeleton__line homepage-skeleton__line--short" />
+                <div key={item} className="homepage-article-skeleton">
+                  <div className="homepage-article-skeleton__image" />
+
+                  <div className="homepage-skeleton__content">
+                    <div className="homepage-skeleton__line homepage-skeleton__line--label" />
+                    <div className="homepage-skeleton__line homepage-skeleton__line--title" />
+                    <div className="homepage-skeleton__line" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -638,14 +741,15 @@ export default function HomePage() {
           {!articlesLoading && !articlesError && articles.length === 0 && (
             <div className="homepage-state">
               <Newspaper className="homepage-state__icon" />
+
               <h3>ยังไม่มีบทความสุขภาพ</h3>
+
               <p>เมื่อมีบทความเผยแพร่แล้ว ข้อมูลจะแสดงในส่วนนี้</p>
             </div>
           )}
 
           {!articlesLoading && !articlesError && articles.length > 0 && (
-            <div className="homepage-card-grid">
-              {/* ข้อ 3: Map ฟิลด์บทความตาม DTO Backend และใช้ class สำหรับซ่อนรูปภาพเมื่อ error */}
+            <div className="homepage-article-grid">
               {articles.map((article) => {
                 const articleId = article.articleId;
 
@@ -660,10 +764,7 @@ export default function HomePage() {
                 const publishedDate = article.publishDate;
 
                 return (
-                  <article
-                    key={articleId}
-                    className="homepage-card homepage-article-card"
-                  >
+                  <article key={articleId} className="homepage-article-card">
                     <div className="homepage-article-card__image">
                       {articleImage ? (
                         <img
@@ -680,29 +781,31 @@ export default function HomePage() {
                       )}
                     </div>
 
-                    <div className="homepage-card__body">
-                      <p className="homepage-card__category">
-                        {article.articleCategory || "บทความสุขภาพ"}
-                      </p>
+                    <div className="homepage-article-card__body">
+                      <div className="homepage-article-card__meta-row">
+                        <p className="homepage-article-card__category">
+                          {article.articleCategory || "บทความสุขภาพ"}
+                        </p>
+
+                        <p className="homepage-article-card__date">
+                          <CalendarDays aria-hidden="true" />
+                          {formatDate(publishedDate)}
+                        </p>
+                      </div>
 
                       <h3>{articleTitle}</h3>
 
-                      <p className="homepage-card__description">
+                      <p className="homepage-article-card__description">
                         {articleDescription ||
                           "อ่านเรื่องราวและข้อมูลเพื่อการดูแลสุขภาพที่ดี"}
                       </p>
 
-                      <p className="homepage-card__meta">
-                        <CalendarDays />
-                        {formatDate(publishedDate)}
-                      </p>
-
                       <a
                         href="#article-detail"
-                        className="homepage-card__link"
+                        className="homepage-article-card__link"
                         onClick={(event) => event.preventDefault()}
                       >
-                        อ่านบทความ
+                        <span>อ่านบทความ</span>
                         <ArrowRight />
                       </a>
                     </div>

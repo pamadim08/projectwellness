@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LogIn } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
 import "./Navbar.css";
 
@@ -15,12 +16,10 @@ function Navbar() {
       path: "/wellness-routes",
       label: "เส้นทางท่องเที่ยว",
     },
-
     {
       path: "/articles",
       label: "บทความ",
     },
-
     {
       path: "/track-status",
       label: "ติดตามสถานะคำขอ",
@@ -47,7 +46,9 @@ function Navbar() {
         </Link>
 
         <nav
-          className={`navbar__menu ${isMenuOpen ? "navbar__menu--open" : ""}`}
+          className={`navbar__menu ${
+            isMenuOpen ? "navbar__menu--open" : ""
+          }`}
           aria-label="เมนูหลัก"
         >
           {menuItems.map((item) => (
@@ -56,7 +57,9 @@ function Navbar() {
               to={item.path}
               end={item.end}
               className={({ isActive }) =>
-                isActive ? "navbar__link navbar__link--active" : "navbar__link"
+                isActive
+                  ? "navbar__link navbar__link--active"
+                  : "navbar__link"
               }
               onClick={closeMenu}
             >
@@ -69,8 +72,8 @@ function Navbar() {
             className="navbar__login-button"
             onClick={closeMenu}
           >
-            <span aria-hidden="true">♙</span>
-            เข้าสู่ระบบ
+            <LogIn aria-hidden="true" />
+            <span>เข้าสู่ระบบ</span>
           </Link>
         </nav>
 

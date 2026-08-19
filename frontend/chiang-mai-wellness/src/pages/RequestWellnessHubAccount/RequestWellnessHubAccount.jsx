@@ -36,7 +36,7 @@ const MAX_GALLERY_SIZE = 5 * 1024 * 1024;
 
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 
-const MAX_GALLERY_IMAGES = 6;
+const MAX_GALLERY_IMAGES = 4;
 
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
@@ -679,568 +679,669 @@ export default function RequestWellnessHubAccount() {
             กลับหน้าก่อนหน้า
           </button>
 
-          <p className="request-account-eyebrow">WELLNESS HUB OWNERSHIP</p>
+          <div className="request-account-hero__layout">
+            <div>
+              <p className="request-account-eyebrow">WELLNESS HUB OWNERSHIP</p>
 
-          <h1>ยืนยันข้อมูลและขอสิทธิ์ดูแล</h1>
+              <h1>ขอสิทธิ์ดูแลสถานประกอบการ</h1>
 
-          <p className="request-account-hero__description">
-            ตรวจสอบข้อมูลสถานประกอบการเดิม แก้ไขข้อมูลที่จำเป็น
-            และส่งหลักฐานให้ผู้ดูแลระบบตรวจสอบ
-          </p>
+              <p className="request-account-hero__description">
+                ตรวจสอบข้อมูลให้ถูกต้อง แนบหลักฐานยืนยันสิทธิ์
+                และส่งคำขอให้ผู้ดูแลระบบพิจารณา
+              </p>
+            </div>
+
+            <div className="request-account-hero__hub">
+              <Building2 />
+
+              <div>
+                <span>สถานประกอบการที่กำลังยื่นคำขอ</span>
+
+                <strong>{hub.wellnessHubName}</strong>
+
+                <p>ใบอนุญาต {hub.licenseId}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
       <div className="request-account-container request-account-content">
         <form
-          className="request-account-form-card"
+          className="request-account-form"
           onSubmit={handleSubmit}
           noValidate
         >
-          <section className="request-account-form-intro">
-            <div className="request-account-form-intro__icon">
+          <aside className="request-account-progress">
+            <div className="request-account-progress__header">
               <ShieldCheck />
+
+              <div>
+                <span>REQUEST FORM</span>
+                <h2>ขั้นตอนการยื่นคำขอ</h2>
+              </div>
             </div>
 
-            <div>
-              <h2>แบบฟอร์มขอสิทธิ์เป็นเจ้าของสถานประกอบการ</h2>
+            <div className="request-account-progress__list">
+              <div className="request-account-progress__item">
+                <span>01</span>
+
+                <div>
+                  <strong>ข้อมูลในระบบ</strong>
+                  <p>ตรวจสอบข้อมูลพื้นฐาน</p>
+                </div>
+              </div>
+
+              <div className="request-account-progress__line" />
+
+              <div className="request-account-progress__item">
+                <span>02</span>
+
+                <div>
+                  <strong>รูปภาพ</strong>
+                  <p>รูปปกและบรรยากาศ</p>
+                </div>
+              </div>
+
+              <div className="request-account-progress__line" />
+
+              <div className="request-account-progress__item">
+                <span>03</span>
+
+                <div>
+                  <strong>ข้อมูลติดต่อ</strong>
+                  <p>ที่ตั้งและรายละเอียดบริการ</p>
+                </div>
+              </div>
+
+              <div className="request-account-progress__line" />
+
+              <div className="request-account-progress__item">
+                <span>04</span>
+
+                <div>
+                  <strong>เวลาทำการ</strong>
+                  <p>กำหนดวันและเวลาเปิด</p>
+                </div>
+              </div>
+
+              <div className="request-account-progress__line" />
+
+              <div className="request-account-progress__item">
+                <span>05</span>
+
+                <div>
+                  <strong>ยืนยันตัวตน</strong>
+                  <p>ข้อมูลผู้ยื่นและเอกสาร</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="request-account-progress__notice">
+              <LockKeyhole />
 
               <p>
-                ช่องที่มีเครื่องหมาย
-                <strong> *</strong>
-                จำเป็นต้องกรอกให้ครบถ้วน
+                ข้อมูลและเอกสารจะถูกส่งให้ผู้ดูแลระบบตรวจสอบก่อนเปิดสิทธิ์ใช้งาน
               </p>
             </div>
-          </section>
+          </aside>
 
-          {/* ส่วนที่ 1 */}
-          <section className="request-account-section">
-            <div className="request-account-section__heading">
-              <span>1</span>
-
+          <div className="request-account-form-main">
+            <section className="request-account-form-intro">
               <div>
-                <h2>ข้อมูลพื้นฐานในระบบ</h2>
+                <p>BEFORE YOU SUBMIT</p>
 
-                <p>ข้อมูลส่วนนี้อ้างอิงจากฐานข้อมูลและไม่สามารถแก้ไขได้</p>
-              </div>
-            </div>
+                <h2>ตรวจสอบข้อมูลให้ครบก่อนส่งคำขอ</h2>
 
-            <div className="request-account-system-info">
-              <LockKeyhole className="request-account-system-info__lock" />
-
-              <div className="request-account-system-info__item">
-                <span>ชื่อสถานประกอบการ</span>
-                <strong>{hub.wellnessHubName}</strong>
+                <span>
+                  ช่องที่มีเครื่องหมาย <strong>*</strong> จำเป็นต้องกรอก
+                </span>
               </div>
 
-              <div className="request-account-system-info__item">
-                <span>เลขที่ใบอนุญาต</span>
-                <strong>{hub.licenseId}</strong>
+              <ShieldCheck />
+            </section>
+
+            <section className="request-account-section">
+              <div className="request-account-section__heading">
+                <span>01</span>
+
+                <div>
+                  <h2>ข้อมูลพื้นฐานในระบบ</h2>
+
+                  <p>ข้อมูลจากฐานข้อมูล ใช้สำหรับระบุตัวสถานประกอบการ</p>
+                </div>
               </div>
 
-              <div className="request-account-system-info__item">
-                <span>ประเภทใบรับรอง</span>
-                <strong>{normalizeCertificateType(hub.certificateType)}</strong>
-              </div>
+              <div className="request-account-system-info">
+                <LockKeyhole className="request-account-system-info__lock" />
 
-              <div className="request-account-system-info__item">
-                <span>หมวดหมู่</span>
-                <strong>{hub.categoryName || "-"}</strong>
-              </div>
-            </div>
-          </section>
-
-          {/* ส่วนที่ 2 */}
-          <section className="request-account-section">
-            <div className="request-account-section__heading">
-              <span>2</span>
-
-              <div>
-                <h2>รูปภาพสถานประกอบการ</h2>
-
-                <p>รูปหน้าปกและรูปบรรยากาศจะถูกส่งให้ผู้ดูแลระบบตรวจสอบ</p>
-              </div>
-            </div>
-
-            <div className="request-account-photo-layout">
-              <div className="request-account-cover-group">
-                <label>รูปหน้าปก</label>
-
-                <button
-                  type="button"
-                  className="request-account-cover-upload"
-                  onClick={() => coverInputRef.current?.click()}
-                >
-                  {coverPreview ? (
-                    <img src={coverPreview} alt="ตัวอย่างรูปหน้าปก" />
-                  ) : (
-                    <div className="request-account-upload-placeholder">
-                      <ImagePlus />
-                      <strong>เพิ่มรูปหน้าปก</strong>
-                      <span>JPG, PNG หรือ WEBP</span>
-                    </div>
-                  )}
-
-                  <span className="request-account-cover-upload__action">
-                    <Upload />
-                    เลือกรูปภาพ
-                  </span>
-                </button>
-
-                <input
-                  ref={coverInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  hidden
-                  onChange={handleCoverChange}
-                />
-
-                {formErrors.coverFile && (
-                  <p className="request-account-field-error">
-                    {formErrors.coverFile}
-                  </p>
-                )}
-              </div>
-
-              <div className="request-account-gallery-group">
-                <div className="request-account-gallery-heading">
-                  <label>รูปภาพบรรยากาศ</label>
-
-                  <span>
-                    {galleryImages.length}/{MAX_GALLERY_IMAGES} รูป
-                  </span>
+                <div className="request-account-system-info__item">
+                  <span>ชื่อสถานประกอบการ</span>
+                  <strong>{hub.wellnessHubName}</strong>
                 </div>
 
-                <div className="request-account-gallery">
-                  {galleryImages.map((image) => (
-                    <div
-                      key={image.id}
-                      className="request-account-gallery__item"
-                    >
-                      <img src={image.preview} alt={image.file.name} />
-
-                      <button
-                        type="button"
-                        aria-label="ลบรูปภาพ"
-                        onClick={() => removeGalleryImage(image.id)}
-                      >
-                        <Trash2 />
-                      </button>
-                    </div>
-                  ))}
-
-                  {galleryImages.length < MAX_GALLERY_IMAGES && (
-                    <button
-                      type="button"
-                      className="request-account-gallery__add"
-                      onClick={() => galleryInputRef.current?.click()}
-                    >
-                      <ImagePlus />
-                      <span>เพิ่มรูปภาพ</span>
-                    </button>
-                  )}
+                <div className="request-account-system-info__item">
+                  <span>เลขที่ใบอนุญาต</span>
+                  <strong>{hub.licenseId}</strong>
                 </div>
 
-                <input
-                  ref={galleryInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  hidden
-                  onChange={handleGalleryChange}
-                />
-
-                {formErrors.galleryImages && (
-                  <p className="request-account-field-error">
-                    {formErrors.galleryImages}
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* ส่วนที่ 3 */}
-          <section className="request-account-section">
-            <div className="request-account-section__heading">
-              <span>3</span>
-
-              <div>
-                <h2>ที่ตั้งและช่องทางติดต่อ</h2>
-
-                <p>ตรวจสอบและแก้ไขข้อมูลให้เป็นปัจจุบันก่อนส่งคำขอ</p>
-              </div>
-            </div>
-
-            <div className="request-account-fields">
-              <div className="request-account-field request-account-field--full">
-                <label htmlFor="address">
-                  ที่อยู่
-                  <em>*</em>
-                </label>
-
-                <textarea
-                  id="address"
-                  name="address"
-                  rows={3}
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className={
-                    formErrors.address ? "request-account-input--error" : ""
-                  }
-                />
-
-                {formErrors.address && (
-                  <p className="request-account-field-error">
-                    {formErrors.address}
-                  </p>
-                )}
-              </div>
-
-              <div className="request-account-field request-account-field--full">
-                <label htmlFor="googleMapsLink">
-                  ลิงก์ Google Maps
-                  <em>*</em>
-                </label>
-
-                <div className="request-account-input-icon">
-                  <MapPin />
-
-                  <input
-                    id="googleMapsLink"
-                    name="googleMapsLink"
-                    type="url"
-                    value={formData.googleMapsLink}
-                    onChange={handleInputChange}
-                    placeholder="https://maps.app.goo.gl/..."
-                    className={
-                      formErrors.googleMapsLink
-                        ? "request-account-input--error"
-                        : ""
-                    }
-                  />
+                <div className="request-account-system-info__item">
+                  <span>ประเภทใบรับรอง</span>
+                  <strong>
+                    {normalizeCertificateType(hub.certificateType)}
+                  </strong>
                 </div>
 
-                {formErrors.googleMapsLink && (
-                  <p className="request-account-field-error">
-                    {formErrors.googleMapsLink}
-                  </p>
-                )}
-              </div>
-
-              <div className="request-account-field">
-                <label htmlFor="tellInformation">
-                  เบอร์โทรศัพท์
-                  <em>*</em>
-                </label>
-
-                <div className="request-account-input-icon">
-                  <Phone />
-
-                  <input
-                    id="tellInformation"
-                    name="tellInformation"
-                    type="tel"
-                    value={formData.tellInformation}
-                    onChange={handleInputChange}
-                    placeholder="เช่น 0812345678"
-                    className={
-                      formErrors.tellInformation
-                        ? "request-account-input--error"
-                        : ""
-                    }
-                  />
+                <div className="request-account-system-info__item">
+                  <span>หมวดหมู่</span>
+                  <strong>{hub.categoryName || "-"}</strong>
                 </div>
+              </div>
+            </section>
 
-                {formErrors.tellInformation && (
-                  <p className="request-account-field-error">
-                    {formErrors.tellInformation}
+            <section className="request-account-section">
+              <div className="request-account-section__heading">
+                <span>02</span>
+
+                <div>
+                  <h2>รูปภาพสถานประกอบการ</h2>
+
+                  <p>
+                    เลือกรูปที่ช่วยให้ผู้ใช้งานเห็นบรรยากาศและสถานที่ได้ชัดเจน
                   </p>
-                )}
-              </div>
-
-              <div className="request-account-field">
-                <label htmlFor="contactInformation">LINE ID / Facebook</label>
-
-                <input
-                  id="contactInformation"
-                  name="contactInformation"
-                  type="text"
-                  value={formData.contactInformation}
-                  onChange={handleInputChange}
-                  placeholder="ช่องทางติดต่อเพิ่มเติม"
-                />
-              </div>
-
-              <div className="request-account-field request-account-field--full">
-                <label htmlFor="wellnessHubDescription">
-                  รายละเอียดบริการ
-                  <em>*</em>
-                </label>
-
-                <textarea
-                  id="wellnessHubDescription"
-                  name="wellnessHubDescription"
-                  rows={5}
-                  value={formData.wellnessHubDescription}
-                  onChange={handleInputChange}
-                  placeholder="อธิบายบริการ จุดเด่น และข้อมูลสำคัญของสถานประกอบการ"
-                  className={
-                    formErrors.wellnessHubDescription
-                      ? "request-account-input--error"
-                      : ""
-                  }
-                />
-
-                {formErrors.wellnessHubDescription && (
-                  <p className="request-account-field-error">
-                    {formErrors.wellnessHubDescription}
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* ส่วนที่ 4 */}
-          <section className="request-account-section">
-            <div className="request-account-section__heading">
-              <span>4</span>
-
-              <div>
-                <h2>วันและเวลาทำการ</h2>
-
-                <p>เปิดสวิตช์เฉพาะวันที่ให้บริการและระบุเวลาให้ครบ</p>
-              </div>
-            </div>
-
-            <div className="request-account-hours">
-              <div className="request-account-hours__header">
-                <span>วัน</span>
-                <span>สถานะ</span>
-                <span>เวลาเปิด</span>
-                <span>เวลาปิด</span>
-              </div>
-
-              {DAYS.map((day) => {
-                const detail = operatingHours[day.key];
-
-                return (
-                  <div
-                    key={day.key}
-                    className={
-                      detail.active
-                        ? "request-account-hours__row request-account-hours__row--active"
-                        : "request-account-hours__row"
-                    }
-                  >
-                    <strong>{day.label}</strong>
-
-                    <label className="request-account-switch">
-                      <input
-                        type="checkbox"
-                        checked={detail.active}
-                        onChange={() => handleDayToggle(day.key)}
-                      />
-
-                      <span />
-                    </label>
-
-                    <input
-                      type="time"
-                      value={detail.open}
-                      disabled={!detail.active}
-                      onChange={(event) =>
-                        handleTimeChange(day.key, "open", event.target.value)
-                      }
-                    />
-
-                    <input
-                      type="time"
-                      value={detail.close}
-                      disabled={!detail.active}
-                      onChange={(event) =>
-                        handleTimeChange(day.key, "close", event.target.value)
-                      }
-                    />
-                  </div>
-                );
-              })}
-            </div>
-
-            {formErrors.operatingHours && (
-              <p className="request-account-field-error">
-                {formErrors.operatingHours}
-              </p>
-            )}
-          </section>
-
-          {/* ส่วนที่ 5 */}
-          <section className="request-account-section">
-            <div className="request-account-section__heading">
-              <span>5</span>
-
-              <div>
-                <h2>ข้อมูลผู้ยื่นคำขอและหลักฐาน</h2>
-
-                <p>
-                  อีเมลนี้จะใช้รับผลการพิจารณาและข้อมูลบัญชีเมื่อได้รับอนุมัติ
-                </p>
-              </div>
-            </div>
-
-            <div className="request-account-fields">
-              <div className="request-account-field">
-                <label htmlFor="requesterName">
-                  ชื่อ–นามสกุลผู้ยื่นคำขอ
-                  <em>*</em>
-                </label>
-
-                <div className="request-account-input-icon">
-                  <UserRound />
-
-                  <input
-                    id="requesterName"
-                    name="requesterName"
-                    type="text"
-                    value={formData.requesterName}
-                    onChange={handleInputChange}
-                    placeholder="ระบุชื่อและนามสกุลจริง"
-                    className={
-                      formErrors.requesterName
-                        ? "request-account-input--error"
-                        : ""
-                    }
-                  />
                 </div>
-
-                {formErrors.requesterName && (
-                  <p className="request-account-field-error">
-                    {formErrors.requesterName}
-                  </p>
-                )}
               </div>
 
-              <div className="request-account-field">
-                <label htmlFor="userEmail">
-                  อีเมลสำหรับรับบัญชีใช้งาน
-                  <em>*</em>
-                </label>
+              <div className="request-account-photo-layout">
+                <div className="request-account-cover-group">
+                  <div className="request-account-label-row">
+                    <label>รูปหน้าปก</label>
 
-                <div className="request-account-input-icon">
-                  <Mail />
-
-                  <input
-                    id="userEmail"
-                    name="userEmail"
-                    type="email"
-                    value={formData.userEmail}
-                    onChange={handleInputChange}
-                    placeholder="example@email.com"
-                    className={
-                      formErrors.userEmail ? "request-account-input--error" : ""
-                    }
-                  />
-                </div>
-
-                {formErrors.userEmail && (
-                  <p className="request-account-field-error">
-                    {formErrors.userEmail}
-                  </p>
-                )}
-              </div>
-
-              <div className="request-account-field request-account-field--full">
-                <label>
-                  ใบอนุญาตหรือเอกสารยืนยันสิทธิ์
-                  <em>*</em>
-                </label>
-
-                <button
-                  type="button"
-                  className={
-                    verificationDocument
-                      ? "request-account-document request-account-document--selected"
-                      : "request-account-document"
-                  }
-                  onClick={() => documentInputRef.current?.click()}
-                >
-                  <div className="request-account-document__icon">
-                    {verificationDocument ? <FileCheck2 /> : <FileText />}
+                    <span>แนะนำภาพแนวนอน</span>
                   </div>
 
-                  <div className="request-account-document__content">
-                    <strong>
-                      {verificationDocument
-                        ? verificationDocument.name
-                        : "คลิกเพื่อเลือกไฟล์หลักฐาน"}
-                    </strong>
-
-                    <span>รองรับ PDF, JPG และ PNG ขนาดไม่เกิน 10 MB</span>
-                  </div>
-
-                  <Upload />
-                </button>
-
-                <input
-                  ref={documentInputRef}
-                  type="file"
-                  accept=".pdf,image/jpeg,image/png"
-                  hidden
-                  onChange={handleDocumentChange}
-                />
-
-                {verificationDocument && (
                   <button
                     type="button"
-                    className="request-account-document-remove"
-                    onClick={() => setVerificationDocument(null)}
+                    className="request-account-cover-upload"
+                    onClick={() => coverInputRef.current?.click()}
                   >
-                    <X />
-                    นำไฟล์ออก
-                  </button>
-                )}
+                    {coverPreview ? (
+                      <img src={coverPreview} alt="ตัวอย่างรูปหน้าปก" />
+                    ) : (
+                      <div className="request-account-upload-placeholder">
+                        <ImagePlus />
+                        <strong>เพิ่มรูปหน้าปก</strong>
+                        <span>JPG, PNG หรือ WEBP</span>
+                      </div>
+                    )}
 
-                {formErrors.verificationDocument && (
-                  <p className="request-account-field-error">
-                    {formErrors.verificationDocument}
-                  </p>
-                )}
+                    <span className="request-account-cover-upload__action">
+                      <Upload />
+                      เปลี่ยนรูป
+                    </span>
+                  </button>
+
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                    onChange={handleCoverChange}
+                  />
+
+                  {formErrors.coverFile && (
+                    <p className="request-account-field-error">
+                      {formErrors.coverFile}
+                    </p>
+                  )}
+                </div>
+
+                <div className="request-account-gallery-group">
+                  <div className="request-account-gallery-heading">
+                    <label>รูปภาพบรรยากาศ</label>
+
+                    <span>
+                      {galleryImages.length}/{MAX_GALLERY_IMAGES} รูป
+                    </span>
+                  </div>
+
+                  <div className="request-account-gallery">
+                    {galleryImages.map((image) => (
+                      <div
+                        key={image.id}
+                        className="request-account-gallery__item"
+                      >
+                        <img src={image.preview} alt={image.file.name} />
+
+                        <button
+                          type="button"
+                          aria-label="ลบรูปภาพ"
+                          onClick={() => removeGalleryImage(image.id)}
+                        >
+                          <Trash2 />
+                        </button>
+                      </div>
+                    ))}
+
+                    {galleryImages.length < MAX_GALLERY_IMAGES && (
+                      <button
+                        type="button"
+                        className="request-account-gallery__add"
+                        onClick={() => galleryInputRef.current?.click()}
+                      >
+                        <ImagePlus />
+                        <span>เพิ่มรูปภาพ</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    hidden
+                    onChange={handleGalleryChange}
+                  />
+
+                  {formErrors.galleryImages && (
+                    <p className="request-account-field-error">
+                      {formErrors.galleryImages}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="request-account-section">
+              <div className="request-account-section__heading">
+                <span>03</span>
+
+                <div>
+                  <h2>ที่ตั้งและช่องทางติดต่อ</h2>
+
+                  <p>ข้อมูลส่วนนี้จะแสดงต่อผู้ใช้งานหลังคำขอได้รับอนุมัติ</p>
+                </div>
+              </div>
+
+              <div className="request-account-fields">
+                <div className="request-account-field request-account-field--full">
+                  <label htmlFor="address">
+                    ที่อยู่
+                    <em>*</em>
+                  </label>
+
+                  <textarea
+                    id="address"
+                    name="address"
+                    rows={3}
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    className={
+                      formErrors.address ? "request-account-input--error" : ""
+                    }
+                  />
+
+                  {formErrors.address && (
+                    <p className="request-account-field-error">
+                      {formErrors.address}
+                    </p>
+                  )}
+                </div>
+
+                <div className="request-account-field request-account-field--full">
+                  <label htmlFor="googleMapsLink">
+                    ลิงก์ Google Maps
+                    <em>*</em>
+                  </label>
+
+                  <div className="request-account-input-icon">
+                    <MapPin />
+
+                    <input
+                      id="googleMapsLink"
+                      name="googleMapsLink"
+                      type="url"
+                      value={formData.googleMapsLink}
+                      onChange={handleInputChange}
+                      placeholder="https://maps.app.goo.gl/..."
+                      className={
+                        formErrors.googleMapsLink
+                          ? "request-account-input--error"
+                          : ""
+                      }
+                    />
+                  </div>
+
+                  {formErrors.googleMapsLink && (
+                    <p className="request-account-field-error">
+                      {formErrors.googleMapsLink}
+                    </p>
+                  )}
+                </div>
+
+                <div className="request-account-field">
+                  <label htmlFor="tellInformation">
+                    เบอร์โทรศัพท์
+                    <em>*</em>
+                  </label>
+
+                  <div className="request-account-input-icon">
+                    <Phone />
+
+                    <input
+                      id="tellInformation"
+                      name="tellInformation"
+                      type="tel"
+                      value={formData.tellInformation}
+                      onChange={handleInputChange}
+                      placeholder="เช่น 0812345678"
+                      className={
+                        formErrors.tellInformation
+                          ? "request-account-input--error"
+                          : ""
+                      }
+                    />
+                  </div>
+
+                  {formErrors.tellInformation && (
+                    <p className="request-account-field-error">
+                      {formErrors.tellInformation}
+                    </p>
+                  )}
+                </div>
+
+                <div className="request-account-field">
+                  <label htmlFor="contactInformation">LINE ID / Facebook</label>
+
+                  <input
+                    id="contactInformation"
+                    name="contactInformation"
+                    type="text"
+                    value={formData.contactInformation}
+                    onChange={handleInputChange}
+                    placeholder="ช่องทางติดต่อเพิ่มเติม"
+                  />
+                </div>
+
+                <div className="request-account-field request-account-field--full">
+                  <label htmlFor="wellnessHubDescription">
+                    รายละเอียดบริการ
+                    <em>*</em>
+                  </label>
+
+                  <textarea
+                    id="wellnessHubDescription"
+                    name="wellnessHubDescription"
+                    rows={5}
+                    value={formData.wellnessHubDescription}
+                    onChange={handleInputChange}
+                    placeholder="อธิบายบริการ จุดเด่น และข้อมูลสำคัญของสถานประกอบการ"
+                    className={
+                      formErrors.wellnessHubDescription
+                        ? "request-account-input--error"
+                        : ""
+                    }
+                  />
+
+                  {formErrors.wellnessHubDescription && (
+                    <p className="request-account-field-error">
+                      {formErrors.wellnessHubDescription}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="request-account-section">
+              <div className="request-account-section__heading">
+                <span>04</span>
+
+                <div>
+                  <h2>วันและเวลาทำการ</h2>
+
+                  <p>เลือกเฉพาะวันที่เปิดให้บริการและระบุเวลาให้ถูกต้อง</p>
+                </div>
+              </div>
+
+              <div className="request-account-hours">
+                <div className="request-account-hours__header">
+                  <span>วัน</span>
+                  <span>เปิดบริการ</span>
+                  <span>เวลาเปิด</span>
+                  <span>เวลาปิด</span>
+                </div>
+
+                {DAYS.map((day) => {
+                  const detail = operatingHours[day.key];
+
+                  return (
+                    <div
+                      key={day.key}
+                      className={
+                        detail.active
+                          ? "request-account-hours__row request-account-hours__row--active"
+                          : "request-account-hours__row"
+                      }
+                    >
+                      <strong>{day.label}</strong>
+
+                      <label className="request-account-switch">
+                        <input
+                          type="checkbox"
+                          checked={detail.active}
+                          onChange={() => handleDayToggle(day.key)}
+                        />
+
+                        <span />
+                      </label>
+
+                      <input
+                        type="time"
+                        value={detail.open}
+                        disabled={!detail.active}
+                        onChange={(event) =>
+                          handleTimeChange(day.key, "open", event.target.value)
+                        }
+                      />
+
+                      <input
+                        type="time"
+                        value={detail.close}
+                        disabled={!detail.active}
+                        onChange={(event) =>
+                          handleTimeChange(day.key, "close", event.target.value)
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {formErrors.operatingHours && (
+                <p className="request-account-field-error">
+                  {formErrors.operatingHours}
+                </p>
+              )}
+            </section>
+
+            <section className="request-account-section">
+              <div className="request-account-section__heading">
+                <span>05</span>
+
+                <div>
+                  <h2>ผู้ยื่นคำขอและหลักฐานยืนยัน</h2>
+
+                  <p>ใช้สำหรับตรวจสอบสิทธิ์และติดต่อกลับหลังการพิจารณา</p>
+                </div>
+              </div>
+
+              <div className="request-account-fields">
+                <div className="request-account-field">
+                  <label htmlFor="requesterName">
+                    ชื่อ–นามสกุลผู้ยื่นคำขอ
+                    <em>*</em>
+                  </label>
+
+                  <div className="request-account-input-icon">
+                    <UserRound />
+
+                    <input
+                      id="requesterName"
+                      name="requesterName"
+                      type="text"
+                      value={formData.requesterName}
+                      onChange={handleInputChange}
+                      placeholder="ระบุชื่อและนามสกุลจริง"
+                      className={
+                        formErrors.requesterName
+                          ? "request-account-input--error"
+                          : ""
+                      }
+                    />
+                  </div>
+
+                  {formErrors.requesterName && (
+                    <p className="request-account-field-error">
+                      {formErrors.requesterName}
+                    </p>
+                  )}
+                </div>
+
+                <div className="request-account-field">
+                  <label htmlFor="userEmail">
+                    อีเมลสำหรับรับบัญชีใช้งาน
+                    <em>*</em>
+                  </label>
+
+                  <div className="request-account-input-icon">
+                    <Mail />
+
+                    <input
+                      id="userEmail"
+                      name="userEmail"
+                      type="email"
+                      value={formData.userEmail}
+                      onChange={handleInputChange}
+                      placeholder="example@email.com"
+                      className={
+                        formErrors.userEmail
+                          ? "request-account-input--error"
+                          : ""
+                      }
+                    />
+                  </div>
+
+                  {formErrors.userEmail && (
+                    <p className="request-account-field-error">
+                      {formErrors.userEmail}
+                    </p>
+                  )}
+                </div>
+
+                <div className="request-account-field request-account-field--full">
+                  <label>
+                    ใบอนุญาตหรือเอกสารยืนยันสิทธิ์
+                    <em>*</em>
+                  </label>
+
+                  <button
+                    type="button"
+                    className={
+                      verificationDocument
+                        ? "request-account-document request-account-document--selected"
+                        : "request-account-document"
+                    }
+                    onClick={() => documentInputRef.current?.click()}
+                  >
+                    <div className="request-account-document__icon">
+                      {verificationDocument ? <FileCheck2 /> : <FileText />}
+                    </div>
+
+                    <div className="request-account-document__content">
+                      <strong>
+                        {verificationDocument
+                          ? verificationDocument.name
+                          : "เลือกไฟล์หลักฐานยืนยันสิทธิ์"}
+                      </strong>
+
+                      <span>PDF, JPG หรือ PNG ขนาดไม่เกิน 10 MB</span>
+                    </div>
+
+                    <Upload />
+                  </button>
+
+                  <input
+                    ref={documentInputRef}
+                    type="file"
+                    accept=".pdf,image/jpeg,image/png"
+                    hidden
+                    onChange={handleDocumentChange}
+                  />
+
+                  {verificationDocument && (
+                    <button
+                      type="button"
+                      className="request-account-document-remove"
+                      onClick={() => setVerificationDocument(null)}
+                    >
+                      <X />
+                      นำไฟล์ออก
+                    </button>
+                  )}
+
+                  {formErrors.verificationDocument && (
+                    <p className="request-account-field-error">
+                      {formErrors.verificationDocument}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {formErrors.submit && (
+              <div className="request-account-submit-error" role="alert">
+                <CircleAlert />
+                {formErrors.submit}
+              </div>
+            )}
+
+            <div className="request-account-form-actions">
+              <div>
+                <strong>พร้อมส่งคำขอแล้ว?</strong>
+
+                <span>กรุณาตรวจสอบข้อมูลและเอกสารอีกครั้งก่อนส่ง</span>
+              </div>
+
+              <div className="request-account-form-actions__buttons">
+                <button
+                  type="button"
+                  className="request-account-cancel-button"
+                  onClick={() => navigate(-1)}
+                  disabled={submitting}
+                >
+                  ยกเลิก
+                </button>
+
+                <button
+                  type="submit"
+                  className="request-account-submit-button"
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <LoaderCircle className="request-account-button-spinner" />
+                      กำลังส่งคำขอ...
+                    </>
+                  ) : (
+                    <>
+                      <Send />
+                      ส่งคำขอให้ตรวจสอบ
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-          </section>
-
-          {formErrors.submit && (
-            <div className="request-account-submit-error" role="alert">
-              <CircleAlert />
-              {formErrors.submit}
-            </div>
-          )}
-
-          <div className="request-account-form-actions">
-            <button
-              type="button"
-              className="request-account-cancel-button"
-              onClick={() => navigate(-1)}
-              disabled={submitting}
-            >
-              ยกเลิก
-            </button>
-
-            <button
-              type="submit"
-              className="request-account-submit-button"
-              disabled={submitting}
-            >
-              {submitting ? (
-                <>
-                  <LoaderCircle className="request-account-button-spinner" />
-                  กำลังส่งคำขอ...
-                </>
-              ) : (
-                <>
-                  <Send />
-                  ยืนยันข้อมูลและส่งตรวจสอบ
-                </>
-              )}
-            </button>
           </div>
         </form>
       </div>
@@ -1257,10 +1358,12 @@ export default function RequestWellnessHubAccount() {
               <CheckCircle2 />
             </div>
 
-            <h2 id="request-success-title">ส่งคำขอสำเร็จ</h2>
+            <p className="request-account-modal__eyebrow">REQUEST RECEIVED</p>
+
+            <h2 id="request-success-title">ส่งคำขอเรียบร้อยแล้ว</h2>
 
             <p>
-              ผู้ดูแลระบบจะตรวจสอบข้อมูลและเอกสาร ผลการพิจารณาจะถูกส่งไปยังอีเมล
+              ผู้ดูแลระบบจะตรวจสอบข้อมูลและเอกสาร และส่งผลการพิจารณาไปยัง
               <strong> {formData.userEmail}</strong>
             </p>
 

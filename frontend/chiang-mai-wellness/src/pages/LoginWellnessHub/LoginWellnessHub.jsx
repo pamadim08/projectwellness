@@ -205,7 +205,6 @@ export default function LoginWellnessHub() {
   return (
     <main className="provider-login-page">
       <div className="provider-login-shell">
-        {/* ฝั่งข้อมูลแนะนำระบบ */}
         <section className="provider-login-introduction">
           <Link to="/" className="provider-login-back">
             <ArrowLeft />
@@ -213,44 +212,72 @@ export default function LoginWellnessHub() {
           </Link>
 
           <div className="provider-login-introduction__content">
-            <div className="provider-login-brand-icon">
-              <Leaf />
-            </div>
-
-            <p className="provider-login-eyebrow">CHIANG MAI WELLNESS</p>
-
-            <h1>ระบบสำหรับผู้ประกอบการ</h1>
-
-            <p className="provider-login-introduction__description">
-              เข้าสู่ระบบเพื่อดูแลและปรับปรุงข้อมูลสถานประกอบการ
-              ให้ข้อมูลที่แสดงต่อผู้ใช้งานมีความถูกต้องและเป็นปัจจุบัน
-            </p>
-
-            <div className="provider-login-benefits">
-              <div>
-                <ShieldCheck />
-
-                <div>
-                  <strong>บัญชีผ่านการตรวจสอบ</strong>
-                  <span>ใช้งานได้หลังคำขอได้รับการอนุมัติจากผู้ดูแลระบบ</span>
-                </div>
+            <div className="provider-login-brand-row">
+              <div className="provider-login-brand-icon">
+                <Leaf />
               </div>
 
               <div>
-                <Building2 />
+                <span>CHIANG MAI</span>
+                <strong>WELLNESS PROVIDER</strong>
+              </div>
+            </div>
+
+            <p className="provider-login-eyebrow">PROVIDER PORTAL</p>
+
+            <h1>พื้นที่จัดการสำหรับผู้ประกอบการ</h1>
+
+            <p className="provider-login-introduction__description">
+              เข้าสู่ระบบเพื่อจัดการข้อมูลสถานประกอบการ
+              และดูแลข้อมูลที่เผยแพร่บนแพลตฟอร์มให้ถูกต้องและเป็นปัจจุบัน
+            </p>
+
+            <div className="provider-login-flow">
+              <div className="provider-login-flow__item">
+                <span>01</span>
 
                 <div>
-                  <strong>จัดการเฉพาะข้อมูลของคุณ</strong>
-                  <span>
-                    ผู้ประกอบการสามารถเข้าถึงเฉพาะสถานประกอบการที่ได้รับสิทธิ์
-                  </span>
+                  <strong>บัญชีได้รับการอนุมัติ</strong>
+                  <p>ระบบออกบัญชีหลังผู้ดูแลตรวจสอบคำขอเรียบร้อย</p>
                 </div>
+              </div>
+
+              <div className="provider-login-flow__connector" />
+
+              <div className="provider-login-flow__item">
+                <span>02</span>
+
+                <div>
+                  <strong>เข้าสู่ระบบด้วยบัญชีที่ได้รับ</strong>
+                  <p>ใช้ชื่อผู้ใช้และรหัสผ่านที่ระบบส่งให้ทางอีเมล</p>
+                </div>
+              </div>
+
+              <div className="provider-login-flow__connector" />
+
+              <div className="provider-login-flow__item">
+                <span>03</span>
+
+                <div>
+                  <strong>จัดการข้อมูลสถานประกอบการ</strong>
+                  <p>ปรับปรุงข้อมูลเฉพาะสถานประกอบการที่คุณได้รับสิทธิ์</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="provider-login-security-note">
+              <ShieldCheck />
+
+              <div>
+                <strong>บัญชีผู้ประกอบการได้รับการตรวจสอบสิทธิ์</strong>
+                <span>
+                  ผู้ใช้งานจะสามารถเข้าถึงเฉพาะข้อมูลสถานประกอบการของตนเอง
+                </span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ฝั่งแบบฟอร์ม */}
         <section className="provider-login-form-section">
           <form
             className="provider-login-form"
@@ -258,20 +285,23 @@ export default function LoginWellnessHub() {
             noValidate
           >
             <div className="provider-login-form__heading">
-              <div className="provider-login-form__heading-icon">
-                <UserRound />
+              <div>
+                <p>WELCOME BACK</p>
+                <h2>เข้าสู่ระบบ</h2>
               </div>
 
-              <div>
-                <p>PROVIDER LOGIN</p>
-                <h2>เข้าสู่ระบบผู้ประกอบการ</h2>
+              <div className="provider-login-form__heading-icon">
+                <UserRound />
               </div>
             </div>
 
             <p className="provider-login-form__description">
-              กรอกชื่อผู้ใช้และรหัสผ่านที่ระบบส่งให้ทางอีเมล
-              หลังจากคำขอได้รับอนุมัติ
+              ใช้บัญชีผู้ประกอบการที่ได้รับหลังคำขอได้รับการอนุมัติ
             </p>
+
+            <div className="provider-login-divider">
+              <span>ข้อมูลเข้าสู่ระบบ</span>
+            </div>
 
             <div className="provider-login-field">
               <label htmlFor="providerUsername">ชื่อผู้ใช้</label>
@@ -291,11 +321,15 @@ export default function LoginWellnessHub() {
                   type="text"
                   value={formData.username}
                   onChange={handleInputChange}
-                  placeholder="ตัวอย่าง spaxxxxxxxxxx"
+                  placeholder="กรอกชื่อผู้ใช้"
                   autoComplete="username"
                   maxLength={20}
                   disabled={submitting}
                 />
+              </div>
+
+              <div className="provider-login-field__support">
+                <span>ภาษาอังกฤษหรือตัวเลข 13–20 ตัวอักษร</span>
               </div>
 
               {errors.username && (
@@ -306,6 +340,7 @@ export default function LoginWellnessHub() {
             <div className="provider-login-field">
               <div className="provider-login-field__heading">
                 <label htmlFor="providerPassword">รหัสผ่าน</label>
+
                 <span>8 ตัวอักษร</span>
               </div>
 
@@ -351,6 +386,7 @@ export default function LoginWellnessHub() {
             {errors.submit && (
               <div className="provider-login-submit-error" role="alert">
                 <CircleAlert />
+
                 <span>{errors.submit}</span>
               </div>
             )}
@@ -367,20 +403,31 @@ export default function LoginWellnessHub() {
                 </>
               ) : (
                 <>
-                  <LogIn />
                   เข้าสู่ระบบ
+                  <LogIn />
                 </>
               )}
             </button>
 
-            <div className="provider-login-help">
-              <span>ยังไม่ได้รับบัญชีผู้ใช้งาน?</span>
+            <div className="provider-login-account-note">
+              <Building2 />
 
+              <div>
+                <span>ยังไม่มีบัญชีผู้ประกอบการ?</span>
+
+                <p>
+                  หากยื่นคำขอไว้แล้ว สามารถตรวจสอบผลการอนุมัติได้จากหน้าติดตามสถานะ
+                </p>
+              </div>
+            </div>
+
+            <div className="provider-login-help">
               <Link to="/track-status">ติดตามสถานะคำขอ</Link>
             </div>
 
             <div className="provider-login-admin">
-              <span>สำหรับผู้ดูแลระบบ</span>
+              <span>สำหรับเจ้าหน้าที่ระบบ</span>
+
               <Link to="/login">เข้าสู่ระบบ Admin</Link>
             </div>
           </form>

@@ -260,7 +260,7 @@ export default function ArticleList() {
     <main className="article-list-page">
       <header className="article-list-hero">
         <div className="article-list-container">
-          <p className="article-list-eyebrow">WELLNESS ARTICLES</p>
+          <p className="article-list-eyebrow">CHIANG MAI WELLNESS</p>
 
           <h1>บทความสุขภาพและการท่องเที่ยว</h1>
 
@@ -272,7 +272,26 @@ export default function ArticleList() {
       </header>
 
       <div className="article-list-container article-list-content">
-        <section className="article-list-search-card">
+        <section className="article-list-search-section">
+          <div className="article-list-search-heading">
+            <div>
+              <h2>ค้นหาบทความ</h2>
+
+              <p>ค้นหาจากชื่อบทความ หมวดหมู่ หรือเนื้อหาที่คุณสนใจ</p>
+            </div>
+
+            <button
+              type="button"
+              className={`article-list-filter-toggle ${
+                showFilters ? "article-list-filter-toggle--active" : ""
+              }`}
+              onClick={() => setShowFilters((previousValue) => !previousValue)}
+            >
+              <Filter />
+              ตัวกรอง
+            </button>
+          </div>
+
           <div className="article-list-search-row">
             <div className="article-list-search-input">
               <Search />
@@ -295,15 +314,6 @@ export default function ArticleList() {
                 </button>
               )}
             </div>
-
-            <button
-              type="button"
-              className="article-list-filter-toggle"
-              onClick={() => setShowFilters((previousValue) => !previousValue)}
-            >
-              <Filter />
-              ตัวกรอง
-            </button>
           </div>
 
           <div
@@ -389,11 +399,9 @@ export default function ArticleList() {
           <>
             <section className="article-list-summary">
               <div>
-                <p>ARTICLE COLLECTION</p>
-
                 <h2>บทความทั้งหมด</h2>
 
-                <span>เลือกอ่านบทความตามหัวข้อที่คุณสนใจ</span>
+                <span>เลือกอ่านเรื่องราวและความรู้ตามหัวข้อที่คุณสนใจ</span>
               </div>
 
               <div className="article-list-summary__count">
@@ -455,19 +463,21 @@ export default function ArticleList() {
                           ) : (
                             <Newspaper />
                           )}
-
-                          <span className="article-list-card__category">
-                            {getArticleCategory(article)}
-                          </span>
                         </div>
 
                         <div className="article-list-card__body">
-                          {publishDate && (
-                            <p className="article-list-card__date">
-                              <CalendarDays />
-                              {publishDate}
-                            </p>
-                          )}
+                          <div className="article-list-card__meta">
+                            <span className="article-list-card__category">
+                              {getArticleCategory(article)}
+                            </span>
+
+                            {publishDate && (
+                              <p className="article-list-card__date">
+                                <CalendarDays />
+                                {publishDate}
+                              </p>
+                            )}
+                          </div>
 
                           <h3>{article.articleTitle}</h3>
 
@@ -481,7 +491,7 @@ export default function ArticleList() {
                             to={`/articles/${article.articleId}`}
                             className="article-list-card__link"
                           >
-                            อ่านบทความ
+                            <span>อ่านบทความ</span>
                             <ArrowRight />
                           </Link>
                         </div>

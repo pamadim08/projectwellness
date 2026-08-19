@@ -410,6 +410,7 @@ public class AccountRequestService {
                 hub.setGoogleMapsLink(request.getGoogleMapsLink());
                 hub.setWellnessHubDescription(request.getWellnessHubDescription());
                 hub.setWellnessHubImg(request.getWellnessHubImg());
+                hub.setWellnessHubGallery(request.getWellnessHubGallery());
                 hub.setWellnessHubLatitude(request.getWellnessHubLatitude());
                 hub.setWellnessHubLongitude(request.getWellnessHubLongitude());
                 hub.setCertificateType(request.getCertificateType());
@@ -437,6 +438,7 @@ public class AccountRequestService {
                 emergency.setGoogleMapsLink(request.getGoogleMapsLink());
                 emergency.setWellnessHubDescription(request.getWellnessHubDescription());
                 emergency.setWellnessHubImg(request.getWellnessHubImg());
+                emergency.setWellnessHubGallery(request.getWellnessHubGallery());
                 emergency.setWellnessHubLatitude(request.getWellnessHubLatitude());
                 emergency.setWellnessHubLongitude(request.getWellnessHubLongitude());
                 emergency.setCertificateType(request.getCertificateType());

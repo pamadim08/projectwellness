@@ -1,185 +1,244 @@
 /* ==========================================================================
-   1. GLOBAL PAGE & CONTAINER
+   WELLNESS HUB DETAIL
+   Editorial Wellness Directory
+   ========================================================================== */
+
+/* ==========================================================================
+   1. PAGE
    ========================================================================== */
 
 .hub-detail-page {
   min-height: 100vh;
-  background: #f8faf9;
-  color: #1a382b;
+  color: #1b352a;
+  background: #f6f7f4;
 }
 
 .hub-detail-container {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1200px, calc(100% - 48px));
   margin: 0 auto;
 }
 
 /* ==========================================================================
-   2. HERO HEADER
+   2. HERO
    ========================================================================== */
 
 .hub-detail-hero {
-  padding: 24px 0 28px;
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(180, 218, 198, 0.45),
-      transparent 35%
-    ),
-    linear-gradient(135deg, #eef7f2 0%, #f8faf9 60%, #fffbf5 100%);
-  border-bottom: 1px solid #e1ebe5;
+  position: relative;
+  padding: 28px 0 32px;
+  overflow: hidden;
+  background: #ffffff;
+  border-bottom: 1px solid #dfe5e0;
+}
+
+.hub-detail-hero::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 5px;
+  background: #2d6a4f;
+  content: "";
 }
 
 .hub-detail-back {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin: 0 0 24px;
   padding: 0;
-  color: #216d50;
+  color: #567064;
   background: transparent;
-  border: none;
-  font-family: inherit;
-  font-size: 0.85rem;
+  border: 0;
+  font: inherit;
+  font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
   transition:
-    gap 0.2s ease,
-    color 0.2s ease;
+    color 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    gap 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hub-detail-back:hover {
-  gap: 10px;
-  color: #154e38;
+  gap: 12px;
+  color: #1b4332;
+}
+
+.hub-detail-back:focus-visible {
+  outline: 3px solid rgba(82, 183, 136, 0.32);
+  outline-offset: 5px;
+  border-radius: 4px;
 }
 
 .hub-detail-back svg {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
 }
 
 .hub-detail-eyebrow {
-  margin: 0 0 6px;
-  color: #2d7a5b;
-  font-size: 0.72rem;
+  display: inline-block;
+  margin: 0 0 8px;
+  color: #2d6a4f;
+  font-size: 0.75rem;
   font-weight: 800;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .hub-detail-hero h1 {
-  max-width: 850px;
+  max-width: 900px;
   margin: 0;
-  color: #163a2c;
-  font-size: clamp(1.6rem, 2.6vw, 2.4rem);
+  color: #173b2c;
+  font-size: clamp(1.75rem, 3vw, 2.7rem);
+  font-weight: 700;
   line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 .hub-detail-hero__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 14px;
+  align-items: center;
+  gap: 18px;
+  margin-top: 16px;
 }
 
 .hub-detail-hero__meta span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  color: #436256;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #d7e6de;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  gap: 7px;
+  color: #5c7067;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.hub-detail-hero__meta span + span {
+  position: relative;
+  padding-left: 18px;
+}
+
+.hub-detail-hero__meta span + span::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  background: #9bad9f;
+  border-radius: 50%;
+  content: "";
+  transform: translateY(-50%);
 }
 
 .hub-detail-hero__meta svg {
-  width: 15px;
-  height: 15px;
-  color: #216d50;
-}
-
-.hub-detail-content {
-  padding-top: 24px;
-  padding-bottom: 48px;
+  width: 16px;
+  height: 16px;
+  color: #2d6a4f;
 }
 
 /* ==========================================================================
-   3. MAIN CONTENT GRID (2 COLUMNS: 2fr 1fr)
+   3. CONTENT LAYOUT
    ========================================================================== */
+
+.hub-detail-content {
+  padding-top: 32px;
+  padding-bottom: 72px;
+}
 
 .hub-detail-layout {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.75fr) minmax(300px, 0.75fr);
+  gap: 28px;
   align-items: start;
 }
 
 .hub-detail-main {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
-/* 🟢 IMAGE BOX (รวมอยู่ในฝั่ง Main ซ้ายมืออย่างเป็นระเบียบ) */
+.hub-detail-sidebar {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ==========================================================================
+   4. MAIN IMAGE
+   ========================================================================== */
+
 .hub-detail-image-box {
   position: relative;
   width: 100%;
-  height: 320px; /* ล็อคความสูงรูปภาพหลัก */
+  height: clamp(360px, 42vw, 500px);
   overflow: hidden;
-  background: #e9f3ed;
-  border: 1px solid #e1ebe5;
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(22, 58, 44, 0.04);
+  background: #e9eee9;
+  border: 1px solid #dce4de;
 }
 
 .hub-detail-main-image {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
+  transition: transform 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hub-detail-image-box:hover .hub-detail-main-image {
+  transform: scale(1.015);
+}
+
+.hub-detail-image-box::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 30%;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(12, 35, 26, 0.32), transparent);
+  content: "";
 }
 
 .hub-detail-image-placeholder {
   display: flex;
+  width: 100%;
+  height: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
-  color: #668075;
-  background:
-    radial-gradient(
-      circle at center,
-      rgba(255, 255, 255, 0.95),
-      transparent 42%
-    ),
-    linear-gradient(135deg, #e7f2eb, #f7faf8);
+  gap: 12px;
+  color: #61766c;
+  background: #edf2ee;
 }
 
 .hub-detail-image-placeholder svg {
-  width: 44px;
-  height: 44px;
-  margin-bottom: 8px;
-  color: #2b7859;
+  width: 42px;
+  height: 42px;
+  color: #527363;
+}
+
+.hub-detail-image-placeholder span {
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .hub-detail-image-badge {
   position: absolute;
-  right: 14px;
-  bottom: 14px;
+  z-index: 2;
+  bottom: 18px;
+  left: 18px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
+  gap: 7px;
+  max-width: calc(100% - 36px);
+  padding: 9px 14px;
   color: #ffffff;
-  background: rgba(22, 58, 44, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 20px;
-  backdrop-filter: blur(8px);
-  font-size: 0.75rem;
-  font-weight: 800;
+  background: rgba(20, 59, 43, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  font-size: 0.78rem;
+  font-weight: 700;
+  backdrop-filter: blur(10px);
 }
 
 .hub-detail-image-badge svg {
@@ -187,65 +246,94 @@
   height: 14px;
 }
 
-/* CARDS COMMON STYLE */
-.hub-detail-card,
-.hub-detail-info-card,
-.hub-detail-ownership-card {
-  padding: 18px 20px;
+/* ==========================================================================
+   5. MAIN CONTENT CARDS
+   ========================================================================== */
+
+.hub-detail-card {
+  position: relative;
+  padding: 28px 30px;
   background: #ffffff;
-  border: 1px solid #e1ebe5;
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(22, 58, 44, 0.04);
-  box-sizing: border-box;
+  border: 1px solid #dfe5e0;
+}
+
+.hub-detail-card::before {
+  position: absolute;
+  top: 28px;
+  bottom: 28px;
+  left: 0;
+  width: 3px;
+  background: #74c69d;
+  content: "";
 }
 
 .hub-detail-card__heading {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
 .hub-detail-card__heading > svg {
-  width: 18px;
-  height: 18px;
-  padding: 8px;
-  color: #216d50;
-  background: #eaf5ef;
-  border-radius: 10px;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  padding: 10px;
+  color: #1b5e43;
+  background: #edf6f0;
+  border-radius: 50%;
   box-sizing: content-box;
 }
 
+.hub-detail-card__heading > div {
+  min-width: 0;
+}
+
 .hub-detail-card__heading p {
-  margin: 0 0 2px;
-  color: #2d7a5b;
-  font-size: 0.68rem;
+  margin: 0 0 3px;
+  color: #6d8177;
+  font-size: 0.67rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
 }
 
 .hub-detail-card__heading h2 {
   margin: 0;
-  color: #163a2c;
-  font-size: 1.1rem;
+  color: #173b2c;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .hub-detail-description {
+  max-width: 760px;
   margin: 0;
-  color: #556c62;
-  font-size: 0.9rem;
-  line-height: 1.65;
+  color: #475e53;
+  font-size: 0.95rem;
+  line-height: 1.85;
   white-space: pre-line;
 }
 
-/* MAP WRAPPER */
+/* ==========================================================================
+   6. MAP
+   ========================================================================== */
+
 .hub-detail-map-wrapper {
   position: relative;
   width: 100%;
-  height: 320px; /* ความสูงแผนที่ */
+  height: 410px;
   overflow: hidden;
-  border: 1px solid #d9e7df;
-  border-radius: 14px;
+  background: #e9eee9;
+  border: 1px solid #ccd9d1;
+}
+
+.hub-detail-map-wrapper::after {
+  position: absolute;
+  z-index: 500;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid rgba(27, 67, 50, 0.08);
+  content: "";
 }
 
 .hub-detail-map {
@@ -255,20 +343,32 @@
 
 .hub-detail-google-map {
   display: inline-flex;
+  min-height: 42px;
   align-items: center;
-  gap: 6px;
-  margin-top: 14px;
-  padding: 8px 12px;
-  color: #216d50;
-  background: #ebf5f0;
-  border-radius: 8px;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 0 16px;
+  color: #ffffff;
+  background: #1b4332;
+  border: 1px solid #1b4332;
+  border-radius: 6px;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
+  transition:
+    background 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hub-detail-google-map:hover {
-  background: #ddede4;
+  background: #2d6a4f;
+  transform: translateY(-1px);
+}
+
+.hub-detail-google-map:focus-visible {
+  outline: 3px solid rgba(82, 183, 136, 0.35);
+  outline-offset: 3px;
 }
 
 .hub-detail-google-map svg {
@@ -276,256 +376,399 @@
   height: 15px;
 }
 
+.hub-detail-google-map svg:last-child {
+  width: 13px;
+  height: 13px;
+  margin-left: 2px;
+  opacity: 0.8;
+}
+
+/* Leaflet */
+
+.hub-detail-map .leaflet-control-zoom {
+  overflow: hidden;
+  border: 1px solid #d4dfd8 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 5px 18px rgba(23, 59, 44, 0.1) !important;
+}
+
+.hub-detail-map .leaflet-control-zoom a {
+  color: #1b4332 !important;
+}
+
+.hub-detail-map .leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(16, 46, 34, 0.16);
+}
+
+.hub-detail-map .leaflet-popup-content {
+  margin: 14px 16px;
+}
+
 .hub-detail-map-popup {
   display: flex;
-  min-width: 140px;
+  min-width: 150px;
   flex-direction: column;
-  gap: 2px;
+  gap: 5px;
   font-family: inherit;
 }
 
 /* ==========================================================================
-   4. SIDEBAR & INFO CARDS
+   7. SIDEBAR INFO
    ========================================================================== */
 
-.hub-detail-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .hub-detail-info-card {
-  position: sticky;
-  top: 80px;
+  padding: 22px;
+  background: #ffffff;
+  border: 1px solid #dfe5e0;
 }
 
 .hub-detail-info-card__heading {
-  padding-bottom: 10px;
-  border-bottom: 1px solid #edf2ef;
+  margin-bottom: 6px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5ebe7;
 }
 
 .hub-detail-info-card__heading h2 {
   margin: 0;
-  color: #163a2c;
+  color: #173b2c;
   font-size: 1.05rem;
+  font-weight: 700;
 }
 
-.hub-detail-info-card__heading span {
+.hub-detail-info-card__heading > span {
   display: block;
-  margin-top: 2px;
-  color: #72877e;
-  font-size: 0.72rem;
+  margin-top: 4px;
+  color: #718078;
+  font-size: 0.73rem;
 }
 
 .hub-detail-info-row {
   display: grid;
-  grid-template-columns: 28px 1fr;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid #edf2ef;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid #edf0ee;
 }
 
 .hub-detail-info-row:last-child {
-  border-bottom: none;
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .hub-detail-info-row__icon {
   display: grid;
+  width: 36px;
+  height: 36px;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  color: #216d50;
-  background: #eaf5ef;
-  border-radius: 8px;
+  color: #2d6a4f;
+  background: #eef5f0;
+  border-radius: 50%;
 }
 
 .hub-detail-info-row__icon svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .hub-detail-info-row > div:last-child {
-  width: 100%;
   min-width: 0;
 }
 
-.hub-detail-info-row span {
+.hub-detail-info-row > div:last-child > span {
   display: block;
-  margin-bottom: 2px;
-  color: #72877e;
-  font-size: 0.7rem;
+  margin: 0 0 4px;
+  color: #77877f;
+  font-size: 0.69rem;
+  font-weight: 600;
 }
 
 .hub-detail-info-row p,
 .hub-detail-info-row a {
   margin: 0;
-  color: #334f43;
+  color: #304b3e;
   font-size: 0.84rem;
-  line-height: 1.45;
-  word-break: break-word;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .hub-detail-info-row a {
-  font-weight: 800;
+  color: #1b5e43;
+  font-weight: 700;
   text-decoration: none;
 }
 
-/* OWNERSHIP CARD */
-.hub-detail-ownership-card {
+.hub-detail-info-row a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   8. OPERATING HOURS
+   ========================================================================== */
+
+.hub-detail-hours {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 16px;
-  color: #ffffff;
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(255, 255, 255, 0.14),
-      transparent 42%
-    ),
-    linear-gradient(135deg, #1d4637, #2c684e);
-  border: none;
-  border-radius: 16px;
-}
-
-.hub-detail-ownership-card__icon {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  margin-bottom: 10px;
-  color: #1d4637;
-  background: #c8f0d8;
-  border-radius: 8px;
-}
-
-.hub-detail-ownership-card__icon svg {
-  width: 16px;
-  height: 16px;
-}
-
-.hub-detail-ownership-card h2 {
-  margin: 0;
-  color: #ffffff;
-  font-size: 0.98rem;
-  line-height: 1.35;
-}
-
-.hub-detail-ownership-card > p {
-  margin: 6px 0 0;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.76rem;
-  line-height: 1.5;
-}
-
-.hub-detail-ownership-card button {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 12px;
-  padding: 8px 10px;
-  color: #1d4637;
-  background: #bceccd;
-  border: none;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 900;
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease;
-}
-
-.hub-detail-ownership-card button:hover {
-  background: #d0f5dd;
-  transform: translateY(-1px);
-}
-
-.hub-detail-ownership-card > span {
-  display: block;
-  margin-top: 6px;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 0.65rem;
-  text-align: center;
-}
-
-/* HOURS & CERTIFICATES */
-.hub-detail-hours,
-.hub-detail-certificates {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 4px;
+  gap: 0;
+  margin-top: 8px;
 }
 
 .hub-detail-hours__row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) auto;
+  gap: 12px;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 5px 8px;
-  background: #f8faf9;
-  border: 1px solid #e5eee9;
-  border-radius: 6px;
+  padding: 9px 0;
+  border-bottom: 1px dashed #dce5df;
+}
+
+.hub-detail-hours__row:last-child {
+  border-bottom: 0;
 }
 
 .hub-detail-hours__row strong {
-  color: #365748;
-  font-size: 0.7rem;
-  font-weight: 700;
+  color: #40584d;
+  font-size: 0.73rem;
+  font-weight: 600;
 }
 
 .hub-detail-hours__status {
-  color: #216d50;
-  font-size: 0.68rem;
-  font-weight: 800;
+  margin: 0 !important;
+  color: #1b5e43 !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
 }
 
-.hub-detail-certificate {
+/* ==========================================================================
+   9. CERTIFICATES
+   ========================================================================== */
+
+.hub-detail-certificates {
   display: flex;
-  align-items: flex-start;
-  gap: 5px;
-  padding: 6px 8px;
-  color: #365748 !important;
-  background: #f1f8f4;
-  border: 1px solid #dcebe3;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  line-height: 1.35 !important;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 7px;
 }
 
-.hub-detail-certificate svg {
-  flex: 0 0 auto;
-  width: 13px;
-  height: 13px;
-  margin-top: 2px;
-  color: #2b7859;
+.hub-detail-certificate-item {
+  min-width: 0;
+  padding: 9px 10px !important;
+  margin-top: 0 !important;
+  background: #f5f8f6;
+  border-left: 2px solid #74c69d;
 }
 
-/* STATE & SPINNER */
-.hub-detail-state {
+.hub-detail-certificate-item svg {
+  color: #2d6a4f !important;
+}
+
+.hub-detail-certificate-item span {
+  margin: 0 !important;
+  color: #3d574a !important;
+  font-size: 0.78rem !important;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   10. OWNERSHIP
+   ========================================================================== */
+
+.hub-detail-ownership-card {
+  position: relative;
+  padding: 24px 22px;
+  overflow: hidden;
+  color: #ffffff;
+  background: #1b4332;
+  border: 1px solid #1b4332;
+}
+
+.hub-detail-ownership-card::after {
+  position: absolute;
+  top: -38px;
+  right: -38px;
+  width: 120px;
+  height: 120px;
+  background: rgba(116, 198, 157, 0.1);
+  border: 1px solid rgba(116, 198, 157, 0.15);
+  border-radius: 50%;
+  content: "";
+}
+
+.hub-detail-ownership-card__icon {
+  position: relative;
+  z-index: 1;
   display: grid;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 16px;
   place-items: center;
-  min-height: 240px;
-  margin-top: 30px;
-  padding: 30px 20px;
+  color: #1b4332;
+  background: #b7e4c7;
+  border-radius: 50%;
+}
+
+.hub-detail-ownership-card__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.hub-detail-ownership-card h2 {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.hub-detail-ownership-card > p {
+  position: relative;
+  z-index: 1;
+  margin: 8px 0 0;
+  color: #d8e8df;
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.hub-detail-ownership-card button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 9px 12px;
+  color: #173b2c;
+  background: #b7e4c7;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    background 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hub-detail-ownership-card button:hover {
+  background: #d8f3dc;
+  transform: translateY(-1px);
+}
+
+.hub-detail-ownership-card button:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.hub-detail-ownership-card button svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.hub-detail-ownership-card > span {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 10px;
+  color: #afc9bc;
+  font-size: 0.65rem;
+  line-height: 1.5;
   text-align: center;
+}
+
+/* ==========================================================================
+   11. LOADING / ERROR STATE
+   ========================================================================== */
+
+.hub-detail-state {
+  display: flex;
+  min-height: calc(100vh - 160px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.hub-detail-state > svg {
+  width: 38px;
+  height: 38px;
+  margin-bottom: 16px;
+  color: #47705c;
+}
+
+.hub-detail-state h1 {
+  margin: 0;
+  color: #173b2c;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.hub-detail-state p {
+  max-width: 480px;
+  margin: 8px auto 0;
+  color: #687b71;
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.hub-detail-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.hub-detail-state__actions button,
+.hub-detail-state__actions a {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 16px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.hub-detail-state__actions button {
+  color: #ffffff;
+  background: #1b4332;
+  border: 1px solid #1b4332;
+}
+
+.hub-detail-state__actions a {
+  color: #1b4332;
   background: #ffffff;
-  border: 1px dashed #cadcd2;
-  border-radius: 16px;
+  border: 1px solid #ccd8d1;
+}
+
+.hub-detail-state__actions svg {
+  width: 15px;
+  height: 15px;
 }
 
 .hub-detail-spinner {
   width: 36px;
   height: 36px;
-  margin-bottom: 12px;
-  border: 3px solid #dceae2;
-  border-top-color: #216d50;
+  margin-bottom: 16px;
+  border: 3px solid #dce7e0;
+  border-top-color: #2d6a4f;
   border-radius: 50%;
-  animation: hub-detail-spin 0.85s linear infinite;
+  animation: hub-detail-spin 800ms linear infinite;
 }
 
 @keyframes hub-detail-spin {
@@ -534,24 +777,162 @@
   }
 }
 
-/* RESPONSIVE */
-@media (max-width: 900px) {
+/* ==========================================================================
+   12. RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .hub-detail-layout {
+    grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.8fr);
+    gap: 20px;
+  }
+
+  .hub-detail-image-box {
+    height: 380px;
+  }
+
+  .hub-detail-map-wrapper {
+    height: 360px;
+  }
+}
+
+@media (max-width: 860px) {
+  .hub-detail-container {
+    width: min(100% - 32px, 720px);
+  }
+
   .hub-detail-layout {
     grid-template-columns: 1fr;
   }
 
-  .hub-detail-info-card {
-    position: static;
+  .hub-detail-sidebar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hub-detail-ownership-card {
+    grid-column: 1 / -1;
+  }
+
+  .hub-detail-image-box {
+    height: 420px;
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 640px) {
   .hub-detail-container {
     width: calc(100% - 24px);
   }
 
-  .hub-detail-image-box,
+  .hub-detail-hero {
+    padding: 20px 0 24px;
+  }
+
+  .hub-detail-back {
+    margin-bottom: 18px;
+  }
+
+  .hub-detail-hero h1 {
+    font-size: 1.65rem;
+  }
+
+  .hub-detail-hero__meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .hub-detail-hero__meta span + span {
+    padding-left: 0;
+  }
+
+  .hub-detail-hero__meta span + span::before {
+    display: none;
+  }
+
+  .hub-detail-content {
+    padding-top: 16px;
+    padding-bottom: 48px;
+  }
+
+  .hub-detail-main {
+    gap: 16px;
+  }
+
+  .hub-detail-sidebar {
+    display: flex;
+  }
+
+  .hub-detail-image-box {
+    height: 270px;
+  }
+
+  .hub-detail-card {
+    padding: 22px 18px;
+  }
+
+  .hub-detail-card::before {
+    top: 22px;
+    bottom: 22px;
+  }
+
   .hub-detail-map-wrapper {
-    height: 240px;
+    height: 300px;
+  }
+
+  .hub-detail-info-card {
+    padding: 20px 18px;
+  }
+
+  .hub-detail-ownership-card {
+    padding: 22px 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .hub-detail-image-box {
+    height: 230px;
+  }
+
+  .hub-detail-image-badge {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    justify-content: center;
+  }
+
+  .hub-detail-card__heading {
+    align-items: flex-start;
+  }
+
+  .hub-detail-map-wrapper {
+    height: 270px;
+  }
+
+  .hub-detail-hours__row {
+    align-items: flex-start;
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .hub-detail-hours__status {
+    white-space: normal;
+  }
+}
+
+/* ==========================================================================
+   13. REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-detail-main-image,
+  .hub-detail-back,
+  .hub-detail-google-map,
+  .hub-detail-ownership-card button {
+    transition: none;
+  }
+
+  .hub-detail-spinner {
+    animation-duration: 1.5s;
   }
 }

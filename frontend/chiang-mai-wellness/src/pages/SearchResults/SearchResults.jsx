@@ -186,16 +186,18 @@ export default function SearchResults() {
 
   if (loading) {
     return (
-      <main className="search-results-page">
-        <div className="search-results-container">
-          <section className="search-results-state">
-            <div className="search-results-spinner" />
+      <main className="search-results-page search-results-page--loading">
+        <section
+          className="search-results-loading"
+          aria-label="กำลังค้นหาข้อมูล"
+          aria-busy="true"
+        >
+          <div className="search-results-spinner" />
 
-            <h1>กำลังค้นหาข้อมูล</h1>
+          <h1>กำลังค้นหาข้อมูล</h1>
 
-            <p>ระบบกำลังค้นหาเส้นทาง สถานประกอบการ และบทความที่เกี่ยวข้อง</p>
-          </section>
-        </div>
+          <p>ระบบกำลังค้นหาเส้นทาง สถานประกอบการ และบทความที่เกี่ยวข้อง</p>
+        </section>
       </main>
     );
   }

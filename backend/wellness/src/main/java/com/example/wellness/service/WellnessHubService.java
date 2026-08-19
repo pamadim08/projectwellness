@@ -444,6 +444,9 @@ public class WellnessHubService {
         if (updatedData.getWellnessHubImg() != null) {
             target.setWellnessHubImg(updatedData.getWellnessHubImg());
         }
+        if (updatedData.getWellnessHubGallery() != null) {
+            target.setWellnessHubGallery(updatedData.getWellnessHubGallery());
+        }
         if (updatedData.getCertificateType() != null) {
             target.setCertificateType(updatedData.getCertificateType());
         }
@@ -474,6 +477,8 @@ public class WellnessHubService {
             target.setWellnessHubDescription(source.getWellnessHubDescription());
         if (source.getWellnessHubImg() != null)
             target.setWellnessHubImg(source.getWellnessHubImg());
+        if (source.getWellnessHubGallery() != null)
+            target.setWellnessHubGallery(source.getWellnessHubGallery());
         if (source.getCertificateType() != null)
             target.setCertificateType(source.getCertificateType());
         if (source.getOperatingHours() != null)
@@ -517,6 +522,7 @@ public class WellnessHubService {
         emergency.setGoogleMapsLink(hub.getGoogleMapsLink());
         emergency.setWellnessHubDescription(hub.getWellnessHubDescription());
         emergency.setWellnessHubImg(hub.getWellnessHubImg());
+        emergency.setWellnessHubGallery(hub.getWellnessHubGallery());
         emergency.setWellnessHubLatitude(hub.getWellnessHubLatitude());
         emergency.setWellnessHubLongitude(hub.getWellnessHubLongitude());
         emergency.setCertificateType(hub.getCertificateType());
@@ -539,6 +545,7 @@ public class WellnessHubService {
         hub.setGoogleMapsLink(emergency.getGoogleMapsLink());
         hub.setWellnessHubDescription(emergency.getWellnessHubDescription());
         hub.setWellnessHubImg(emergency.getWellnessHubImg());
+        hub.setWellnessHubGallery(emergency.getWellnessHubGallery());
         hub.setWellnessHubLatitude(emergency.getWellnessHubLatitude());
         hub.setWellnessHubLongitude(emergency.getWellnessHubLongitude());
         hub.setCertificateType(emergency.getCertificateType());

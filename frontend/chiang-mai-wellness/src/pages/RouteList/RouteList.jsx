@@ -9,7 +9,9 @@ import {
   ChevronRight,
   CircleAlert,
   Filter,
+  Flag,
   MapPin,
+  Navigation,
   RefreshCw,
   Route,
   Search,
@@ -273,19 +275,38 @@ export default function RouteList() {
     <main className="route-list-page">
       <header className="route-list-hero">
         <div className="route-list-container">
-          <p className="route-list-eyebrow">WELLNESS ROUTES</p>
+          <p className="route-list-eyebrow">CHIANG MAI WELLNESS</p>
 
           <h1>เส้นทางท่องเที่ยวเชิงสุขภาพ</h1>
 
           <p className="route-list-hero__description">
-            ค้นหาเส้นทางสุขภาพในจังหวัดเชียงใหม่ พร้อมดูอำเภอที่เดินทางผ่าน
+            ค้นหาเส้นทางสุขภาพในจังหวัดเชียงใหม่ พร้อมดูพื้นที่ที่เดินทางผ่าน
             สถานประกอบการ และจุดบริการที่เกี่ยวข้อง
           </p>
         </div>
       </header>
 
       <div className="route-list-container route-list-content">
-        <section className="route-list-search-card">
+        <section className="route-list-search-section">
+          <div className="route-list-search-heading">
+            <div>
+              <h2>ค้นหาเส้นทาง</h2>
+
+              <p>ค้นหาจากชื่อเส้นทาง อำเภอ หรือรายละเอียดที่คุณสนใจ</p>
+            </div>
+
+            <button
+              type="button"
+              className={`route-list-filter-toggle ${
+                showFilters ? "route-list-filter-toggle--active" : ""
+              }`}
+              onClick={() => setShowFilters((previousValue) => !previousValue)}
+            >
+              <Filter />
+              ตัวกรอง
+            </button>
+          </div>
+
           <div className="route-list-search-row">
             <div className="route-list-search-input">
               <Search />
@@ -308,15 +329,6 @@ export default function RouteList() {
                 </button>
               )}
             </div>
-
-            <button
-              type="button"
-              className="route-list-filter-toggle"
-              onClick={() => setShowFilters((previousValue) => !previousValue)}
-            >
-              <Filter />
-              ตัวกรอง
-            </button>
           </div>
 
           <div
@@ -402,11 +414,11 @@ export default function RouteList() {
           <>
             <section className="route-list-summary">
               <div>
-                <p>ROUTE COLLECTION</p>
-
                 <h2>เส้นทางทั้งหมด</h2>
 
-                <span>เลือกเส้นทางที่เหมาะกับรูปแบบการท่องเที่ยวของคุณ</span>
+                <span>
+                  เลือกเส้นทางที่เหมาะกับรูปแบบและความสนใจของคุณ
+                </span>
               </div>
 
               <div className="route-list-summary__count">
@@ -444,22 +456,62 @@ export default function RouteList() {
                         key={routeItem.routeId}
                         className="route-list-card"
                       >
-                        <div className="route-list-card__cover">
-                          <Route />
+                        <aside className="route-list-card__rail">
+                          <div className="route-list-card__rail-heading">
+                            <Navigation />
+                            <span>เส้นทาง</span>
+                          </div>
 
-                          <span className="route-list-card__hub-count">
-                            <Building2 />
-                            {Number(routeItem.pinCount || 0)} แห่ง
-                          </span>
+                          <div className="route-list-card__rail-route">
+                            <div className="route-list-card__rail-stop">
+                              <span className="route-list-card__rail-dot route-list-card__rail-dot--start" />
 
-                          <span className="route-list-card__district-count">
-                            {districts.length} อำเภอ
-                          </span>
-                        </div>
+                              <span>เริ่มต้น</span>
+                            </div>
+
+                            <span className="route-list-card__rail-line" />
+
+                            <div className="route-list-card__rail-stop">
+                              <span className="route-list-card__rail-dot" />
+
+                              <span>ระหว่างทาง</span>
+                            </div>
+
+                            <span className="route-list-card__rail-line" />
+
+                            <div className="route-list-card__rail-stop">
+                              <span className="route-list-card__rail-finish">
+                                <Flag />
+                              </span>
+
+                              <span>ปลายทาง</span>
+                            </div>
+                          </div>
+
+                          <div className="route-list-card__rail-stats">
+                            <div>
+                              <Building2 />
+
+                              <strong>
+                                {Number(routeItem.pinCount || 0)}
+                              </strong>
+
+                              <span>จุดแนะนำ</span>
+                            </div>
+
+                            <div>
+                              <MapPin />
+
+                              <strong>{districts.length}</strong>
+
+                              <span>อำเภอ</span>
+                            </div>
+                          </div>
+                        </aside>
 
                         <div className="route-list-card__body">
                           <p className="route-list-card__eyebrow">
-                            WELLNESS ROUTE
+                            เส้นทางท่องเที่ยวเชิงสุขภาพ
                           </p>
 
                           <h3>{routeItem.routeName}</h3>
@@ -471,41 +523,57 @@ export default function RouteList() {
                           )}
 
                           <div className="route-list-card__journey">
-                            <div>
+                            <div className="route-list-card__journey-point">
                               <span>จุดเริ่มต้น</span>
 
-                              <strong>
-                                อ.
-                                {getStartDistrict(routeItem)}
-                              </strong>
+                              <strong>อ.{getStartDistrict(routeItem)}</strong>
                             </div>
 
-                            <ArrowRight />
+                            <div
+                              className="route-list-card__journey-line"
+                              aria-hidden="true"
+                            >
+                              <span />
+                              <ArrowRight />
+                            </div>
 
-                            <div>
+                            <div className="route-list-card__journey-point route-list-card__journey-point--end">
                               <span>จุดสิ้นสุด</span>
 
-                              <strong>
-                                อ.
-                                {getEndDistrict(routeItem)}
-                              </strong>
+                              <strong>อ.{getEndDistrict(routeItem)}</strong>
                             </div>
                           </div>
 
                           <div className="route-list-card__path">
                             <MapPin />
 
-                            <span>{getDistrictPath(routeItem)}</span>
+                            <div>
+                              <span className="route-list-card__path-label">
+                                พื้นที่ที่เดินทางผ่าน
+                              </span>
+
+                              <span className="route-list-card__path-value">
+                                {getDistrictPath(routeItem)}
+                              </span>
+                            </div>
                           </div>
 
                           {categoryLabels.length > 0 && (
                             <div className="route-list-card__categories">
                               {categoryLabels.slice(0, 3).map((category) => (
-                                <span key={category.id}>{category.label}</span>
+                                <span key={category.id}>
+                                  <span
+                                    className={`route-list-card__category-dot route-list-card__category-dot--${category.id.toLowerCase()}`}
+                                  />
+
+                                  {category.label}
+                                </span>
                               ))}
 
                               {categoryLabels.length > 3 && (
-                                <span>+{categoryLabels.length - 3}</span>
+                                <span className="route-list-card__category-more">
+                                  +{categoryLabels.length - 3}
+                                </span>
                               )}
                             </div>
                           )}
@@ -514,7 +582,7 @@ export default function RouteList() {
                             to={`/wellness-routes/${routeItem.routeId}`}
                             className="route-list-card__link"
                           >
-                            ดูรายละเอียดเส้นทาง
+                            <span>ดูรายละเอียดเส้นทาง</span>
                             <ArrowRight />
                           </Link>
                         </div>

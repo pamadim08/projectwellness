@@ -30,6 +30,7 @@ import RouteList from "./pages/RouteList/RouteList";
 import ArticleList from "./pages/ArticleList/ArticleList";
 import LoginWellnessHub from "./pages/LoginWellnessHub/LoginWellnessHub";
 import ProviderDashboard from "./pages/ProviderDashboard/ProviderDashboard";
+import ArticleDetail from "./pages/ArticleDetail/ArticleDetail";
 
 function PublicLayout({ children }) {
   return (
@@ -62,7 +63,7 @@ function App() {
               </PublicLayout>
             }
           />
-          // แก้ไขจุดนี้ใน App.js
+         
           <Route
             path="/search"
             element={
@@ -104,6 +105,14 @@ function App() {
             }
           />
           <Route
+            path="/articles/:articleId"
+            element={
+              <PublicLayout>
+                <ArticleDetail />
+              </PublicLayout>
+            }
+          />  
+          <Route
             path="/track-status"
             element={
               <PublicLayout>
@@ -134,6 +143,7 @@ function App() {
             path="/listOfficialArticle"
             element={<ListOfficialArticle />}
           />
+          
           <Route
             path="/editOfficialArticle/:id"
             element={<CreateOfficialArticle />}

@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
+
 import axios from "axios";
+
 import {
   Building2,
   CheckCircle2,
@@ -94,13 +96,11 @@ export default function TrackAccountRequest() {
     const normalizedKeyword = searchKeyword.trim();
     const isNumeric = /^\d+$/.test(normalizedKeyword);
 
-    // ==========================================
-    // Validation Logic
-    // ==========================================
     if (!normalizedKeyword) {
       setError("กรุณากรอกเลขใบอนุญาตหรือชื่อสถานประกอบการ");
       setResults([]);
       setSearched(false);
+
       return;
     }
 
@@ -108,6 +108,7 @@ export default function TrackAccountRequest() {
       setError("กรุณากรอกชื่อสถานประกอบการอย่างน้อย 2 ตัวอักษร");
       setResults([]);
       setSearched(false);
+
       return;
     }
 
@@ -117,7 +118,9 @@ export default function TrackAccountRequest() {
 
     try {
       const response = await axios.get(API_URL, {
-        params: { query: normalizedKeyword },
+        params: {
+          query: normalizedKeyword,
+        },
         timeout: 30000,
       });
 
@@ -157,22 +160,22 @@ export default function TrackAccountRequest() {
           <h1>ติดตามสถานะคำขอ</h1>
 
           <p className="track-request-hero__description">
-            กรอกเลขที่ใบอนุญาต หรือชื่อสถานประกอบการ
-            เพื่อตรวจสอบผลการพิจารณาคำขอสิทธิ์
+            ตรวจสอบผลการพิจารณาคำขอด้วยเลขใบอนุญาต หรือชื่อสถานประกอบการ
           </p>
         </div>
       </header>
 
       <div className="track-request-container track-request-content">
-        <section className="track-request-search-card">
-          <div className="track-request-search-card__heading">
-            <div className="track-request-search-card__icon">
+        <section className="track-request-search-section">
+          <div className="track-request-search-heading">
+            <div className="track-request-search-heading__icon">
               <FileSearch2 />
             </div>
 
             <div>
-              <h2>ค้นหาคำขอของคุณ</h2>
-              <p>ระบบจะแสดงเฉพาะคำขอที่ตรงกับข้อมูลที่ค้นหา</p>
+              <h2>ค้นหาคำขอ</h2>
+
+              <p>ใช้เลขใบอนุญาต หรือชื่อสถานประกอบการอย่างน้อย 2 ตัวอักษร</p>
             </div>
           </div>
 
@@ -188,7 +191,7 @@ export default function TrackAccountRequest() {
                 type="text"
                 value={keyword}
                 onChange={handleKeywordChange}
-                placeholder="ตัวอย่าง: 500XXXXXX หรือชื่อสถานประกอบการ"
+                placeholder="เลขใบอนุญาต หรือชื่อสถานประกอบการ"
                 aria-label="เลขใบอนุญาตหรือชื่อสถานประกอบการ"
                 autoComplete="off"
               />
@@ -212,6 +215,7 @@ export default function TrackAccountRequest() {
           {error && (
             <div className="track-request-search-error" role="alert">
               <CircleAlert />
+
               <span>{error}</span>
             </div>
           )}
@@ -219,35 +223,28 @@ export default function TrackAccountRequest() {
 
         {loading && (
           <section className="track-request-state">
-            <LoaderCircle className="track-request-state__spinner" />
+            <div className="track-request-state__icon">
+              <LoaderCircle className="track-request-state__spinner" />
+            </div>
+
             <h2>กำลังตรวจสอบสถานะ</h2>
+
             <p>ระบบกำลังค้นหาคำขอที่เกี่ยวข้อง กรุณารอสักครู่</p>
           </section>
         )}
 
-        {!loading && !searched && !error && (
-          <section className="track-request-welcome">
-            <div className="track-request-welcome__icon">
-              <Building2 />
-            </div>
-
-            <div>
-              <h2>ตรวจสอบผลได้ด้วยข้อมูลสถานประกอบการ</h2>
-              <p>
-                ใช้เลขใบอนุญาตหรือชื่อสถานประกอบการที่กรอกไว้ในแบบฟอร์มยื่นคำขอ
-              </p>
-            </div>
-          </section>
-        )}
-
         {!loading && searched && !error && results.length === 0 && (
-          <section className="track-request-state">
-            <FileSearch2 />
+          <section className="track-request-state track-request-state--empty">
+            <div className="track-request-state__icon">
+              <FileSearch2 />
+            </div>
+
             <h2>ไม่พบคำขอ</h2>
+
             <p>
               ไม่พบข้อมูลที่ตรงกับ <strong>“{keyword.trim()}”</strong>
               <br />
-              กรุณาตรวจสอบเลขใบอนุญาตหรือชื่อสถานประกอบการอีกครั้ง
+              กรุณาตรวจสอบข้อมูลที่ใช้ค้นหาอีกครั้ง
             </p>
           </section>
         )}
@@ -256,11 +253,20 @@ export default function TrackAccountRequest() {
           <section className="track-request-results">
             <div className="track-request-results__heading">
               <div>
-                <p>SEARCH RESULTS</p>
-                <h2>ผลการตรวจสอบคำขอ</h2>
+                <p>ผลการตรวจสอบ</p>
+
+                <h2>สถานะคำขอ</h2>
+
+                <span>
+                  พบ {results.length} รายการจากคำค้นหา “{keyword.trim()}”
+                </span>
               </div>
 
-              <span>{results.length} รายการ</span>
+              <div className="track-request-results__count">
+                <strong>{results.length}</strong>
+
+                <span>รายการ</span>
+              </div>
             </div>
 
             <div className="track-request-table-wrapper">
@@ -268,7 +274,7 @@ export default function TrackAccountRequest() {
                 <thead>
                   <tr>
                     <th>เลขใบอนุญาต</th>
-                    <th>ชื่อสถานประกอบการ</th>
+                    <th>สถานประกอบการ</th>
                     <th>สถานะ</th>
                     <th>รายละเอียด</th>
                   </tr>
@@ -279,6 +285,7 @@ export default function TrackAccountRequest() {
                     const statusInformation = getStatusInformation(
                       request.requestStatus,
                     );
+
                     const StatusIcon = statusInformation.icon;
 
                     return (
@@ -287,24 +294,24 @@ export default function TrackAccountRequest() {
                           data-label="เลขใบอนุญาต"
                           className="track-request-table__license"
                         >
-                          {request.licenseId ||
-                            request.wellnessHub?.licenseId ||
-                            "-"}
+                          <span>
+                            {request.licenseId ||
+                              request.wellnessHub?.licenseId ||
+                              "-"}
+                          </span>
                         </td>
 
-                        <td data-label="ชื่อสถานประกอบการ">
+                        <td data-label="สถานประกอบการ">
                           <div className="track-request-table__hub">
                             <div className="track-request-table__hub-icon">
                               <Building2 />
                             </div>
 
                             <div>
-                              <strong>{request.wellnessHubName}</strong>
+                              <strong>{request.wellnessHubName || "-"}</strong>
 
                               {hasValue(request.userEmail) && (
-                                <span>
-                                  อีเมลผู้ยื่นคำขอ: {request.userEmail}
-                                </span>
+                                <span>{request.userEmail}</span>
                               )}
                             </div>
                           </div>
@@ -313,6 +320,7 @@ export default function TrackAccountRequest() {
                         <td data-label="สถานะ">
                           <div className={statusInformation.className}>
                             <StatusIcon />
+
                             <span>{statusInformation.label}</span>
                           </div>
                         </td>
@@ -332,7 +340,7 @@ export default function TrackAccountRequest() {
 
                             {hasValue(request.processedDate) && (
                               <span>
-                                วันที่ดำเนินการ:{" "}
+                                ดำเนินการเมื่อ{" "}
                                 {formatProcessedDate(request.processedDate)}
                               </span>
                             )}
@@ -351,12 +359,10 @@ export default function TrackAccountRequest() {
           <CircleAlert />
 
           <div>
-            <h3>ข้อมูลสำคัญ</h3>
-            <p>
-              หากคำขอได้รับอนุมัติ
-              ระบบจะส่งชื่อผู้ใช้และรหัสผ่านไปยังอีเมลที่ใช้ยื่นคำขอ
-              โดยปกติใช้เวลาตรวจสอบประมาณ 1–3 วันทำการ
-            </p>
+            <h3>หลังจากคำขอได้รับการอนุมัติ</h3>
+
+            <p>ระบบจะส่งชื่อผู้ใช้และรหัสผ่านไปยังอีเมลที่ใช้ยื่นคำขอ
+              โดยปกติใช้เวลาตรวจสอบประมาณ 1–3 วันทำการ</p>
           </div>
         </aside>
       </div>

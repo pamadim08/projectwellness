@@ -5,9 +5,13 @@ import React, {
   useState,
   useRef,
 } from "react";
+
 import axios from "axios";
+
 import L from "leaflet";
+
 import "leaflet-routing-machine";
+
 import {
   ArrowLeft,
   ArrowRight,
@@ -30,10 +34,13 @@ import {
   EyeOff,
   Maximize2,
 } from "lucide-react";
+
 import { Link, useNavigate, useParams } from "react-router-dom";
+
 import "./RouteDetail.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
+
 const DEFAULT_CENTER = [18.7883, 98.9853];
 
 const MASTER_CATEGORIES = [
@@ -161,19 +168,39 @@ function extractLatLng(item) {
   };
 }
 
+function isMapReady(map, container) {
+  if (!map || !container || !container.isConnected) {
+    return false;
+  }
+
+  try {
+    return map.getContainer?.() === container && Boolean(map._loaded);
+  } catch (error) {
+    return false;
+  }
+}
+
 export default function RouteDetail() {
   const { routeId } = useParams();
+
   const navigate = useNavigate();
 
   const [routeData, setRouteData] = useState(null);
+
   const [loading, setLoading] = useState(true);
+
   const [error, setError] = useState("");
+
   const [activeFilters, setActiveFilters] = useState({});
 
   const mapContainerRef = useRef(null);
+
   const mapRef = useRef(null);
+
   const hubsLayerRef = useRef(null);
+
   const routingControlRef = useRef(null);
+
   const routeBoundsRef = useRef(null);
 
   const getCategoryInfo = useCallback((hub) => {
@@ -286,6 +313,7 @@ export default function RouteDetail() {
       setRouteData(null);
       setError("รหัสเส้นทางไม่ถูกต้อง");
       setLoading(false);
+
       return;
     }
 
@@ -303,6 +331,7 @@ export default function RouteDetail() {
       if (!response.data || !response.data.routeId) {
         setRouteData(null);
         setError("ไม่พบข้อมูลเส้นทางที่ต้องการ");
+
         return;
       }
 
@@ -324,6 +353,7 @@ export default function RouteDetail() {
     if (availableCategories.length > 0) {
       const initialFilters = availableCategories.reduce((acc, cat) => {
         acc[cat.id] = true;
+
         return acc;
       }, {});
 
@@ -343,28 +373,56 @@ export default function RouteDetail() {
 
   // 🟢 1. สร้าง Map เพียงครั้งเดียวเมื่อข้อมูลหลักพร้อม
   useEffect(() => {
-    if (
-      loading ||
-      error ||
-      !routeData ||
-      !mapContainerRef.current ||
-      mapRef.current
-    ) {
+    const mapContainer = mapContainerRef.current;
+
+    if (loading || error || !routeData || !mapContainer || mapRef.current) {
       return;
     }
 
     let isDisposed = false;
 
-    const map = L.map(mapContainerRef.current, {
+    let routingControl = null;
+
+    let hubsLayer = null;
+
+    let invalidateTimer = null;
+
+    const map = L.map(mapContainer, {
       zoomControl: true,
+
+      /*
+       * ปิดการ Zoom ที่คำนวณจากตำแหน่ง Pointer
+       * เพราะ error _leaflet_pos เกิดจาก setZoomAround
+       * ในจังหวะที่ DOM ของ Map ถูก cleanup ไปแล้ว
+       */
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+      boxZoom: false,
+
+      /*
+       * ยังคงลาก Map และใช้ปุ่ม +/- ได้
+       */
+      dragging: true,
+      keyboard: true,
+
+      /*
+       * ปิด Animation เพื่อลด race condition
+       */
       zoomAnimation: false,
       fadeAnimation: false,
       markerZoomAnimation: false,
     });
 
-    map.setView(DEFAULT_CENTER, 10);
-
     mapRef.current = map;
+
+    try {
+      map.setView(DEFAULT_CENTER, 10, {
+        animate: false,
+      });
+    } catch (err) {
+      console.warn("ไม่สามารถกำหนดตำแหน่งเริ่มต้นของ Map ได้:", err);
+    }
 
     const tileLayer = L.tileLayer(
       "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
@@ -377,11 +435,16 @@ export default function RouteDetail() {
     tileLayer.addTo(map);
 
     // LayerGroup สำหรับสถานประกอบการ
-    const hubsLayer = L.layerGroup().addTo(map);
+    hubsLayer = L.layerGroup().addTo(map);
+
     hubsLayerRef.current = hubsLayer;
 
     // วาดหมุดอำเภอ
     districts.forEach((dist, idx) => {
+      if (isDisposed) {
+        return;
+      }
+
       const coords = extractLatLng(dist);
 
       if (!coords) {
@@ -395,16 +458,16 @@ export default function RouteDetail() {
         fillColor: "#1a2332",
         fillOpacity: 1,
       }).addTo(map).bindPopup(`
-        <div style="font-family:'Sarabun',sans-serif; text-align:center; padding:2px;">
-          <span style="font-size:11px; color:#64748b; font-weight:bold; display:block;">
-            จุดที่ ${dist.orderNumber || idx + 1}
-          </span>
+          <div style="font-family:'Sarabun',sans-serif; text-align:center; padding:2px;">
+            <span style="font-size:11px; color:#64748b; font-weight:bold; display:block;">
+              จุดที่ ${dist.orderNumber || idx + 1}
+            </span>
 
-          <strong style="font-size:14px; color:#0f172a;">
-            อำเภอ${dist.districtName || dist.district?.districtName || ""}
-          </strong>
-        </div>
-      `);
+            <strong style="font-size:14px; color:#0f172a;">
+              อำเภอ${dist.districtName || dist.district?.districtName || ""}
+            </strong>
+          </div>
+        `);
     });
 
     // วาดเส้นทาง Routing
@@ -413,15 +476,15 @@ export default function RouteDetail() {
       .filter(Boolean)
       .map((coords) => L.latLng(coords.lat, coords.lng));
 
-    let routingControl = null;
-
     if (waypoints.length >= 2) {
       try {
         routingControl = L.Routing.control({
           waypoints,
+
           router: L.Routing.osrmv1({
             serviceUrl: "https://router.project-osrm.org/route/v1",
           }),
+
           lineOptions: {
             styles: [
               {
@@ -431,17 +494,26 @@ export default function RouteDetail() {
               },
             ],
           },
+
           createMarker: () => null,
+
           show: false,
+
           addWaypoints: false,
+
           draggableWaypoints: false,
+
           fitSelectedRoutes: false,
         });
 
         routingControlRef.current = routingControl;
 
         routingControl.on("routingerror", (routingError) => {
-          if (isDisposed) {
+          if (
+            isDisposed ||
+            mapRef.current !== map ||
+            !isMapReady(map, mapContainer)
+          ) {
             return;
           }
 
@@ -456,6 +528,7 @@ export default function RouteDetail() {
         console.error("ขัดข้องในการสร้าง Routing Control:", err);
 
         routingControlRef.current = null;
+
         routingControl = null;
       }
     }
@@ -464,7 +537,12 @@ export default function RouteDetail() {
       try {
         const bounds = L.latLngBounds(waypoints);
 
-        if (bounds.isValid()) {
+        if (
+          bounds.isValid() &&
+          !isDisposed &&
+          mapRef.current === map &&
+          isMapReady(map, mapContainer)
+        ) {
           routeBoundsRef.current = bounds;
 
           map.fitBounds(bounds, {
@@ -477,15 +555,22 @@ export default function RouteDetail() {
       }
     }
 
-    const invalidateTimer = window.setTimeout(() => {
-      if (!isDisposed && mapRef.current === map && mapContainerRef.current) {
-        try {
-          map.invalidateSize({
-            animate: false,
-          });
-        } catch (err) {
-          console.error("ไม่สามารถปรับขนาดแผนที่ได้:", err);
-        }
+    invalidateTimer = window.setTimeout(() => {
+      if (
+        isDisposed ||
+        mapRef.current !== map ||
+        !isMapReady(map, mapContainer)
+      ) {
+        return;
+      }
+
+      try {
+        map.invalidateSize({
+          animate: false,
+          pan: false,
+        });
+      } catch (err) {
+        console.warn("ไม่สามารถปรับขนาดแผนที่ได้:", err);
       }
     }, 200);
 
@@ -493,21 +578,75 @@ export default function RouteDetail() {
     return () => {
       isDisposed = true;
 
-      window.clearTimeout(invalidateTimer);
-
-      if (mapRef.current !== map) {
-        return;
+      if (invalidateTimer) {
+        window.clearTimeout(invalidateTimer);
       }
 
-      // 🌟 หยุด animation / pan / zoom ก่อน
+      /*
+       * สำคัญ:
+       * ตัด Ref ก่อนเริ่ม cleanup เพื่อไม่ให้ Effect/Handler อื่น
+       * ได้ Map instance ที่กำลังถูกทำลาย
+       */
+      if (mapRef.current === map) {
+        mapRef.current = null;
+      }
+
+      routeBoundsRef.current = null;
+
+      /*
+       * หยุด movement ก่อน
+       */
       try {
         map.stop();
       } catch (err) {
         console.warn("ไม่สามารถหยุด Map animation ได้:", err);
       }
 
-      // 🌟 ยกเลิก Routing request ที่ยังค้าง
+      /*
+       * ปิด interaction handler ก่อน DOM ของ Leaflet ถูกถอด
+       */
+      try {
+        if (map.scrollWheelZoom?.enabled()) {
+          map.scrollWheelZoom.disable();
+        }
+
+        if (map.doubleClickZoom?.enabled()) {
+          map.doubleClickZoom.disable();
+        }
+
+        if (map.touchZoom?.enabled()) {
+          map.touchZoom.disable();
+        }
+
+        if (map.boxZoom?.enabled()) {
+          map.boxZoom.disable();
+        }
+
+        if (map.keyboard?.enabled()) {
+          map.keyboard.disable();
+        }
+
+        if (map.dragging?.enabled()) {
+          map.dragging.disable();
+        }
+
+        if (map.tap?.enabled()) {
+          map.tap.disable();
+        }
+      } catch (err) {
+        console.warn("ไม่สามารถปิด Map handlers ได้:", err);
+      }
+
+      /*
+       * Cleanup Routing ก่อน Map
+       */
       if (routingControl) {
+        try {
+          routingControl.off();
+        } catch (err) {
+          console.warn("ไม่สามารถปิด Routing Control events ได้:", err);
+        }
+
         try {
           if (typeof routingControl._requestCount === "number") {
             routingControl._requestCount += 1;
@@ -518,22 +657,17 @@ export default function RouteDetail() {
             typeof routingControl._pendingRequest.abort === "function"
           ) {
             routingControl._pendingRequest.abort();
-            routingControl._pendingRequest = null;
           }
+
+          routingControl._pendingRequest = null;
         } catch (err) {
           console.warn("ไม่สามารถยกเลิก Routing request ได้:", err);
         }
 
-        // 🌟 ปิด event ของ Routing Control
         try {
-          routingControl.off();
-        } catch (err) {
-          console.warn("ไม่สามารถปิด Routing Control events ได้:", err);
-        }
-
-        // 🌟 ถอด Routing Control หลังยกเลิก request แล้ว
-        try {
-          map.removeControl(routingControl);
+          if (routingControl._map === map) {
+            map.removeControl(routingControl);
+          }
         } catch (err) {
           console.warn("ไม่สามารถลบ Routing Control ได้:", err);
         }
@@ -545,51 +679,56 @@ export default function RouteDetail() {
         routingControl = null;
       }
 
-      // 🌟 ล้าง Layer สถานประกอบการ
-      if (hubsLayerRef.current) {
+      /*
+       * Cleanup Layer สถานประกอบการ
+       */
+      if (hubsLayer) {
         try {
-          hubsLayerRef.current.clearLayers();
+          hubsLayer.clearLayers();
 
-          if (map.hasLayer(hubsLayerRef.current)) {
-            map.removeLayer(hubsLayerRef.current);
+          if (map.hasLayer(hubsLayer)) {
+            map.removeLayer(hubsLayer);
           }
         } catch (err) {
           console.warn("ไม่สามารถล้าง Layer สถานประกอบการได้:", err);
         }
 
-        hubsLayerRef.current = null;
+        if (hubsLayerRef.current === hubsLayer) {
+          hubsLayerRef.current = null;
+        }
+
+        hubsLayer = null;
       }
 
-      routeBoundsRef.current = null;
-
-      // 🌟 ปิด event ของ Map
+      /*
+       * ปิด Event ทั้งหมดของ Map
+       */
       try {
         map.off();
       } catch (err) {
         console.warn("ไม่สามารถปิด Map events ได้:", err);
       }
 
-      // 🌟 ทำลาย Map เป็นขั้นตอนสุดท้าย
+      /*
+       * ทำลาย Map หลังสุด
+       */
       try {
         map.remove();
       } catch (err) {
         console.warn("ไม่สามารถทำลาย Map ได้:", err);
       }
-
-      mapRef.current = null;
     };
   }, [loading, error, routeData, districts]);
 
   // 🟢 2. อัปเดตเฉพาะหมุดสถานประกอบการเมื่อ Filter เปลี่ยน
   useEffect(() => {
     const map = mapRef.current;
+
     const hubsLayer = hubsLayerRef.current;
 
-    if (!map || !hubsLayer || !mapContainerRef.current) {
-      return;
-    }
+    const mapContainer = mapContainerRef.current;
 
-    if (!map.getContainer || !map.getContainer()) {
+    if (!map || !hubsLayer || !mapContainer || !isMapReady(map, mapContainer)) {
       return;
     }
 
@@ -597,10 +736,15 @@ export default function RouteDetail() {
       hubsLayer.clearLayers();
     } catch (err) {
       console.warn("ไม่สามารถล้างหมุดสถานประกอบการได้:", err);
+
       return;
     }
 
     wellnessHubs.forEach((hub) => {
+      if (mapRef.current !== map || !isMapReady(map, mapContainer)) {
+        return;
+      }
+
       const coords = extractLatLng(hub);
 
       if (!coords) {
@@ -666,6 +810,10 @@ export default function RouteDetail() {
         marker.bindPopup(popupHtml);
 
         marker.on("popupopen", (event) => {
+          if (mapRef.current !== map || !isMapReady(map, mapContainer)) {
+            return;
+          }
+
           const popupElement = event.popup?.getElement();
 
           if (!popupElement) {
@@ -709,6 +857,7 @@ export default function RouteDetail() {
   const handleShowAllCategories = () => {
     const nextFilters = availableCategories.reduce((acc, cat) => {
       acc[cat.id] = true;
+
       return acc;
     }, {});
 
@@ -719,6 +868,7 @@ export default function RouteDetail() {
   const handleHideAllCategories = () => {
     const nextFilters = availableCategories.reduce((acc, cat) => {
       acc[cat.id] = false;
+
       return acc;
     }, {});
 
@@ -728,13 +878,24 @@ export default function RouteDetail() {
   // 🌟 กลับไปดูภาพรวมเส้นทางทั้งหมด
   const handleResetRouteView = () => {
     const map = mapRef.current;
+
     const bounds = routeBoundsRef.current;
 
-    if (!map || !bounds || !bounds.isValid()) {
+    const mapContainer = mapContainerRef.current;
+
+    if (
+      !map ||
+      !bounds ||
+      !bounds.isValid() ||
+      !mapContainer ||
+      !isMapReady(map, mapContainer)
+    ) {
       return;
     }
 
     try {
+      map.stop();
+
       map.fitBounds(bounds, {
         padding: [50, 50],
         animate: false,
@@ -747,21 +908,28 @@ export default function RouteDetail() {
   // 🌟 กดอำเภอแล้วเลื่อนแผนที่ไปยังอำเภอนั้น
   const handleFocusDistrict = (district) => {
     const map = mapRef.current;
+
     const coords = extractLatLng(district);
 
-    if (!map || !coords) {
+    const mapContainer = mapContainerRef.current;
+
+    if (!map || !coords || !mapContainer || !isMapReady(map, mapContainer)) {
       return;
     }
 
     try {
+      map.stop();
+
       map.setView([coords.lat, coords.lng], 12, {
         animate: false,
       });
 
-      mapContainerRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
+      if (mapContainer.isConnected) {
+        mapContainer.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
     } catch (err) {
       console.warn("ไม่สามารถเลื่อนไปยังอำเภอที่เลือกได้:", err);
     }
@@ -847,6 +1015,7 @@ export default function RouteDetail() {
 
                 <div>
                   <span>อำเภอเริ่มต้น</span>
+
                   <strong>อ. {routeData.startDistrict}</strong>
                 </div>
               </article>
@@ -860,6 +1029,7 @@ export default function RouteDetail() {
 
                 <div>
                   <span>อำเภอปลายทาง</span>
+
                   <strong>อ. {routeData.endDistrict}</strong>
                 </div>
               </article>
@@ -985,6 +1155,7 @@ export default function RouteDetail() {
                   <div className="route-detail-districts-scroll" role="list">
                     {districts.map((district, idx) => {
                       const order = district.orderNumber || idx + 1;
+
                       const name =
                         district.districtName ||
                         district.district?.districtName ||
@@ -1004,6 +1175,7 @@ export default function RouteDetail() {
                             <span className="route-detail-district-number">
                               {order}
                             </span>
+
                             <span className="route-detail-district-name">
                               อ. {name}
                             </span>

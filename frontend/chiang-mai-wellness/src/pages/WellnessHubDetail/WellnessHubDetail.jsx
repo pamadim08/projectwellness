@@ -254,6 +254,13 @@ export default function WellnessHubDetail() {
   const [imageError, setImageError] = useState(false);
 
   const loadWellnessHub = useCallback(async () => {
+    // รีเซ็ตตำแหน่ง scroll ไปที่ด้านบนสุดทันทีที่เริ่มโหลดข้อมูล
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
+
     const normalizedLicenseId = Number(licenseId);
 
     if (!Number.isInteger(normalizedLicenseId) || normalizedLicenseId <= 0) {
@@ -293,6 +300,14 @@ export default function WellnessHubDetail() {
   useEffect(() => {
     loadWellnessHub();
   }, [loadWellnessHub]);
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
+  }, [hubId]);
 
   const imageSource = useMemo(
     () => normalizeImageSource(hub?.wellnessHubImg),

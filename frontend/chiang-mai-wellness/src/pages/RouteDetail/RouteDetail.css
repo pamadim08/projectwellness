@@ -1,118 +1,169 @@
 /* ==========================================================================
-   1. GLOBAL PAGE & CONTAINER SETTINGS
+   1. PAGE
    ========================================================================== */
 
 .route-detail-page {
   min-height: 100vh;
-  background: #f8faf9;
-  color: #1a382b;
+
+  color: #24362e;
+  background: #f8f9fa;
+
+  font-family: "Sarabun", sans-serif;
+}
+
+.route-detail-page *,
+.route-detail-page *::before,
+.route-detail-page *::after {
+  box-sizing: border-box;
 }
 
 .route-detail-container {
-  width: min(1200px, calc(100% - 32px));
+  width: min(calc(100% - 48px), 1184px);
+
   margin: 0 auto;
 }
 
 /* ==========================================================================
-   2. HERO SECTION (ปรับ Spacing & Font ให้พอดีสายตา)
+   2. HERO
    ========================================================================== */
 
 .route-detail-hero {
-  padding: 32px 0 36px;
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(180, 218, 198, 0.45),
-      transparent 40%
-    ),
-    linear-gradient(135deg, #eef7f2 0%, #f8faf9 60%, #fffbf5 100%);
-  border-bottom: 1px solid #e1ebe5;
+  padding: 28px 0 32px;
+
+  background: #f4f6f0;
+
+  border-bottom: 1px solid #dfe5e0;
 }
 
 .route-detail-back {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+
   margin-bottom: 18px;
-  color: #216d50;
-  font-size: 0.88rem;
+
+  color: #2d6a4f;
+
+  font-size: 12px;
   font-weight: 700;
+
   text-decoration: none;
+
   transition:
-    gap 0.2s ease,
-    color 0.2s ease;
+    gap 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .route-detail-back:hover {
   gap: 10px;
-  color: #154e38;
+
+  color: #1b4332;
 }
 
 .route-detail-back svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
+
+  flex-shrink: 0;
 }
 
-.route-detail-eyebrow,
-.route-detail-heading > div > p {
-  margin: 0 0 6px;
-  color: #2d7a5b;
-  font-size: 0.72rem;
+.route-detail-eyebrow {
+  margin: 0 0 7px;
+
+  color: #2d6a4f;
+
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.15em;
 }
 
 .route-detail-hero h1 {
-  max-width: 850px;
+  max-width: 860px;
+
   margin: 0;
-  color: #163a2c;
-  font-size: clamp(1.8rem, 3.2vw, 2.75rem);
-  line-height: 1.2;
+
+  color: #1b4332;
+
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 750;
+  line-height: 1.28;
+  letter-spacing: -0.025em;
 }
 
 .route-detail-hero__description {
   max-width: 780px;
-  margin: 10px 0 0;
-  color: #556c62;
-  font-size: 0.95rem;
-  line-height: 1.65;
+
+  margin: 11px 0 0;
+
+  color: #5b6a62;
+
+  font-size: 14px;
+  line-height: 1.75;
+
   white-space: pre-line;
 }
 
-/* Hero Summary Cards (4 Columns) */
+/* ==========================================================================
+   3. ROUTE SUMMARY
+   ========================================================================== */
 
 .route-detail-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 24px;
+
+  gap: 10px;
+
+  margin-top: 22px;
 }
 
 .route-detail-summary__card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #e1ebe5;
-  border-radius: 14px;
-  box-shadow: 0 4px 16px rgba(22, 58, 44, 0.04);
+  gap: 11px;
+
+  min-width: 0;
+  min-height: 62px;
+
+  padding: 11px 13px;
+
+  background: #ffffff;
+
+  border: 1px solid #d7dfd9;
+  border-radius: 8px;
+
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
+}
+
+.route-detail-summary__card:hover {
+  border-color: #a9beb0;
+
+  box-shadow: 0 5px 16px rgba(27, 67, 50, 0.05);
+
+  transform: translateY(-1px);
 }
 
 .route-detail-summary__icon {
   display: grid;
-  flex: 0 0 auto;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  color: #216d50;
-  background: #e6f3eb;
-  border-radius: 10px;
+
+  width: 36px;
+  height: 36px;
+
+  flex-shrink: 0;
+
+  color: #2d6a4f;
+  background: #edf4ef;
+
+  border: 1px solid #dce8df;
+  border-radius: 6px;
 }
 
 .route-detail-summary__icon svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .route-detail-summary__card > div:last-child {
@@ -123,78 +174,116 @@
 }
 
 .route-detail-summary__card span {
-  color: #72877e;
-  font-size: 0.75rem;
+  color: #78857e;
+
+  font-size: 9px;
+  line-height: 1.35;
 }
 
 .route-detail-summary__card strong {
   overflow: hidden;
-  color: #163a2c;
-  font-size: 0.92rem;
+
+  color: #1b4332;
+
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 /* ==========================================================================
-   3. MAIN CONTENT LAYOUT
+   4. CONTENT / SECTION
    ========================================================================== */
 
 .route-detail-content {
   display: flex;
   flex-direction: column;
-  gap: 48px;
-  padding-top: 40px;
-  padding-bottom: 60px;
+  gap: 58px;
+
+  padding-top: 38px;
+  padding-bottom: 72px;
+}
+
+.route-detail-section {
+  min-width: 0;
 }
 
 .route-detail-heading {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 16px;
+  gap: 28px;
+
+  margin-bottom: 18px;
+}
+
+.route-detail-heading > div {
+  min-width: 0;
+}
+
+.route-detail-heading > div > p {
+  margin: 0 0 5px;
+
+  color: #2d6a4f;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
 }
 
 .route-detail-heading h2 {
   margin: 0;
-  color: #163a2c;
-  font-size: clamp(1.4rem, 2.2vw, 1.85rem);
-  line-height: 1.25;
+
+  color: #1b4332;
+
+  font-size: clamp(24px, 2.5vw, 30px);
+  font-weight: 750;
+  line-height: 1.35;
 }
 
-.route-detail-heading span {
+.route-detail-heading > div > span {
   display: block;
-  margin-top: 4px;
-  color: #6b7e76;
-  font-size: 0.88rem;
-  line-height: 1.5;
+
+  max-width: 680px;
+
+  margin-top: 6px;
+
+  color: #66766d;
+
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 /* ==========================================================================
-   4. MAP SECTION
+   5. MAP TOOLBAR
    ========================================================================== */
 
 .route-detail-map-toolbar {
-  margin-bottom: 15px;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  backdrop-filter: blur(8px);
+  margin-bottom: 14px;
+  padding: 14px 16px;
+
+  background: #ffffff;
+
+  border: 1px solid #d7dfd9;
+  border-radius: 9px;
+
+  box-shadow: 0 4px 14px rgba(27, 67, 50, 0.035);
 }
 
 .route-detail-map-toolbar__top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
+
   margin-bottom: 12px;
 }
 
-/* .route-detail-map-counter removed per feature request */
-
 .route-detail-map-actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 7px;
 }
@@ -202,97 +291,217 @@
 .route-detail-map-action {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px 10px;
-  color: #456158;
+  justify-content: center;
+  gap: 6px;
+
+  min-height: 34px;
+  padding: 0 11px;
+
+  color: #42584c;
   background: #ffffff;
-  border: 1px solid #d4e2da;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.76rem;
+
+  border: 1px solid #cbd6ce;
+  border-radius: 6px;
+
+  font: inherit;
+  font-size: 10px;
   font-weight: 700;
+
   cursor: pointer;
+
   transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
+    color 200ms ease,
+    background 200ms ease,
+    border-color 200ms ease,
+    transform 200ms ease;
 }
 
 .route-detail-map-action:hover {
-  color: #216d50;
-  background: #f3f8f5;
-  border-color: #a8cbb9;
+  color: #1b4332;
+  background: #f1f5f2;
+
+  border-color: #9db4a5;
+
+  transform: translateY(-1px);
 }
 
 .route-detail-map-action svg {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 
 .route-detail-map-action--primary {
   color: #ffffff;
-  background: #216d50;
-  border-color: #216d50;
+  background: #1b4332;
+
+  border-color: #1b4332;
 }
 
 .route-detail-map-action--primary:hover {
   color: #ffffff;
-  background: #18563f;
-  border-color: #18563f;
+  background: #2d6a4f;
+
+  border-color: #2d6a4f;
 }
+
+/* ==========================================================================
+   6. CATEGORY FILTERS
+   ========================================================================== */
 
 .route-detail-filter-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
+}
+
+.route-detail-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  min-height: 31px;
+  padding: 5px 9px;
+
+  color: #66746c;
+  background: #f8f9fa;
+
+  border: 1px solid #dbe1dc;
+  border-radius: 6px;
+
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+
+  cursor: pointer;
+
+  user-select: none;
+
+  transition:
+    color 200ms ease,
+    background 200ms ease,
+    border-color 200ms ease,
+    transform 200ms ease;
+}
+
+.route-detail-filter-chip:hover {
+  border-color: var(--route-category-color);
+
+  transform: translateY(-1px);
+}
+
+.route-detail-filter-chip.active {
+  color: var(--route-category-color);
+  background: var(--route-category-background);
+
+  border-color: var(--route-category-color);
+
+  font-weight: 750;
+}
+
+.route-detail-filter-chip input {
+  width: 13px;
+  height: 13px;
+
+  margin: 0;
+
+  flex-shrink: 0;
+
+  cursor: pointer;
 }
 
 /* ==========================================================================
-   DISTRICTS ROW (compact, horizontal scroll)
+   7. DISTRICT ROUTE ORDER
    ========================================================================== */
+
 .route-detail-districts-row {
-  margin-top: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  margin-top: 13px;
+  padding-top: 12px;
+
+  border-top: 1px solid #e4e9e5;
 }
 
 .route-detail-districts-title {
-  color: #2b7859;
-  font-size: 0.78rem;
+  color: #607268;
+
+  font-size: 10px;
   font-weight: 700;
 }
 
 .route-detail-districts-scroll {
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 7px;
+
   overflow-x: auto;
-  padding-bottom: 4px;
+  overflow-y: hidden;
+
+  padding: 2px 1px 6px;
+
+  scrollbar-width: thin;
+  scrollbar-color: #b8c9be transparent;
+
   -webkit-overflow-scrolling: touch;
+}
+
+.route-detail-districts-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+
+.route-detail-districts-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.route-detail-districts-scroll::-webkit-scrollbar-thumb {
+  background: #bdcbc2;
+
+  border-radius: 20px;
 }
 
 .route-detail-district-item {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+
+  flex-shrink: 0;
 }
 
 .route-detail-district-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+
+  min-height: 34px;
+  padding: 4px 10px 4px 5px;
+
+  color: #1b4332;
   background: #ffffff;
-  border: 1px solid #e6efe6;
+
+  border: 1px solid #d7dfd9;
   border-radius: 18px;
+
+  font: inherit;
+  font-size: 10px;
+
   cursor: pointer;
-  font-size: 0.85rem;
-  color: #163a2c;
+
+  transition:
+    background 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
 }
 
 .route-detail-district-chip:hover {
-  box-shadow: 0 4px 12px rgba(22, 58, 44, 0.06);
+  background: #f1f5f2;
+
+  border-color: #9eb5a6;
+
+  box-shadow: 0 3px 9px rgba(27, 67, 50, 0.06);
+
   transform: translateY(-1px);
 }
 
@@ -300,280 +509,393 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 26px;
-  height: 26px;
+
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+
+  color: #ffffff;
+  background: #2d6a4f;
+
   border-radius: 50%;
-  background: #e6f3eb;
-  color: #216d50;
+
+  font-size: 9px;
   font-weight: 800;
 }
 
 .route-detail-district-name {
-  color: #163a2c;
-  font-weight: 600;
+  color: #344c3f;
+
+  font-weight: 700;
+
+  white-space: nowrap;
 }
 
 .route-detail-district-arrow {
-  color: #9cbcae;
-  font-size: 0.95rem;
-  padding: 0 4px;
+  color: #8fa99a;
+
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
 }
 
-.route-detail-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 9px 6px 10px;
-  color: #64748b;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  user-select: none;
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
-}
-
-.route-detail-filter-chip.active {
-  color: var(--route-category-color);
-  background: var(--route-category-background);
-  border-color: var(--route-category-color);
-  font-weight: 700;
-}
-
-.route-detail-filter-chip input {
-  cursor: pointer;
-}
-
-/* .route-detail-filter-count removed per feature request */
+/* ==========================================================================
+   8. MAP LAYOUT
+   ========================================================================== */
 
 .route-detail-map-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 250px;
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) 220px;
+
+  align-items: stretch;
+  gap: 14px;
 }
 
 .route-detail-map-card {
   position: relative;
+
+  min-width: 0;
+  height: 450px;
+
   overflow: hidden;
-  height: 440px;
-  background: #ffffff;
-  border: 1px solid #e1ebe5;
-  border-radius: 16px;
-  box-shadow: 0 6px 20px rgba(22, 58, 44, 0.05);
+
+  background: #dfe7e1;
+
+  border: 1px solid #cbd6ce;
+  border-radius: 12px;
+
+  box-shadow: 0 10px 28px rgba(27, 67, 50, 0.07);
 }
 
 .route-detail-map {
   width: 100% !important;
-  height: 100% !important;
+  height: 450px !important;
+
+  overflow: hidden;
+
+  background: #e8eeea;
+
+  border-radius: 12px !important;
 }
 
+/* ==========================================================================
+   9. MAP LEGEND
+   ========================================================================== */
+
 .route-detail-legend {
-  padding: 16px 18px;
+  height: 450px;
+
+  padding: 16px;
+
+  overflow-y: auto;
+
   background: #ffffff;
-  border: 1px solid #e1ebe5;
-  border-radius: 16px;
-  box-shadow: 0 6px 20px rgba(22, 58, 44, 0.05);
+
+  border: 1px solid #d7dfd9;
+  border-radius: 10px;
+
+  scrollbar-width: thin;
+  scrollbar-color: #bdcbc2 transparent;
+}
+
+.route-detail-legend::-webkit-scrollbar {
+  width: 5px;
+}
+
+.route-detail-legend::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.route-detail-legend::-webkit-scrollbar-thumb {
+  background: #bdcbc2;
+
+  border-radius: 20px;
 }
 
 .route-detail-legend h3 {
   margin: 0 0 12px;
-  color: #163a2c;
-  font-size: 0.95rem;
-  font-weight: 700;
+
+  color: #1b4332;
+
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.4;
 }
 
 .route-detail-legend__item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 9px 0;
-  border-bottom: 1px solid #f0f5f2;
+  gap: 9px;
+
+  min-height: 38px;
+  padding: 7px 0;
+
+  border-bottom: 1px solid #edf0ee;
 }
 
 .route-detail-legend__item:last-child {
-  border-bottom: none;
+  border-bottom: 0;
+}
+
+.route-detail-legend__item > span {
+  justify-self: center;
 }
 
 .route-detail-legend__item p {
   margin: 0;
-  color: #4b5e56;
-  font-size: 0.83rem;
-  line-height: 1.35;
+
+  color: #56685e;
+
+  font-size: 10px;
+  line-height: 1.45;
 }
 
 /* ==========================================================================
-   5. TIMELINE / JOURNEY ORDER SECTION
+   10. LEAFLET MAP
    ========================================================================== */
 
-.route-detail-timeline {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding: 4px 4px 14px;
+.route-detail-map-card .leaflet-container {
+  font-family: "Sarabun", sans-serif;
 }
 
-.route-detail-timeline__card {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 12px;
-  align-items: center;
-  min-width: 240px;
-  padding: 14px 16px;
-  background: #ffffff;
-  border: 1px solid #e1ebe5;
-  border-radius: 14px;
-  box-shadow: 0 4px 14px rgba(22, 58, 44, 0.04);
-}
-
-.route-detail-timeline__card--clickable {
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.route-detail-timeline__card--clickable:hover {
-  transform: translateY(-2px);
-  border-color: #a9cdbb;
-  box-shadow: 0 8px 20px rgba(22, 58, 44, 0.08);
-}
-
-.route-detail-timeline__number {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  color: #ffffff;
-  background: #216d50;
-  border-radius: 10px;
-  font-size: 0.88rem;
-  font-weight: 800;
-}
-
-.route-detail-timeline__content {
-  min-width: 0;
-}
-
-.route-detail-timeline__content span {
-  color: #2b7859;
-  font-size: 0.7rem;
-  font-weight: 800;
-}
-
-.route-detail-timeline__content h3 {
+.route-detail-map-card .leaflet-control-zoom {
   overflow: hidden;
-  margin: 2px 0;
-  color: #163a2c;
-  font-size: 0.95rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
+  border: 1px solid #ccd6cf !important;
+  border-radius: 7px !important;
+
+  box-shadow: 0 5px 16px rgba(27, 67, 50, 0.1) !important;
 }
 
-.route-detail-timeline__content p {
-  margin: 0;
-  color: #72877e;
-  font-size: 0.78rem;
+.route-detail-map-card .leaflet-control-zoom a {
+  color: #1b4332 !important;
+  background: rgba(255, 255, 255, 0.97) !important;
+
+  border-bottom-color: #e1e7e3 !important;
 }
 
-.route-detail-timeline__arrow {
-  width: 15px;
-  height: 15px;
-  color: #9cbcae;
+.route-detail-map-card .leaflet-control-zoom a:hover {
+  color: #ffffff !important;
+  background: #2d6a4f !important;
+}
+
+.route-detail-map-card .leaflet-popup-content-wrapper {
+  padding: 2px;
+
+  border: 1px solid #dce3de;
+  border-radius: 8px;
+
+  box-shadow: 0 12px 28px rgba(27, 67, 50, 0.15);
+}
+
+.route-detail-map-card .leaflet-popup-content {
+  margin: 11px 12px;
+}
+
+.route-detail-map-card .leaflet-popup-tip {
+  box-shadow: 3px 3px 7px rgba(27, 67, 50, 0.06);
+}
+
+.route-detail-map-card .leaflet-control-attribution {
+  color: #68766e;
+  background: rgba(255, 255, 255, 0.88);
+
+  font-size: 8px;
+}
+
+.leaflet-routing-container,
+.leaflet-routing-alt {
+  display: none !important;
+}
+
+/* ปุ่มใน Popup เดิมเขียน inline style มา
+   ใช้ !important เพื่อให้เข้ากับ Design System ของหน้า */
+
+.route-popup-detail-button {
+  min-height: 34px !important;
+
+  margin-top: 9px !important;
+  padding: 6px 10px !important;
+
+  color: #ffffff !important;
+  background: #1b4332 !important;
+
+  border: 1px solid #1b4332 !important;
+  border-radius: 5px !important;
+
+  font-family: "Sarabun", sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+
+  transition:
+    background 200ms ease,
+    border-color 200ms ease,
+    transform 200ms ease !important;
+}
+
+.route-popup-detail-button:hover {
+  background: #2d6a4f !important;
+
+  border-color: #2d6a4f !important;
+
+  transform: translateY(-1px);
 }
 
 /* ==========================================================================
-   6. WELLNESS PLACES CARDS (GRID 3 COLUMNS)
+   11. WELLNESS HUB GRID
    ========================================================================== */
 
 .route-detail-hub-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+
   gap: 16px;
 }
 
 .route-detail-hub-card {
+  position: relative;
+
   display: flex;
   min-width: 0;
+  min-height: 235px;
   flex-direction: column;
+
   padding: 18px;
+
+  overflow: hidden;
+
   background: #ffffff;
-  border: 1px solid #e1ebe5;
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(22, 58, 44, 0.04);
+
+  border: 1px solid #d8ded7;
+  border-radius: 8px;
+
   transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease;
+    transform 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.route-detail-hub-card::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+
+  height: 3px;
+
+  background: #dce9df;
+
+  content: "";
 }
 
 .route-detail-hub-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 24px rgba(22, 58, 44, 0.09);
+  border-color: #91b29d;
+
+  box-shadow: 0 8px 22px rgba(27, 67, 50, 0.065);
+
+  transform: translateY(-2px);
 }
 
 .route-detail-hub-card__category {
   display: flex;
   align-items: center;
   gap: 7px;
+
+  min-width: 0;
+}
+
+.route-detail-hub-card__category > span {
+  flex-shrink: 0;
 }
 
 .route-detail-hub-card__category p {
   margin: 0;
-  color: #317d5c;
-  font-size: 0.72rem;
-  font-weight: 800;
+
+  overflow: hidden;
+
+  color: #466153;
+
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.4;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .route-detail-hub-card__icon {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+
+  width: 34px;
+  height: 34px;
+
   margin-top: 14px;
-  color: #216d50;
-  background: #eaf5ef;
-  border-radius: 12px;
+
+  color: #2d6a4f;
+  background: #edf4ef;
+
+  border: 1px solid #dbe7de;
+  border-radius: 6px;
 }
 
 .route-detail-hub-card__icon svg {
-  width: 19px;
-  height: 19px;
+  width: 16px;
+  height: 16px;
 }
 
 .route-detail-hub-card h3 {
-  margin: 12px 0 6px;
-  color: #163a2c;
-  font-size: 1.02rem;
-  line-height: 1.4;
+  display: -webkit-box;
+
+  margin: 11px 0 7px;
+
+  overflow: hidden;
+
+  color: #1b4332;
+
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.45;
+
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .route-detail-hub-card__location {
   display: flex;
   align-items: center;
   gap: 5px;
+
   margin: 0;
-  color: #657b71;
-  font-size: 0.8rem;
+
+  color: #617269;
+
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .route-detail-hub-card__location svg {
   width: 13px;
   height: 13px;
+
+  flex-shrink: 0;
+
+  color: #2d6a4f;
 }
 
 .route-detail-hub-card__description {
   display: -webkit-box;
-  overflow: hidden;
+
   margin: 10px 0 0;
-  color: #6e827a;
-  font-size: 0.84rem;
-  line-height: 1.55;
+
+  overflow: hidden;
+
+  color: #687970;
+
+  font-size: 12px;
+  line-height: 1.65;
+
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
@@ -582,81 +904,145 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
+
+  width: 100%;
+
   margin-top: auto;
-  padding: 14px 0 0;
-  color: #216d50;
+  padding: 13px 0 0;
+
+  color: #1b4332;
   background: transparent;
-  border: none;
-  border-top: 1px solid #f0f5f2;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 800;
+
+  border: 0;
+  border-top: 1px solid #e4e9e5;
+
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+
   cursor: pointer;
+
+  text-align: left;
 }
 
 .route-detail-hub-card button:hover {
-  color: #154e38;
+  color: #2d6a4f;
 }
 
 .route-detail-hub-card button svg {
   width: 15px;
   height: 15px;
-  transition: transform 0.2s ease;
+
+  flex-shrink: 0;
+
+  transition: transform 200ms ease;
 }
 
 .route-detail-hub-card button:hover svg {
-  transform: translateX(3px);
+  transform: translateX(4px);
 }
 
 /* ==========================================================================
-   7. EMPTY STATES & LOADING SKELETON
+   12. EMPTY STATE
    ========================================================================== */
 
-.route-detail-empty,
-.route-detail-state {
-  display: grid;
-  place-items: center;
-  min-height: 240px;
+.route-detail-empty {
+  display: flex;
+  min-height: 230px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
   padding: 30px 20px;
+
   text-align: center;
+
   background: #ffffff;
-  border: 1px dashed #cadcd2;
-  border-radius: 16px;
+
+  border: 1px solid #d8ded7;
+  border-radius: 8px;
 }
 
-.route-detail-empty > svg,
+.route-detail-empty > svg {
+  width: 34px;
+  height: 34px;
+
+  margin-bottom: 12px;
+
+  color: #2d6a4f;
+}
+
+.route-detail-empty h3 {
+  margin: 0;
+
+  color: #1b4332;
+
+  font-size: 17px;
+  font-weight: 750;
+}
+
+.route-detail-empty p {
+  max-width: 520px;
+
+  margin: 7px 0 0;
+
+  color: #687970;
+
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   13. LOADING / ERROR STATE
+   ========================================================================== */
+
+.route-detail-state {
+  display: flex;
+  min-height: calc(100vh - 76px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 40px 24px;
+
+  text-align: center;
+}
+
 .route-detail-state > svg {
-  width: 36px;
-  height: 36px;
-  margin-bottom: 10px;
-  color: #2b7859;
+  width: 38px;
+  height: 38px;
+
+  margin-bottom: 14px;
+
+  color: #2d6a4f;
 }
 
-.route-detail-empty h3,
 .route-detail-state h1 {
   margin: 0;
-  color: #163a2c;
-  font-size: 1.15rem;
+
+  color: #1b4332;
+
+  font-size: 20px;
+  font-weight: 750;
 }
 
-.route-detail-empty p,
 .route-detail-state p {
-  max-width: 480px;
-  margin: 6px 0 0;
-  color: #72877e;
-  font-size: 0.88rem;
-  line-height: 1.55;
-}
+  max-width: 520px;
 
-.route-detail-state {
-  min-height: calc(100vh - 180px);
-  margin-top: 0;
+  margin: 7px 0 0;
+
+  color: #687970;
+
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .route-detail-state__actions {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 9px;
+
   margin-top: 18px;
 }
 
@@ -664,39 +1050,62 @@
 .route-detail-state__actions a {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 15px;
-  border-radius: 9px;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 800;
+  justify-content: center;
+  gap: 7px;
+
+  min-height: 40px;
+  padding: 0 14px;
+
+  border-radius: 6px;
+
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+
   text-decoration: none;
+
   cursor: pointer;
 }
 
 .route-detail-state__actions button {
   color: #ffffff;
-  background: #216d50;
-  border: none;
+  background: #1b4332;
+
+  border: 1px solid #1b4332;
+}
+
+.route-detail-state__actions button:hover {
+  background: #2d6a4f;
+
+  border-color: #2d6a4f;
 }
 
 .route-detail-state__actions a {
-  color: #216d50;
-  background: #ebf5f0;
+  color: #1b4332;
+  background: #ffffff;
+
+  border: 1px solid #d2dbd5;
+}
+
+.route-detail-state__actions a:hover {
+  background: #edf4ef;
 }
 
 .route-detail-state__actions svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 
 .route-detail-spinner {
   width: 36px;
   height: 36px;
-  margin-bottom: 14px;
-  border: 3px solid #dceae2;
-  border-top-color: #216d50;
+
+  margin-bottom: 15px;
+
+  border: 3px solid #dce8e0;
+  border-top-color: #2d6a4f;
   border-radius: 50%;
+
   animation: route-detail-spin 0.85s linear infinite;
 }
 
@@ -706,13 +1115,24 @@
   }
 }
 
-.leaflet-routing-container,
-.leaflet-routing-alt {
-  display: none !important;
+/* ==========================================================================
+   14. FOCUS
+   ========================================================================== */
+
+.route-detail-back:focus-visible,
+.route-detail-map-action:focus-visible,
+.route-detail-filter-chip:focus-within,
+.route-detail-district-chip:focus-visible,
+.route-detail-hub-card button:focus-visible,
+.route-detail-state__actions button:focus-visible,
+.route-detail-state__actions a:focus-visible,
+.route-popup-detail-button:focus-visible {
+  outline: 3px solid #74c69d;
+  outline-offset: 3px;
 }
 
 /* ==========================================================================
-   8. RESPONSIVE BREAKPOINTS
+   15. RESPONSIVE - TABLET
    ========================================================================== */
 
 @media (max-width: 1020px) {
@@ -720,27 +1140,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .route-detail-map-toolbar__top {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
   .route-detail-map-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .route-detail-map-card {
-    height: 380px;
-  }
-
-  .route-detail-legend {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 16px;
-  }
-
-  .route-detail-legend h3 {
-    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) 200px;
   }
 
   .route-detail-hub-grid {
@@ -748,27 +1149,75 @@
   }
 }
 
-@media (max-width: 680px) {
-  .route-detail-container {
-    width: calc(100% - 24px);
-  }
+/* ==========================================================================
+   16. RESPONSIVE - SMALL TABLET
+   ========================================================================== */
 
-  .route-detail-hero {
-    padding: 24px 0 28px;
-  }
-
-  .route-detail-summary,
-  .route-detail-hub-grid {
+@media (max-width: 820px) {
+  .route-detail-map-layout {
     grid-template-columns: 1fr;
   }
 
+  .route-detail-map-card,
+  .route-detail-map {
+    height: 430px !important;
+  }
+
+  .route-detail-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    height: auto;
+
+    gap: 0 18px;
+  }
+
+  .route-detail-legend h3 {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ==========================================================================
+   17. RESPONSIVE - MOBILE
+   ========================================================================== */
+
+@media (max-width: 720px) {
+  .route-detail-container {
+    width: calc(100% - 32px);
+  }
+
+  .route-detail-hero {
+    padding: 23px 0 27px;
+  }
+
+  .route-detail-hero h1 {
+    font-size: 30px;
+  }
+
+  .route-detail-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .route-detail-content {
-    gap: 36px;
-    padding-top: 28px;
+    gap: 46px;
+
+    padding-top: 30px;
+    padding-bottom: 54px;
+  }
+
+  .route-detail-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .route-detail-map-toolbar {
     padding: 12px;
+  }
+
+  .route-detail-map-toolbar__top {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .route-detail-map-actions {
@@ -777,22 +1226,111 @@
 
   .route-detail-map-action {
     flex: 1;
-    justify-content: center;
+  }
+
+  .route-detail-map-card,
+  .route-detail-map {
+    height: 390px !important;
+  }
+
+  .route-detail-hub-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   18. RESPONSIVE - PHONE
+   ========================================================================== */
+
+@media (max-width: 480px) {
+  .route-detail-container {
+    width: calc(100% - 24px);
+  }
+
+  .route-detail-hero {
+    padding: 20px 0 24px;
+  }
+
+  .route-detail-back {
+    margin-bottom: 15px;
+  }
+
+  .route-detail-hero h1 {
+    font-size: 27px;
+    line-height: 1.32;
+  }
+
+  .route-detail-hero__description {
+    font-size: 13px;
+  }
+
+  .route-detail-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .route-detail-summary__card {
+    min-height: 58px;
+  }
+
+  .route-detail-heading h2 {
+    font-size: 23px;
+  }
+
+  .route-detail-map-actions {
+    flex-direction: column;
+  }
+
+  .route-detail-map-action {
+    width: 100%;
   }
 
   .route-detail-filter-list {
-    gap: 6px;
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
-  .route-detail-map-card {
-    height: 320px;
+  .route-detail-filter-chip {
+    width: 100%;
+  }
+
+  .route-detail-map-card,
+  .route-detail-map {
+    height: 340px !important;
   }
 
   .route-detail-legend {
     display: block;
+
+    padding: 14px;
   }
 
-  .route-detail-timeline__card {
-    min-width: 220px;
+  .route-detail-hub-card {
+    min-height: 220px;
+  }
+
+  .route-detail-state__actions {
+    width: 100%;
+
+    flex-direction: column;
+  }
+
+  .route-detail-state__actions button,
+  .route-detail-state__actions a {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   19. REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .route-detail-page *,
+  .route-detail-page *::before,
+  .route-detail-page *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
