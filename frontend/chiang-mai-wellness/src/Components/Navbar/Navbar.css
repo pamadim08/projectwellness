@@ -2,167 +2,209 @@
   position: sticky;
   top: 0;
   z-index: 1000;
+
   width: 100%;
 
-  background: rgba(248, 249, 250, 0.96);
+  background: #ffffff;
+  border-bottom: 1px solid #dfe6e2;
+}
 
-  border-bottom: 1px solid #dde3de;
+.navbar__top-line {
+  width: 100%;
+  height: 4px;
 
-  backdrop-filter: blur(12px);
+  background: #1f513e;
 }
 
 .navbar__container {
+  width: min(1420px, calc(100% - 56px));
+  min-height: 86px;
+
+  margin: 0 auto;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
-
-  width: min(calc(100% - 48px), 1184px);
-  min-height: 76px;
-
-  margin: 0 auto;
+  gap: 32px;
 }
 
-/* ==========================================================================
-   BRAND
-   ========================================================================== */
+/* ========================================
+   BRAND / ORGANIZATION
+======================================== */
+
+.navbar__identity {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+
+  flex-shrink: 0;
+}
 
 .navbar__brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-
-  color: #1b4332;
+  gap: 13px;
 
   text-decoration: none;
-
-  border-radius: 6px;
 }
 
-.navbar__brand:focus-visible {
-  outline: 3px solid #74c69d;
-  outline-offset: 4px;
-}
+.navbar__brand-mark {
+  width: 48px;
+  height: 48px;
 
-.navbar__logo {
   display: flex;
   align-items: center;
   justify-content: center;
 
-  width: 42px;
-  height: 42px;
+  border: 1px solid #9cb8a9;
+  border-radius: 50%;
 
-  color: #1b4332;
+  color: #244f3e;
+  background: #f5f8f6;
 
-  background: #edf5ef;
-
-  border: 1px solid #c9d8ce;
-  border-radius: 8px;
-
-  font-size: 22px;
-
-  transition:
-    color 220ms cubic-bezier(0.4, 0, 0.2, 1),
-    background 220ms cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 220ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.navbar__brand:hover .navbar__logo {
-  color: #ffffff;
-  background: #2d6a4f;
-  border-color: #2d6a4f;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
 }
 
 .navbar__brand-text {
   display: flex;
   flex-direction: column;
+  justify-content: center;
 
-  line-height: 1.1;
+  line-height: 1;
 }
 
 .navbar__brand-title {
-  color: #1b4332;
+  color: #1e3f32;
 
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
-  letter-spacing: 0.15em;
+  letter-spacing: 2.4px;
 }
 
 .navbar__brand-subtitle {
-  margin-top: 5px;
+  margin-top: 7px;
 
-  color: #2d6a4f;
+  color: #668574;
 
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.28em;
+  letter-spacing: 4px;
 }
 
-/* ==========================================================================
-   MENU
-   ========================================================================== */
+.navbar__divider {
+  width: 1px;
+  height: 42px;
 
-.navbar__menu {
+  background: #d8e1dc;
+}
+
+.navbar__organizations {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+}
+
+.navbar__organization-logo {
+  width: 38px;
+  height: 38px;
+
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border: 1px solid #c9d5ce;
+  border-radius: 50%;
+
+  color: #81938a;
+  background: #ffffff;
+
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.navbar__organization-logo img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: contain;
+
+  padding: 4px;
+
+  box-sizing: border-box;
+}
+
+/* ========================================
+   MENU
+======================================== */
+
+.navbar__menu {
+  min-height: 86px;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
 }
 
 .navbar__link {
   position: relative;
 
+  height: 86px;
+
+  padding: 0 17px;
+
   display: inline-flex;
   align-items: center;
+  justify-content: center;
 
-  min-height: 42px;
-  padding: 0 14px;
+  color: #536159;
 
-  color: #53645b;
+  text-decoration: none;
+  white-space: nowrap;
 
   font-size: 14px;
   font-weight: 600;
 
-  text-decoration: none;
-
-  border-radius: 6px;
-
   transition:
-    color 200ms cubic-bezier(0.4, 0, 0.2, 1),
-    background 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.navbar__link::after {
-  position: absolute;
-
-  right: 14px;
-  bottom: 4px;
-  left: 14px;
-
-  height: 2px;
-
-  background: #2d6a4f;
-
-  content: "";
-
-  transform: scaleX(0);
-  transform-origin: center;
-
-  transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .navbar__link:hover {
-  color: #1b4332;
+  color: #214e3b;
 
-  background: #f0f4f1;
+  background: #f8faf9;
 }
 
-.navbar__link:hover::after {
-  transform: scaleX(0.45);
+.navbar__link::after {
+  content: "";
+
+  position: absolute;
+
+  right: 17px;
+  bottom: 0;
+  left: 17px;
+
+  height: 3px;
+
+  background: #2d6a50;
+
+  transform: scaleX(0);
+
+  transition: transform 0.2s ease;
 }
 
 .navbar__link--active {
-  color: #1b4332;
-
-  background: transparent;
+  color: #1d4e3a;
 
   font-weight: 700;
 }
@@ -171,117 +213,77 @@
   transform: scaleX(1);
 }
 
-.navbar__link:focus-visible {
-  outline: 3px solid #74c69d;
-  outline-offset: 2px;
-}
-
-/* ==========================================================================
-   LOGIN BUTTON
-   ========================================================================== */
+/* ========================================
+   LOGIN
+======================================== */
 
 .navbar__login-button {
+  min-width: 118px;
+  height: 42px;
+
+  margin-left: 12px;
+  padding: 0 20px;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
 
-  min-height: 42px;
-  margin-left: 12px;
-  padding: 0 18px;
+  border: 1px solid #285b45;
+  border-radius: 4px;
 
   color: #ffffff;
-
-  background: #1b4332;
-
-  border: 1px solid #1b4332;
-  border-radius: 6px;
-
-  font-size: 14px;
-  font-weight: 700;
+  background: #285b45;
 
   text-decoration: none;
+  white-space: nowrap;
+
+  font-size: 13px;
+  font-weight: 700;
 
   transition:
-    background 220ms cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 220ms cubic-bezier(0.4, 0, 0.2, 1),
-    transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.navbar__login-button svg {
-  width: 16px;
-  height: 16px;
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .navbar__login-button:hover {
-  background: #2d6a4f;
-  border-color: #2d6a4f;
-
-  transform: translateY(-1px);
+  background: #1d4735;
+  border-color: #1d4735;
 }
 
-.navbar__login-button:active {
-  transform: translateY(0);
-}
-
-.navbar__login-button:focus-visible {
-  outline: 3px solid #74c69d;
-  outline-offset: 3px;
-}
-
-/* ==========================================================================
+/* ========================================
    MOBILE TOGGLE
-   ========================================================================== */
+======================================== */
 
 .navbar__toggle {
-  display: none;
-
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-
   width: 42px;
   height: 42px;
-  padding: 9px;
 
-  color: #1b4332;
+  padding: 0;
 
-  background: transparent;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
 
-  border: 1px solid #d1dad4;
-  border-radius: 6px;
+  gap: 5px;
+
+  border: 1px solid #ccd8d1;
+  border-radius: 4px;
+
+  background: #ffffff;
 
   cursor: pointer;
-
-  transition:
-    background 200ms ease,
-    border-color 200ms ease;
-}
-
-.navbar__toggle:hover {
-  background: #edf3ef;
-  border-color: #aebfb4;
-}
-
-.navbar__toggle:focus-visible {
-  outline: 3px solid #74c69d;
-  outline-offset: 2px;
 }
 
 .navbar__toggle-line {
-  display: block;
-
-  width: 22px;
+  width: 20px;
   height: 2px;
 
-  background: #1b4332;
-
-  border-radius: 2px;
+  background: #285b45;
 
   transition:
-    transform 250ms cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 200ms ease;
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .navbar__toggle-line--first {
@@ -296,15 +298,49 @@
   transform: translateY(-7px) rotate(-45deg);
 }
 
-/* ==========================================================================
+/* ========================================
    RESPONSIVE
-   ========================================================================== */
+======================================== */
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .navbar__container {
-    position: relative;
+    width: calc(100% - 40px);
+    gap: 20px;
+  }
 
-    min-height: 70px;
+  .navbar__identity {
+    gap: 14px;
+  }
+
+  .navbar__organizations {
+    gap: 5px;
+  }
+
+  .navbar__organization-logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .navbar__link {
+    padding: 0 11px;
+
+    font-size: 13px;
+  }
+
+  .navbar__link::after {
+    right: 11px;
+    left: 11px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .navbar__container {
+    min-height: 76px;
+  }
+
+  .navbar__divider,
+  .navbar__organizations {
+    display: none;
   }
 
   .navbar__toggle {
@@ -314,126 +350,82 @@
   .navbar__menu {
     position: absolute;
 
-    top: 70px;
-    right: -20px;
-    left: -20px;
+    top: 100%;
+    right: 20px;
+    left: 20px;
 
-    display: flex;
+    min-height: auto;
+
+    padding: 12px;
+
+    display: none;
     flex-direction: column;
     align-items: stretch;
-    gap: 4px;
 
-    max-height: 0;
-    padding: 0 20px;
+    gap: 2px;
 
-    overflow: hidden;
-    visibility: hidden;
+    background: #ffffff;
 
-    background: #f8f9fa;
+    border: 1px solid #dce5e0;
+    border-top: none;
 
-    border-top: 1px solid #dde3de;
-    border-bottom: 1px solid #dde3de;
-
-    box-shadow: 0 14px 28px rgba(27, 67, 50, 0.08);
-
-    opacity: 0;
-
-    transition:
-      max-height 320ms cubic-bezier(0.4, 0, 0.2, 1),
-      padding 320ms cubic-bezier(0.4, 0, 0.2, 1),
-      opacity 200ms ease,
-      visibility 200ms ease;
+    box-shadow: 0 12px 28px rgba(28, 56, 44, 0.1);
   }
 
   .navbar__menu--open {
-    max-height: 430px;
-
-    padding-top: 12px;
-    padding-bottom: 18px;
-
-    visibility: visible;
-
-    opacity: 1;
+    display: flex;
   }
 
   .navbar__link {
     width: 100%;
-    min-height: 46px;
+    height: auto;
 
-    padding: 0 14px;
+    padding: 13px 14px;
+
+    justify-content: flex-start;
+
+    box-sizing: border-box;
   }
 
   .navbar__link::after {
-    right: auto;
-    bottom: 8px;
-    left: 14px;
-
-    width: 28px;
-  }
-
-  .navbar__link:hover::after {
-    transform: scaleX(1);
+    display: none;
   }
 
   .navbar__link--active {
-    background: #edf3ef;
+    background: #f2f6f4;
   }
 
   .navbar__login-button {
     width: 100%;
-    min-height: 46px;
+    height: 44px;
 
     margin: 8px 0 0;
+
+    box-sizing: border-box;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 560px) {
   .navbar__container {
-    width: calc(100% - 24px);
+    width: calc(100% - 28px);
   }
 
-  .navbar__brand {
-    gap: 9px;
-  }
+  .navbar__brand-mark {
+    width: 42px;
+    height: 42px;
 
-  .navbar__logo {
-    width: 38px;
-    height: 38px;
-
-    font-size: 20px;
+    font-size: 11px;
   }
 
   .navbar__brand-title {
     font-size: 13px;
-    letter-spacing: 0.12em;
+    letter-spacing: 1.8px;
   }
 
   .navbar__brand-subtitle {
-    margin-top: 4px;
+    margin-top: 5px;
 
-    font-size: 9px;
-    letter-spacing: 0.22em;
-  }
-
-  .navbar__menu {
-    right: -12px;
-    left: -12px;
-
-    padding-right: 12px;
-    padding-left: 12px;
-  }
-}
-
-/* ==========================================================================
-   REDUCED MOTION
-   ========================================================================== */
-
-@media (prefers-reduced-motion: reduce) {
-  .navbar *,
-  .navbar *::before,
-  .navbar *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    font-size: 8px;
+    letter-spacing: 3px;
   }
 }

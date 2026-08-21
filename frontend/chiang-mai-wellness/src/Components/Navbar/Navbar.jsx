@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { LogIn } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
 import "./Navbar.css";
 
@@ -32,23 +31,42 @@ function Navbar() {
 
   return (
     <header className="navbar">
+      <div className="navbar__top-line" />
+
       <div className="navbar__container">
-        <Link to="/" className="navbar__brand" onClick={closeMenu}>
-          <div className="navbar__logo" aria-hidden="true">
-            ☘
-          </div>
+        <div className="navbar__identity">
+          <Link to="/" className="navbar__brand" onClick={closeMenu}>
+            <div className="navbar__brand-mark">CM</div>
 
-          <div className="navbar__brand-text">
-            <span className="navbar__brand-title">CHIANG MAI</span>
+            <div className="navbar__brand-text">
+              <span className="navbar__brand-title">CHIANG MAI</span>
 
-            <span className="navbar__brand-subtitle">WELLNESS</span>
+              <span className="navbar__brand-subtitle">WELLNESS</span>
+            </div>
+          </Link>
+
+          <div className="navbar__divider" />
+
+          <div
+            className="navbar__organizations"
+            aria-label="หน่วยงานที่เกี่ยวข้อง"
+          >
+            <div className="navbar__organization-logo">
+              <span>LOGO</span>
+            </div>
+
+            <div className="navbar__organization-logo">
+              <span>LOGO</span>
+            </div>
+
+            <div className="navbar__organization-logo">
+              <span>LOGO</span>
+            </div>
           </div>
-        </Link>
+        </div>
 
         <nav
-          className={`navbar__menu ${
-            isMenuOpen ? "navbar__menu--open" : ""
-          }`}
+          className={`navbar__menu ${isMenuOpen ? "navbar__menu--open" : ""}`}
           aria-label="เมนูหลัก"
         >
           {menuItems.map((item) => (
@@ -57,9 +75,7 @@ function Navbar() {
               to={item.path}
               end={item.end}
               className={({ isActive }) =>
-                isActive
-                  ? "navbar__link navbar__link--active"
-                  : "navbar__link"
+                isActive ? "navbar__link navbar__link--active" : "navbar__link"
               }
               onClick={closeMenu}
             >
@@ -72,8 +88,7 @@ function Navbar() {
             className="navbar__login-button"
             onClick={closeMenu}
           >
-            <LogIn aria-hidden="true" />
-            <span>เข้าสู่ระบบ</span>
+            เข้าสู่ระบบ
           </Link>
         </nav>
 

@@ -76,6 +76,13 @@ const CreateMainRoute = () => {
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Image upload states
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageFileName, setImageFileName] = useState("");
+  const [imageExistingName, setImageExistingName] = useState("");
+  const [imageError, setImageError] = useState("");
+
   // Refs จัดการเลเยอร์ Leaflet
   const districtMarkersRef = useRef({});
   const placeMarkersRef = useRef({});
@@ -180,7 +187,69 @@ const CreateMainRoute = () => {
     };
   };
 
-  // โหลดข้อมูลเส้นทางเดิมจาก DB
+  function normalizeRouteImage(value) {
+    if (!value) return "";
+    const normalizedValue = String(value).trim();
+    if (
+      normalizedValue.startsWith("http://") ||
+      normalizedValue.startsWith("https://") ||
+      normalizedValue.startsWith("blob:")
+    ) {
+      return normalizedValue;
+    }
+    if (normalizedValue.startsWith("/uploads/")) {
+      return `http://localhost:8080${normalizedValue}`;
+    }
+    return `http://localhost:8080/uploads/routes/${normalizedValue}`;
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("ไม่สามารถอ่านไฟล์รูปภาพได้"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const handleImageChange = async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      setImageError("ชนิดไฟล์ไม่รองรับ (รองรับ JPG/PNG/WEBP)");
+      event.target.value = "";
+      return;
+    }
+
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setImageError("ขนาดไฟล์ต้องไม่เกิน 5 MB");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setImageFile(file);
+      setImagePreview(dataUrl);
+      setImageFileName(file.name);
+      setImageError("");
+    } catch (err) {
+      console.error("❌ ไม่สามารถอ่านไฟล์รูปภาพได้", err);
+      setImageError("ไม่สามารถอ่านไฟล์ได้ กรุณาลองอีกครั้ง");
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview("");
+    setImageFileName("");
+    setImageExistingName("");
+    setImageError("");
+  };
+
   const loadRouteData = async (routeId, currentDistricts) => {
     try {
       const routeRes = await axiosInstance.get(
@@ -189,15 +258,18 @@ const CreateMainRoute = () => {
 
       if (routeRes.data) {
         const data = routeRes.data;
-
         setRouteName(data.routeName || "");
-
         setRouteDescription(data.routeDescription || "");
+
+        if (data.routeImage) {
+          setImageExistingName(data.routeImage);
+          setImagePreview(normalizeRouteImage(data.routeImage));
+          setImageFileName(data.routeImage);
+        }
 
         if (data.categoryId) {
           try {
             const parsedCategoryIds = JSON.parse(data.categoryId);
-
             setSelectedCategoryIds(
               mergeRequiredCategories(
                 Array.isArray(parsedCategoryIds)
@@ -223,7 +295,6 @@ const CreateMainRoute = () => {
             .map((detail) => {
               const districtId =
                 detail.district?.districtId ?? detail.districtId;
-
               return currentDistricts.find(
                 (district) =>
                   String(district.districtId) === String(districtId),
@@ -236,7 +307,6 @@ const CreateMainRoute = () => {
       }
     } catch (err) {
       console.error("❌ ไม่สามารถดึงข้อมูลเส้นทางเดิมได้", err);
-
       throw err;
     }
   };
@@ -244,15 +314,12 @@ const CreateMainRoute = () => {
   // โหลด Master Data
   useEffect(() => {
     const storedAdmin = localStorage.getItem("adminName");
-
     if (storedAdmin) {
       setAdminName(storedAdmin);
     }
 
     const fetchSystemDBData = async () => {
-      if (id) {
-        setLoadingRoute(true);
-      }
+      if (id) setLoadingRoute(true);
 
       try {
         const [catRes, distRes, hubRes] = await Promise.all([
@@ -262,17 +329,12 @@ const CreateMainRoute = () => {
         ]);
 
         setCategories(catRes.data || []);
-
         setDistricts(distRes.data || []);
-
         setWellnessHubs(hubRes.data || []);
 
-        if (!id) {
-          setLoadingRoute(false);
-        }
+        if (!id) setLoadingRoute(false);
       } catch (err) {
         console.error("❌ ดึงข้อมูลล้มเหลว", err);
-
         setLoadingRoute(false);
       }
     };
@@ -291,9 +353,7 @@ const CreateMainRoute = () => {
         } catch (err) {
           console.error("❌ เกิดข้อผิดพลาดขณะโหลดเส้นทางเก่า:", err);
         } finally {
-          if (isMounted) {
-            setLoadingRoute(false);
-          }
+          if (isMounted) setLoadingRoute(false);
         }
       }
     };
@@ -305,7 +365,7 @@ const CreateMainRoute = () => {
     };
   }, [id, districts]);
 
-  // Initial แผนที่ Leaflet
+  // Initial Leaflet Map
   useEffect(() => {
     if (!mapRef.current && mapContainerRef.current) {
       mapRef.current = L.map(mapContainerRef.current, {
@@ -317,9 +377,7 @@ const CreateMainRoute = () => {
       ).addTo(mapRef.current);
 
       setTimeout(() => {
-        if (mapRef.current) {
-          mapRef.current.invalidateSize();
-        }
+        if (mapRef.current) mapRef.current.invalidateSize();
       }, 200);
     }
 
@@ -327,10 +385,8 @@ const CreateMainRoute = () => {
       if (routingControlRef.current && mapRef.current) {
         try {
           routingControlRef.current.setWaypoints([]);
-
           mapRef.current.removeControl(routingControlRef.current);
         } catch (error) {}
-
         routingControlRef.current = null;
       }
 
@@ -343,26 +399,18 @@ const CreateMainRoute = () => {
 
   // วาดเส้น วางหมุดอำเภอ และปักหมุดสถานที่บนแผนที่
   useEffect(() => {
-    if (!mapRef.current) {
-      return;
-    }
-
+    if (!mapRef.current) return;
     const map = mapRef.current;
 
-    // 🔵 1. จัดการหมุดจุดตรวจระดับอำเภอ
+    // 1. หมุดจุดตรวจระดับอำเภอ
     Object.values(districtMarkersRef.current).forEach((marker) => {
-      if (map.hasLayer(marker)) {
-        map.removeLayer(marker);
-      }
+      if (map.hasLayer(marker)) map.removeLayer(marker);
     });
-
     districtMarkersRef.current = {};
 
     orderedRouteDetails.forEach((dist, idx) => {
       const rawLatitude = dist.district?.latitude ?? dist.latitude;
-
       const rawLongitude = dist.district?.longitude ?? dist.longitude;
-
       const name = dist.district?.districtName ?? dist.districtName;
 
       if (
@@ -377,7 +425,6 @@ const CreateMainRoute = () => {
       }
 
       const latitude = Number(rawLatitude);
-
       const longitude = Number(rawLongitude);
 
       if (
@@ -411,23 +458,20 @@ const CreateMainRoute = () => {
       districtMarkersRef.current[name] = marker;
     });
 
-    // 🟢 2. วาดเส้นทาง Leaflet Routing Machine ตามถนนจริง
+    // 2. Leaflet Routing Machine
     if (routingControlRef.current) {
       try {
         routingControlRef.current.setWaypoints([]);
-
         if (map && map.removeControl) {
           map.removeControl(routingControlRef.current);
         }
       } catch (error) {}
-
       routingControlRef.current = null;
     }
 
     const waypoints = orderedRouteDetails
       .map((district) => {
         const rawLatitude = district.district?.latitude ?? district.latitude;
-
         const rawLongitude = district.district?.longitude ?? district.longitude;
 
         if (
@@ -442,7 +486,6 @@ const CreateMainRoute = () => {
         }
 
         const latitude = Number(rawLatitude);
-
         const longitude = Number(rawLongitude);
 
         if (
@@ -464,11 +507,9 @@ const CreateMainRoute = () => {
       try {
         routingControlRef.current = L.Routing.control({
           waypoints: waypoints,
-
           router: L.Routing.osrmv1({
             serviceUrl: "https://router.project-osrm.org/route/v1",
           }),
-
           lineOptions: {
             styles: [
               {
@@ -478,7 +519,6 @@ const CreateMainRoute = () => {
               },
             ],
           },
-
           createMarker: () => null,
           show: false,
           addWaypoints: false,
@@ -498,13 +538,10 @@ const CreateMainRoute = () => {
       } catch (error) {}
     }
 
-    // 🟣 3. วางหมุดสถานประกอบการ
+    // 3. หมุดสถานประกอบการ
     Object.values(placeMarkersRef.current).forEach((marker) => {
-      if (map.hasLayer(marker)) {
-        map.removeLayer(marker);
-      }
+      if (map.hasLayer(marker)) map.removeLayer(marker);
     });
-
     placeMarkersRef.current = {};
 
     if (orderedRouteDetails.length > 0) {
@@ -526,7 +563,6 @@ const CreateMainRoute = () => {
             : null;
 
         const catName = hub.category?.categoryName || "";
-
         const style = getCategoryStyle(hubCatId, catName);
 
         return (
@@ -539,7 +575,6 @@ const CreateMainRoute = () => {
 
       matchedHubs.forEach((hub) => {
         const latitude = Number(hub.wellnessHubLatitude);
-
         const longitude = Number(hub.wellnessHubLongitude);
 
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
@@ -547,9 +582,7 @@ const CreateMainRoute = () => {
         }
 
         const catId = hub.category?.categoryId || "";
-
         const catName = hub.category?.categoryName || "";
-
         const styleInfo = getCategoryStyle(catId, catName);
 
         const customIcon = L.divIcon({
@@ -584,9 +617,7 @@ const CreateMainRoute = () => {
 
         placeMarkersRef.current[hub.licenseId] = L.marker(
           [latitude, longitude],
-          {
-            icon: customIcon,
-          },
+          { icon: customIcon },
         )
           .addTo(map)
           .bindPopup(popupHtml);
@@ -597,12 +628,10 @@ const CreateMainRoute = () => {
   const handleLogout = () => {
     if (window.confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) {
       localStorage.removeItem("adminName");
-
       navigate("/admin/login");
     }
   };
 
-  // คำนวณจำนวนหมุดตามหมวดหมู่
   const getCountForCategory = (catId) => {
     const activeDistrictIds = orderedRouteDetails.map((district) =>
       String(district.district?.districtId ?? district.districtId),
@@ -629,7 +658,6 @@ const CreateMainRoute = () => {
     }).length;
   };
 
-  // คำนวณจำนวนหมุดตามอำเภอ
   const getCountForDistrict = (districtId) => {
     return wellnessHubs.filter((hub) => {
       const hubDistId =
@@ -645,7 +673,6 @@ const CreateMainRoute = () => {
           : null;
 
       const catName = hub.category?.categoryName || "";
-
       const style = getCategoryStyle(hubCatId, catName);
 
       return (
@@ -656,7 +683,6 @@ const CreateMainRoute = () => {
     }).length;
   };
 
-  // คำนวณจำนวนหมุดรวมทั้งหมด
   const getTotalPinsCount = () => {
     const activeDistrictIds = orderedRouteDetails.map((district) =>
       String(district.district?.districtId ?? district.districtId),
@@ -676,7 +702,6 @@ const CreateMainRoute = () => {
           : null;
 
       const catName = hub.category?.categoryName || "";
-
       const style = getCategoryStyle(hubCatId, catName);
 
       return (
@@ -687,10 +712,8 @@ const CreateMainRoute = () => {
     }).length;
   };
 
-  // แสดงเฉพาะหมวดที่ถูกเลือก + Emergency ในตารางสรุป
   const selectedCategories = categories.filter((category) => {
     const categoryId = String(category.categoryId);
-
     return (
       REQUIRED_EMERGENCY_CATEGORY_IDS.includes(categoryId) ||
       selectedCategoryIds.includes(categoryId)
@@ -699,10 +722,7 @@ const CreateMainRoute = () => {
 
   const handleCategoryToggle = (catId) => {
     const normalizedCategoryId = String(catId);
-
-    if (REQUIRED_EMERGENCY_CATEGORY_IDS.includes(normalizedCategoryId)) {
-      return;
-    }
+    if (REQUIRED_EMERGENCY_CATEGORY_IDS.includes(normalizedCategoryId)) return;
 
     setSelectedCategoryIds((previousCategoryIds) => {
       if (previousCategoryIds.includes(normalizedCategoryId)) {
@@ -710,7 +730,6 @@ const CreateMainRoute = () => {
           (categoryId) => categoryId !== normalizedCategoryId,
         );
       }
-
       return [...previousCategoryIds, normalizedCategoryId];
     });
 
@@ -723,9 +742,7 @@ const CreateMainRoute = () => {
   };
 
   const handleAddDistrictToOrderList = () => {
-    if (!selectDistrictValue) {
-      return;
-    }
+    if (!selectDistrictValue) return;
 
     const isDuplicate = orderedRouteDetails.some(
       (district) =>
@@ -738,7 +755,6 @@ const CreateMainRoute = () => {
         ...errors,
         orderedDistricts: "❌ อำเภอนี้ถูกจัดอยู่ในลำดับเส้นทางเรียบร้อยแล้ว",
       });
-
       return;
     }
 
@@ -748,9 +764,7 @@ const CreateMainRoute = () => {
 
     if (targetDistrict) {
       setOrderedRouteDetails([...orderedRouteDetails, targetDistrict]);
-
       setSelectDistrictValue("");
-
       setErrors({
         ...errors,
         orderedDistricts: "",
@@ -760,19 +774,12 @@ const CreateMainRoute = () => {
 
   const handleMoveOrderStep = (index, direction) => {
     const updated = [...orderedRouteDetails];
-
     const targetIdx = index + direction;
-
-    if (targetIdx < 0 || targetIdx >= updated.length) {
-      return;
-    }
+    if (targetIdx < 0 || targetIdx >= updated.length) return;
 
     const temp = updated[index];
-
     updated[index] = updated[targetIdx];
-
     updated[targetIdx] = temp;
-
     setOrderedRouteDetails(updated);
   };
 
@@ -786,6 +793,7 @@ const CreateMainRoute = () => {
     );
   };
 
+  // 🌟 ฟังก์ชันจัดการ Submit Form อัปเดตและบันทึกภาพปก
   const handleSubmitFinalForm = async (event) => {
     event.preventDefault();
 
@@ -808,55 +816,76 @@ const CreateMainRoute = () => {
       return;
     }
 
-    const categoryIdsForSave = mergeRequiredCategories(selectedCategoryIds);
-
-    const payload = {
-      routeName: routeName.trim(),
-
-      routeDescription: routeDescription.trim(),
-
-      categoryIds: categoryIdsForSave,
-
-      details: orderedRouteDetails.map((dist, idx) => ({
-        orderNumber: idx + 1,
-
-        districtId: dist.district?.districtId ?? dist.districtId,
-      })),
-    };
-
     setIsSubmitting(true);
 
     try {
+      let finalRouteImage = imageExistingName || "";
+
+      // หากมีการเลือกไฟล์รูปใหม่ ให้ทำการ Upload ก่อนบันทึก
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("file", imageFile);
+
+        const uploadResponse = await axiosInstance.post(
+          "http://localhost:8080/api/main-routes/upload-image",
+          formData,
+        );
+
+        const uploadedFilename = uploadResponse.data?.filename;
+
+        if (!uploadedFilename) {
+          setIsSubmitting(false);
+          setImageError("ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง");
+          return;
+        }
+
+        finalRouteImage = String(uploadedFilename).trim();
+      }
+
+      const categoryIdsForSave = mergeRequiredCategories(selectedCategoryIds);
+
+      const finalPayload = {
+        routeName: routeName.trim(),
+        routeDescription: routeDescription.trim(),
+        routeImage: finalRouteImage,
+        categoryIds: categoryIdsForSave,
+        details: orderedRouteDetails.map((dist, idx) => ({
+          orderNumber: idx + 1,
+          districtId: dist.district?.districtId ?? dist.districtId,
+        })),
+      };
+
       if (id) {
         await axiosInstance.put(
           `http://localhost:8080/api/main-routes/${id}`,
-          payload,
+          finalPayload,
         );
 
         navigate("/listMainRoute", {
           state: {
             showToast: true,
             toastType: "success",
-            toastMessage: "แก้ไขและลงรับข้อมูลเส้นทางสุขภาพสำเร็จสิ้น",
+            toastMessage: "แก้ไขและบันทึกรูปภาพเส้นทางสำเร็จ",
           },
         });
-      } else {
-        await axiosInstance.post(
-          "http://localhost:8080/api/main-routes",
-          payload,
-        );
-
-        navigate("/listMainRoute", {
-          state: {
-            showToast: true,
-            toastType: "success",
-            toastMessage: "เพิ่มเส้นทางสุขภาพใหม่สำเร็จสิ้น",
-          },
-        });
+        return;
       }
-    } catch (err) {
-      setIsSubmitting(false);
 
+      await axiosInstance.post(
+        "http://localhost:8080/api/main-routes",
+        finalPayload,
+      );
+
+      navigate("/listMainRoute", {
+        state: {
+          showToast: true,
+          toastType: "success",
+          toastMessage: "เพิ่มเส้นทางสุขภาพใหม่สำเร็จสิ้น",
+        },
+      });
+    } catch (err) {
+      console.error("❌ ไม่สามารถบันทึกข้อมูลเส้นทางได้", err);
+      setIsSubmitting(false);
       navigate("/listMainRoute", {
         state: {
           showToast: true,
@@ -874,9 +903,7 @@ const CreateMainRoute = () => {
       <div className="gov-loading-container">
         <div className="loading-box">
           <i className="fa-solid fa-spinner fa-spin"></i>
-
           <h3>กำลังบันทึกข้อมูล</h3>
-
           <p>กำลังส่งและปรับปรุงข้อมูลเส้นทางในฐานข้อมูลกลาง...</p>
         </div>
       </div>
@@ -889,9 +916,7 @@ const CreateMainRoute = () => {
         <div className="loading-overlay">
           <div className="loading-box">
             <i className="fa-solid fa-spinner fa-spin"></i>
-
             <h3>กำลังโหลดข้อมูลเส้นทาง</h3>
-
             <p>กรุณารอสักครู่ ระบบกำลังดึงแผนที่ หมวดหมู่ และอำเภอเดิม</p>
           </div>
         </div>
@@ -901,16 +926,13 @@ const CreateMainRoute = () => {
         <div className="sidebar-top">
           <div className="sidebar-logo">
             <i className="fa-solid fa-shield-heart"></i>
-
             <span>Admin Panel</span>
           </div>
 
           <div className="user-profile-box">
             <i className="fa-solid fa-circle-user"></i>
-
             <div className="user-info">
               <span className="user-label">ผู้ใช้งานปัจจุบัน:</span>
-
               <span className="user-name">{adminName}</span>
             </div>
           </div>
@@ -928,12 +950,7 @@ const CreateMainRoute = () => {
             <span className="badge-counter">5</span>
           </Link>
 
-          <p
-            className="menu-label"
-            style={{
-              marginTop: "20px",
-            }}
-          >
+          <p className="menu-label" style={{ marginTop: "20px" }}>
             การจัดการข้อมูล
           </p>
 
@@ -966,13 +983,7 @@ const CreateMainRoute = () => {
               ? "แก้ไขเส้นทางสุขภาพ (Edit Route)"
               : "เพิ่มเส้นทางสุขภาพใหม่ (Create Route)"}
           </h2>
-
-          <span
-            style={{
-              fontSize: "13px",
-              color: "#666",
-            }}
-          >
+          <span style={{ fontSize: "13px", color: "#666" }}>
             ระบบบริการจัดการข้อมูลสุขภาพ จังหวัดเชียงใหม่
           </span>
         </div>
@@ -990,9 +1001,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{
-                    background: "#2E9D62",
-                  }}
+                  style={{ background: "#2E9D62" }}
                 ></div>
                 นวด/สปาเพื่อสุขภาพ (C01)
               </div>
@@ -1000,9 +1009,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{
-                    background: "#F28C28",
-                  }}
+                  style={{ background: "#F28C28" }}
                 ></div>
                 อาหารและเครื่องดื่ม (C03)
               </div>
@@ -1010,9 +1017,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{
-                    background: "#7C63D9",
-                  }}
+                  style={{ background: "#7C63D9" }}
                 ></div>
                 ที่พักฟื้นฟูสุขภาพ (C04)
               </div>
@@ -1020,9 +1025,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{
-                    background: "#2563A6",
-                  }}
+                  style={{ background: "#2563A6" }}
                 ></div>
                 คลินิก/สถานพยาบาล (C02)
               </div>
@@ -1030,9 +1033,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{
-                    background: "#28A9D8",
-                  }}
+                  style={{ background: "#28A9D8" }}
                 ></div>
                 สถานที่ท่องเที่ยว (C05)
               </div>
@@ -1040,9 +1041,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{
-                    background: "#D9434E",
-                  }}
+                  style={{ background: "#D9434E" }}
                 ></div>
                 ALS (Advanced Hospital)
               </div>
@@ -1050,9 +1049,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{
-                    background: "#E0A000",
-                  }}
+                  style={{ background: "#E0A000" }}
                 ></div>
                 BLS (Basic Life Support)
               </div>
@@ -1067,9 +1064,7 @@ const CreateMainRoute = () => {
               >
                 <div
                   className="gov-legend-color"
-                  style={{
-                    background: "#1a2332",
-                  }}
+                  style={{ background: "#1a2332" }}
                 ></div>
                 จุดตรวจสอบระดับอำเภอ
               </div>
@@ -1111,20 +1106,8 @@ const CreateMainRoute = () => {
                       textAlign: "left",
                     }}
                   >
-                    <th
-                      style={{
-                        paddingBottom: "5px",
-                      }}
-                    >
-                      หมวดหมู่
-                    </th>
-
-                    <th
-                      style={{
-                        paddingBottom: "5px",
-                        textAlign: "right",
-                      }}
-                    >
+                    <th style={{ paddingBottom: "5px" }}>หมวดหมู่</th>
+                    <th style={{ paddingBottom: "5px", textAlign: "right" }}>
                       จำนวนที่พบ
                     </th>
                   </tr>
@@ -1134,18 +1117,11 @@ const CreateMainRoute = () => {
                   {selectedCategories.map((category) => (
                     <tr
                       key={category.categoryId}
-                      style={{
-                        borderBottom: "1px solid #e2e8f0",
-                      }}
+                      style={{ borderBottom: "1px solid #e2e8f0" }}
                     >
-                      <td
-                        style={{
-                          padding: "6px 0",
-                        }}
-                      >
+                      <td style={{ padding: "6px 0" }}>
                         {category.categoryName}
                       </td>
-
                       <td
                         style={{
                           padding: "6px 0",
@@ -1165,14 +1141,7 @@ const CreateMainRoute = () => {
                       borderTop: "2px solid #cbd5e1",
                     }}
                   >
-                    <td
-                      style={{
-                        paddingTop: "8px",
-                      }}
-                    >
-                      รวมทั้งหมด
-                    </td>
-
+                    <td style={{ paddingTop: "8px" }}>รวมทั้งหมด</td>
                     <td
                       style={{
                         paddingTop: "8px",
@@ -1192,7 +1161,6 @@ const CreateMainRoute = () => {
             <form onSubmit={handleSubmitFinalForm}>
               <div className="gov-form-group">
                 <label className="gov-label-bold">ชื่อเส้นทางสุขภาพ*</label>
-
                 <input
                   type="text"
                   className={`gov-input-text ${
@@ -1202,12 +1170,9 @@ const CreateMainRoute = () => {
                   onChange={(event) => setRouteName(event.target.value)}
                   placeholder="ระบุชื่อเส้นทาง เช่น กินนวดสบาย พร้าว - แม่ริม - เมือง"
                 />
-
                 <span className="gov-char-counter">
-                  {routeName.length}
-                  /50 ตัวอักษร
+                  {routeName.length}/50 ตัวอักษร
                 </span>
-
                 {errors.routeName && (
                   <span className="gov-error-label">{errors.routeName}</span>
                 )}
@@ -1215,7 +1180,6 @@ const CreateMainRoute = () => {
 
               <div className="gov-form-group">
                 <label className="gov-label-bold">รายละเอียดเส้นทาง</label>
-
                 <textarea
                   className="gov-input-text"
                   style={{
@@ -1242,17 +1206,13 @@ const CreateMainRoute = () => {
                 >
                   {categories.map((category) => {
                     const catIdStr = String(category.categoryId);
-
                     const styleInfo = getCategoryStyle(
                       category.categoryId,
                       category.categoryName,
                     );
-
                     const isEmergency = styleInfo.isEmergency;
-
                     const isChecked =
                       isEmergency || selectedCategoryIds.includes(catIdStr);
-
                     const currentCount = getCountForCategory(
                       category.categoryId,
                     );
@@ -1294,7 +1254,6 @@ const CreateMainRoute = () => {
                             disabled={isEmergency}
                             readOnly
                           />
-
                           <span
                             className="gov-category-text"
                             style={{
@@ -1361,14 +1320,12 @@ const CreateMainRoute = () => {
                     }
                   >
                     <option value="">-- เลือกรายการอำเภอหลัก --</option>
-
                     {districts.map((district) => (
                       <option
                         key={district.districtId}
                         value={String(district.districtId)}
                       >
-                        อ.
-                        {district.districtName}
+                        อ.{district.districtName}
                       </option>
                     ))}
                   </select>
@@ -1390,10 +1347,8 @@ const CreateMainRoute = () => {
                   {orderedRouteDetails.map((dist, index) => {
                     const currentDistId =
                       dist.district?.districtId ?? dist.districtId;
-
                     const currentDistName =
                       dist.district?.districtName ?? dist.districtName;
-
                     const districtHubsCount =
                       getCountForDistrict(currentDistId);
 
@@ -1401,13 +1356,10 @@ const CreateMainRoute = () => {
                       <div
                         key={currentDistId}
                         className="gov-order-row"
-                        style={{
-                          padding: "10px 12px",
-                        }}
+                        style={{ padding: "10px 12px" }}
                       >
                         <div className="gov-order-left">
                           <div className="gov-badge-number">{index + 1}</div>
-
                           <div
                             style={{
                               display: "flex",
@@ -1416,14 +1368,10 @@ const CreateMainRoute = () => {
                           >
                             <span
                               className="gov-order-name"
-                              style={{
-                                fontWeight: "600",
-                              }}
+                              style={{ fontWeight: "600" }}
                             >
-                              อำเภอ
-                              {currentDistName}
+                              อำเภอ{currentDistName}
                             </span>
-
                             <span
                               style={{
                                 fontSize: "11px",
@@ -1445,7 +1393,6 @@ const CreateMainRoute = () => {
                           >
                             ▲
                           </button>
-
                           <button
                             type="button"
                             className="gov-btn-arrow"
@@ -1454,7 +1401,6 @@ const CreateMainRoute = () => {
                           >
                             ▼
                           </button>
-
                           <button
                             type="button"
                             className="gov-btn-delete-item-red"
@@ -1488,6 +1434,86 @@ const CreateMainRoute = () => {
                     {errors.orderedDistricts}
                   </span>
                 )}
+              </div>
+
+              {/* SECTION 3: Image upload for route */}
+              <div className="gov-route-image-section">
+                <div className="gov-route-image-header">
+                  <div>
+                    <label className="gov-label-bold">รูปภาพปกเส้นทาง</label>
+                    <p className="gov-route-image-description">
+                      ใช้เป็นภาพหลักสำหรับแสดงเส้นทางในหน้าเว็บไซต์
+                    </p>
+                  </div>
+                  <span className="gov-route-image-badge">
+                    <i className="fa-regular fa-image"></i>
+                    รูปปก 1 รูป
+                  </span>
+                </div>
+
+                <div className="gov-route-image-content">
+                  <div className="gov-route-image-preview">
+                    {imagePreview ? (
+                      <img
+                        src={imagePreview}
+                        alt="ตัวอย่างรูปภาพปกเส้นทาง"
+                        className="gov-route-image-preview-img"
+                      />
+                    ) : (
+                      <div className="gov-route-image-empty">
+                        <div className="gov-route-image-empty-icon">
+                          <i className="fa-regular fa-image"></i>
+                        </div>
+                        <strong>ยังไม่มีรูปภาพ</strong>
+                        <span>เลือกรูปเพื่อดูตัวอย่างก่อนบันทึก</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="gov-route-image-actions">
+                    <div className="gov-route-image-buttons">
+                      <label className="gov-route-image-upload-button">
+                        <i className="fa-solid fa-cloud-arrow-up"></i>
+                        {imagePreview ? "เปลี่ยนรูปภาพ" : "เลือกรูปภาพ"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handleImageChange}
+                          hidden
+                        />
+                      </label>
+
+                      {imagePreview && (
+                        <button
+                          type="button"
+                          className="gov-route-image-remove-button"
+                          onClick={removeImage}
+                        >
+                          <i className="fa-solid fa-trash"></i>
+                          ลบรูป
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="gov-route-image-hint">
+                      รองรับ JPG, PNG, WEBP • ขนาดสูงสุด 5 MB
+                    </p>
+
+                    {imageFileName && (
+                      <div className="gov-route-image-file">
+                        <i className="fa-solid fa-paperclip"></i>
+                        <span title={imageFileName}>{imageFileName}</span>
+                      </div>
+                    )}
+
+                    {imageError && (
+                      <div className="gov-route-image-error">
+                        <i className="fa-solid fa-circle-exclamation"></i>
+                        {imageError}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="gov-submit-bar">

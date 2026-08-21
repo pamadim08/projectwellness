@@ -24,6 +24,8 @@ public class MainRoute {
 
     private String routeDescription;
 
+    @Column(name = "route_image", columnDefinition = "TEXT")
+    private String routeImage;
     @Column(name = "pin_count")
     private Integer pinCount;
     @Column(name = "created_by", length = 100)

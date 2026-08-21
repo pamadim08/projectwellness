@@ -88,6 +88,7 @@ public class MainRouteService {
             map.put("routeId", route.getRouteId());
             map.put("routeName", route.getRouteName());
             map.put("routeDescription", route.getRouteDescription());
+            map.put("routeImage", route.getRouteImage());
 
             String districtsPassed = route.getDetails().stream()
                     .sorted(Comparator.comparing(MainRouteDetail::getOrderNumber))
@@ -256,6 +257,7 @@ public class MainRouteService {
             oldRoute.setRouteName(incomingRoute.getRouteName());
             oldRoute.setRouteDescription(incomingRoute.getRouteDescription());
             oldRoute.setCategoryId(incomingRoute.getCategoryId());
+            oldRoute.setRouteImage(incomingRoute.getRouteImage());
 
             oldRoute.getDetails().clear();
 
@@ -285,6 +287,11 @@ public class MainRouteService {
                 payload.get("routeDescription") != null
                         ? payload.get("routeDescription").toString()
                         : "");
+
+        // Set route image if provided in payload
+        if (payload.get("routeImage") != null) {
+            route.setRouteImage(payload.get("routeImage").toString());
+        }
 
         try {
             List<String> categoryIds = normalizeCategoryIds(payload.get("categoryIds"));

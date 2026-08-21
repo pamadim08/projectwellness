@@ -23,8 +23,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -95,6 +95,7 @@ public class HomeService {
                 map.put("routeName", route.getRouteName());
 
                 putIfNotBlank(map, "routeDescription", route.getRouteDescription());
+                putIfNotBlank(map, "routeImage", buildRouteImageUrl(route.getRouteImage()));
 
                 map.put("pinCount", route.getPinCount() == null ? 0 : route.getPinCount());
 
@@ -120,16 +121,24 @@ public class HomeService {
 
                 map.put("districts", districtMaps);
 
-                // districtsPassed string
+                /*
+                 * =====================================================
+                 * Districts Passed
+                 * =====================================================
+                 */
                 String districtsPassed = sortedDetails.stream()
-                                .map(d -> d.getDistrict().getDistrictName())
+                                .map(detail -> detail.getDistrict().getDistrictName())
                                 .filter(name -> name != null && !name.trim().isEmpty())
                                 .distinct()
                                 .collect(Collectors.joining(" → ", "", ""));
 
                 putIfNotBlank(map, "districtsPassed", districtsPassed);
 
-                // categories: parse and lookup
+                /*
+                 * =====================================================
+                 * Categories
+                 * =====================================================
+                 */
                 List<String> categoryIds = parseCategoryIds(route.getCategoryId());
 
                 List<Category> categories = categoryIds.isEmpty()
@@ -137,11 +146,11 @@ public class HomeService {
                                 : categoryRepository.findAllById(categoryIds);
 
                 List<Map<String, Object>> categoryMaps = categories.stream()
-                                .map(c -> {
-                                        Map<String, Object> cm = new LinkedHashMap<>();
-                                        cm.put("categoryId", c.getCategoryId());
-                                        cm.put("categoryName", c.getCategoryName());
-                                        return cm;
+                                .map(category -> {
+                                        Map<String, Object> categoryMap = new LinkedHashMap<>();
+                                        categoryMap.put("categoryId", category.getCategoryId());
+                                        categoryMap.put("categoryName", category.getCategoryName());
+                                        return categoryMap;
                                 })
                                 .toList();
 
@@ -285,6 +294,7 @@ public class HomeService {
                 result.put("routeName", route.getRouteName());
 
                 putIfNotBlank(result, "routeDescription", route.getRouteDescription());
+                putIfNotBlank(result, "routeImage", buildRouteImageUrl(route.getRouteImage()));
 
                 if (startDistrict != null) {
                         result.put("startDistrict", startDistrict);
@@ -464,41 +474,15 @@ public class HomeService {
 
                 Map<String, Object> response = new LinkedHashMap<>();
 
-                response.put(
-                                "keyword",
-                                normalizedKeyword);
-
-                response.put(
-                                "type",
-                                normalizedType);
-
-                response.put(
-                                "totalResults",
-                                totalResults);
-
-                response.put(
-                                "routeCount",
-                                routeResults.size());
-
-                response.put(
-                                "wellnessHubCount",
-                                wellnessHubResults.size());
-
-                response.put(
-                                "articleCount",
-                                articleResults.size());
-
-                response.put(
-                                "routes",
-                                routeResults);
-
-                response.put(
-                                "wellnessHubs",
-                                wellnessHubResults);
-
-                response.put(
-                                "articles",
-                                articleResults);
+                response.put("keyword", normalizedKeyword);
+                response.put("type", normalizedType);
+                response.put("totalResults", totalResults);
+                response.put("routeCount", routeResults.size());
+                response.put("wellnessHubCount", wellnessHubResults.size());
+                response.put("articleCount", articleResults.size());
+                response.put("routes", routeResults);
+                response.put("wellnessHubs", wellnessHubResults);
+                response.put("articles", articleResults);
 
                 return response;
         }
@@ -511,98 +495,73 @@ public class HomeService {
         private boolean containsKeyword(
                         String value,
                         String keyword) {
-                if (value == null ||
-                                keyword == null) {
+                if (value == null || keyword == null) {
                         return false;
                 }
 
-                return value
-                                .toLowerCase(Locale.ROOT)
-                                .contains(keyword);
+                return value.toLowerCase(Locale.ROOT).contains(keyword);
         }
 
-        private Map<String, Object> convertRouteSearchResult(
-                        MainRoute route) {
+        private String buildRouteImageUrl(String routeImage) {
+                if (routeImage == null || routeImage.trim().isEmpty()) {
+                        return null;
+                }
+
+                String normalizedImage = routeImage.trim();
+
+                if (normalizedImage.startsWith("http://")
+                                || normalizedImage.startsWith("https://")) {
+                        return normalizedImage;
+                }
+
+                if (normalizedImage.startsWith("/uploads/")) {
+                        return "http://localhost:8080" + normalizedImage;
+                }
+
+                return "http://localhost:8080/uploads/routes/" + normalizedImage;
+        }
+
+        private Map<String, Object> convertRouteSearchResult(MainRoute route) {
                 Map<String, Object> map = new LinkedHashMap<>();
 
-                map.put(
-                                "routeId",
-                                route.getRouteId());
+                map.put("routeId", route.getRouteId());
+                map.put("routeName", route.getRouteName());
 
-                map.put(
-                                "routeName",
-                                route.getRouteName());
+                putIfNotBlank(map, "routeDescription", route.getRouteDescription());
+                putIfNotBlank(map, "routeImage", buildRouteImageUrl(route.getRouteImage()));
 
-                putIfNotBlank(
-                                map,
-                                "routeDescription",
-                                route.getRouteDescription());
+                map.put("pinCount", route.getPinCount() == null ? 0 : route.getPinCount());
 
-                map.put(
-                                "pinCount",
-                                route.getPinCount() == null
-                                                ? 0
-                                                : route.getPinCount());
-
-                if (route.getDetails() != null &&
-                                !route.getDetails().isEmpty()) {
+                if (route.getDetails() != null && !route.getDetails().isEmpty()) {
                         String districtsPassed = route.getDetails()
                                         .stream()
-                                        .filter(detail -> detail != null &&
-                                                        detail.getDistrict() != null)
-                                        .sorted(
-                                                        Comparator.comparing(
-                                                                        MainRouteDetail::getOrderNumber,
-                                                                        Comparator.nullsLast(
-                                                                                        Comparator.naturalOrder())))
-                                        .map(detail -> "อ." +
-                                                        detail.getDistrict()
-                                                                        .getDistrictName())
+                                        .filter(detail -> detail != null && detail.getDistrict() != null)
+                                        .sorted(Comparator.comparing(
+                                                        MainRouteDetail::getOrderNumber,
+                                                        Comparator.nullsLast(Comparator.naturalOrder())))
+                                        .map(detail -> "อ." + detail.getDistrict().getDistrictName())
                                         .distinct()
-                                        .reduce(
-                                                        (first, second) -> first + " → " + second)
+                                        .reduce((first, second) -> first + " → " + second)
                                         .orElse("");
 
-                        putIfNotBlank(
-                                        map,
-                                        "districtsPassed",
-                                        districtsPassed);
+                        putIfNotBlank(map, "districtsPassed", districtsPassed);
                 }
 
                 return map;
         }
 
-        private Map<String, Object> convertArticleSearchResult(
-                        OfficialArticle article) {
+        private Map<String, Object> convertArticleSearchResult(OfficialArticle article) {
                 Map<String, Object> map = new LinkedHashMap<>();
 
-                map.put(
-                                "articleId",
-                                article.getArticleId());
+                map.put("articleId", article.getArticleId());
+                map.put("articleTitle", article.getArticleTitle());
 
-                map.put(
-                                "articleTitle",
-                                article.getArticleTitle());
-
-                putIfNotBlank(
-                                map,
-                                "articleDetail",
-                                article.getArticleDetail());
-
-                putIfNotBlank(
-                                map,
-                                "articleCategory",
-                                article.getArticleCategory());
-
-                putIfNotBlank(
-                                map,
-                                "img",
-                                article.getImg());
+                putIfNotBlank(map, "articleDetail", article.getArticleDetail());
+                putIfNotBlank(map, "articleCategory", article.getArticleCategory());
+                putIfNotBlank(map, "img", article.getImg());
 
                 if (article.getPublishDate() != null) {
-                        map.put(
-                                        "publishDate",
-                                        article.getPublishDate());
+                        map.put("publishDate", article.getPublishDate());
                 }
 
                 return map;
@@ -611,8 +570,7 @@ public class HomeService {
         private List<String> parseCategoryIds(String categoryIdValue) {
                 List<String> categoryIds = new ArrayList<>();
 
-                if (categoryIdValue == null ||
-                                categoryIdValue.trim().isEmpty()) {
+                if (categoryIdValue == null || categoryIdValue.trim().isEmpty()) {
                         return categoryIds;
                 }
 
@@ -624,8 +582,7 @@ public class HomeService {
 
                         if (parsedCategoryIds != null) {
                                 parsedCategoryIds.stream()
-                                                .filter(id -> id != null &&
-                                                                !id.trim().isEmpty())
+                                                .filter(id -> id != null && !id.trim().isEmpty())
                                                 .map(String::trim)
                                                 .distinct()
                                                 .forEach(categoryIds::add);
@@ -637,183 +594,82 @@ public class HomeService {
                 return categoryIds;
         }
 
-        private Map<String, Object> convertWellnessHubToSearchResult(
-                        WellnessHub wellnessHub) {
-                Map<String, Object> map = new LinkedHashMap<>();
-
-                map.put(
-                                "licenseId",
-                                wellnessHub.getLicenseId());
-
-                map.put(
-                                "wellnessHubName",
-                                wellnessHub.getWellnessHubName());
-
-                putIfNotBlank(
-                                map,
-                                "wellnessHubDescription",
-                                wellnessHub.getWellnessHubDescription());
-
-                putIfNotBlank(
-                                map,
-                                "address",
-                                wellnessHub.getAddress());
-
-                if (wellnessHub.getCategory() != null) {
-                        map.put(
-                                        "categoryId",
-                                        wellnessHub.getCategory().getCategoryId());
-
-                        putIfNotBlank(
-                                        map,
-                                        "categoryName",
-                                        wellnessHub.getCategory().getCategoryName());
-                }
-
-                if (wellnessHub.getDistrict() != null) {
-                        map.put(
-                                        "districtId",
-                                        wellnessHub.getDistrict().getDistrictId());
-
-                        putIfNotBlank(
-                                        map,
-                                        "districtName",
-                                        wellnessHub.getDistrict().getDistrictName());
-                }
-
-                return map;
-        }
-
-        private Map<String, Object> convertWellnessHubToMap(
-                        WellnessHub wellnessHub) {
+        private Map<String, Object> convertWellnessHubToSearchResult(WellnessHub wellnessHub) {
                 Map<String, Object> map = new LinkedHashMap<>();
 
                 map.put("licenseId", wellnessHub.getLicenseId());
                 map.put("wellnessHubName", wellnessHub.getWellnessHubName());
 
-                putIfNotBlank(
-                                map,
-                                "wellnessHubDescription",
-                                wellnessHub.getWellnessHubDescription());
-
-                putIfNotBlank(
-                                map,
-                                "address",
-                                wellnessHub.getAddress());
-
-                putIfNotBlank(
-                                map,
-                                "contactInformation",
-                                wellnessHub.getContactInformation());
-
-                putIfNotBlank(
-                                map,
-                                "telInformation",
-                                wellnessHub.getTelInformation());
-
-                putIfNotBlank(
-                                map,
-                                "googleMapsLink",
-                                wellnessHub.getGoogleMapsLink());
-
-                putIfNotBlank(
-                                map,
-                                "wellnessHubImg",
-                                wellnessHub.getWellnessHubImg());
-
-                putIfNotBlank(
-                                map,
-                                "certificateType",
-                                wellnessHub.getCertificateType());
-
-                putIfNotBlank(
-                                map,
-                                "operatingHours",
-                                wellnessHub.getOperatingHours());
-
-                if (wellnessHub.getWellnessHubLatitude() != null) {
-                        map.put(
-                                        "latitude",
-                                        wellnessHub.getWellnessHubLatitude());
-                }
-
-                if (wellnessHub.getWellnessHubLongitude() != null) {
-                        map.put(
-                                        "longitude",
-                                        wellnessHub.getWellnessHubLongitude());
-                }
+                putIfNotBlank(map, "wellnessHubDescription", wellnessHub.getWellnessHubDescription());
+                putIfNotBlank(map, "address", wellnessHub.getAddress());
 
                 if (wellnessHub.getCategory() != null) {
-                        map.put(
-                                        "categoryId",
-                                        wellnessHub.getCategory().getCategoryId());
-
-                        map.put(
-                                        "categoryName",
-                                        wellnessHub.getCategory().getCategoryName());
+                        map.put("categoryId", wellnessHub.getCategory().getCategoryId());
+                        putIfNotBlank(map, "categoryName", wellnessHub.getCategory().getCategoryName());
                 }
 
                 if (wellnessHub.getDistrict() != null) {
-                        map.put(
-                                        "districtId",
-                                        wellnessHub.getDistrict().getDistrictId());
-
-                        map.put(
-                                        "districtName",
-                                        wellnessHub.getDistrict().getDistrictName());
+                        map.put("districtId", wellnessHub.getDistrict().getDistrictId());
+                        putIfNotBlank(map, "districtName", wellnessHub.getDistrict().getDistrictName());
                 }
 
                 return map;
         }
 
-        private WellnessHub convertEmergencyToWellnessHub(
-                        EmergencyService emergencyService) {
+        private Map<String, Object> convertWellnessHubToMap(WellnessHub wellnessHub) {
+                Map<String, Object> map = new LinkedHashMap<>();
+
+                map.put("licenseId", wellnessHub.getLicenseId());
+                map.put("wellnessHubName", wellnessHub.getWellnessHubName());
+
+                putIfNotBlank(map, "wellnessHubDescription", wellnessHub.getWellnessHubDescription());
+                putIfNotBlank(map, "address", wellnessHub.getAddress());
+                putIfNotBlank(map, "contactInformation", wellnessHub.getContactInformation());
+                putIfNotBlank(map, "telInformation", wellnessHub.getTelInformation());
+                putIfNotBlank(map, "googleMapsLink", wellnessHub.getGoogleMapsLink());
+                putIfNotBlank(map, "wellnessHubImg", wellnessHub.getWellnessHubImg());
+                putIfNotBlank(map, "certificateType", wellnessHub.getCertificateType());
+                putIfNotBlank(map, "operatingHours", wellnessHub.getOperatingHours());
+
+                if (wellnessHub.getWellnessHubLatitude() != null) {
+                        map.put("latitude", wellnessHub.getWellnessHubLatitude());
+                }
+
+                if (wellnessHub.getWellnessHubLongitude() != null) {
+                        map.put("longitude", wellnessHub.getWellnessHubLongitude());
+                }
+
+                if (wellnessHub.getCategory() != null) {
+                        map.put("categoryId", wellnessHub.getCategory().getCategoryId());
+                        map.put("categoryName", wellnessHub.getCategory().getCategoryName());
+                }
+
+                if (wellnessHub.getDistrict() != null) {
+                        map.put("districtId", wellnessHub.getDistrict().getDistrictId());
+                        map.put("districtName", wellnessHub.getDistrict().getDistrictName());
+                }
+
+                return map;
+        }
+
+        private WellnessHub convertEmergencyToWellnessHub(EmergencyService emergencyService) {
                 WellnessHub wellnessHub = new WellnessHub();
 
-                wellnessHub.setLicenseId(
-                                emergencyService.getLicenseId());
-
-                wellnessHub.setWellnessHubName(
-                                emergencyService.getWellnessHubName());
-
-                wellnessHub.setAddress(
-                                emergencyService.getAddress());
-
-                wellnessHub.setContactInformation(
-                                emergencyService.getContactInformation());
-
-                wellnessHub.setTelInformation(
-                                emergencyService.getTelInformation());
-
-                wellnessHub.setGoogleMapsLink(
-                                emergencyService.getGoogleMapsLink());
-
-                wellnessHub.setWellnessHubDescription(
-                                emergencyService.getWellnessHubDescription());
-
-                wellnessHub.setWellnessHubImg(
-                                emergencyService.getWellnessHubImg());
-
-                wellnessHub.setWellnessHubLatitude(
-                                emergencyService.getWellnessHubLatitude());
-
-                wellnessHub.setWellnessHubLongitude(
-                                emergencyService.getWellnessHubLongitude());
-
-                wellnessHub.setCertificateType(
-                                emergencyService.getCertificateType());
-
-                wellnessHub.setOperatingHours(
-                                emergencyService.getOperatingHours());
-
-                wellnessHub.setCategory(
-                                emergencyService.getCategory());
-
-                wellnessHub.setDistrict(
-                                emergencyService.getDistrict());
-
-                wellnessHub.setStatus(
-                                emergencyService.getStatus());
+                wellnessHub.setLicenseId(emergencyService.getLicenseId());
+                wellnessHub.setWellnessHubName(emergencyService.getWellnessHubName());
+                wellnessHub.setAddress(emergencyService.getAddress());
+                wellnessHub.setContactInformation(emergencyService.getContactInformation());
+                wellnessHub.setTelInformation(emergencyService.getTelInformation());
+                wellnessHub.setGoogleMapsLink(emergencyService.getGoogleMapsLink());
+                wellnessHub.setWellnessHubDescription(emergencyService.getWellnessHubDescription());
+                wellnessHub.setWellnessHubImg(emergencyService.getWellnessHubImg());
+                wellnessHub.setWellnessHubLatitude(emergencyService.getWellnessHubLatitude());
+                wellnessHub.setWellnessHubLongitude(emergencyService.getWellnessHubLongitude());
+                wellnessHub.setCertificateType(emergencyService.getCertificateType());
+                wellnessHub.setOperatingHours(emergencyService.getOperatingHours());
+                wellnessHub.setCategory(emergencyService.getCategory());
+                wellnessHub.setDistrict(emergencyService.getDistrict());
+                wellnessHub.setStatus(emergencyService.getStatus());
 
                 return wellnessHub;
         }
@@ -822,8 +678,7 @@ public class HomeService {
                         Map<String, Object> map,
                         String key,
                         String value) {
-                if (value != null &&
-                                !value.trim().isEmpty()) {
+                if (value != null && !value.trim().isEmpty()) {
                         map.put(key, value.trim());
                 }
         }
