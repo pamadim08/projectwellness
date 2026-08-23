@@ -74,11 +74,11 @@ public class MainRouteService {
     }
 
     // 🏛️ เมธอดสำหรับดึงข้อมูลสรุปไปแสดงที่หน้าตาราง ListMainRoute
-    public List<Map<String, Object>> getAllMainRoutesForList() {
+    // 🏛️ เมธอดสำหรับดึงข้อมูลสรุปไปแสดงที่หน้าตาราง ListMainRoute
+    public List<Map<String, Object>> listMainRoute() {
 
         List<MainRoute> routes = mainRouteRepository.findAll();
         List<Map<String, Object>> resultList = new ArrayList<>();
-
         List<Category> allCategories = categoryRepository.findAll();
 
         for (MainRoute route : routes) {
@@ -95,14 +95,22 @@ public class MainRouteService {
                     .map(d -> "อ." + d.getDistrict().getDistrictName())
                     .collect(Collectors.joining(" -> "));
 
-            map.put(
-                    "districtsPassed",
-                    districtsPassed.isEmpty()
-                            ? "ยังไม่ได้กำหนดอำเภอ"
-                            : districtsPassed);
+            map.put("districtsPassed", districtsPassed.isEmpty() ? "ยังไม่ได้กำหนดอำเภอ" : districtsPassed);
+
+            // ==========================================
+            // 🌟 เพิ่มส่วนนี้เข้าไป เพื่อส่ง routePoints ไปให้ DTO เพื่อน
+            // ==========================================
+            map.put("routePoints", route.getDetails().stream()
+                    .filter(d -> d.getDistrict() != null) // กัน null ปลอดภัยไว้ก่อน
+                    .sorted(Comparator.comparing(MainRouteDetail::getOrderNumber))
+                    .map(d -> Map.of(
+                            "districtName", d.getDistrict().getDistrictName(),
+                            "latitude", d.getDistrict().getLatitude(),
+                            "longitude", d.getDistrict().getLongitude()))
+                    .collect(Collectors.toList()));
+            // ==========================================
 
             List<String> catIds = new ArrayList<>();
-
             if (route.getCategoryId() != null && !route.getCategoryId().isEmpty()) {
                 try {
                     catIds.addAll(
@@ -116,22 +124,14 @@ public class MainRouteService {
             }
 
             String categoriesPassed = allCategories.stream()
-                    .filter(c -> catIds.contains(
-                            String.valueOf(c.getCategoryId())))
+                    .filter(c -> catIds.contains(String.valueOf(c.getCategoryId())))
                     .map(Category::getCategoryName)
                     .collect(Collectors.joining(", "));
 
-            map.put(
-                    "categoriesPassed",
-                    categoriesPassed.isEmpty()
-                            ? "ยังไม่ได้กำหนดหมวดหมู่"
-                            : categoriesPassed);
-
+            map.put("categoriesPassed", categoriesPassed.isEmpty() ? "ยังไม่ได้กำหนดหมวดหมู่" : categoriesPassed);
             map.put("createdBy", route.getCreatedBy());
             map.put("createdAt", route.getCreatedAt());
             map.put("updatedAt", route.getUpdatedAt());
-
-            // อ่านค่าที่คำนวณไว้แล้ว
             map.put("pinCount", route.getPinCount());
 
             resultList.add(map);
@@ -248,7 +248,7 @@ public class MainRouteService {
 
     // 🟡 เมธอดแก้ไขอัปเดตทับข้อมูลเดิม
     @Transactional
-    public MainRoute updateMainRoute(Integer id, Map<String, Object> payload) {
+    public MainRoute editMainRoute(Integer id, Map<String, Object> payload) {
         MainRoute oldRoute = mainRouteRepository.findById(id).orElse(null);
 
         if (oldRoute != null) {
