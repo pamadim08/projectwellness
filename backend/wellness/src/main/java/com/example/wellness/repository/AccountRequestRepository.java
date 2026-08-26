@@ -10,10 +10,18 @@ import java.util.List;
 public interface AccountRequestRepository
                 extends JpaRepository<AccountRequest, Integer> {
 
+        // =============================
+        // List
+        // =============================
+
         List<AccountRequest> findAllByOrderByRequestIdDesc();
 
         List<AccountRequest> findByRequestStatusOrderByRequestIdDesc(
                         String requestStatus);
+
+        // =============================
+        // Count
+        // =============================
 
         long countByRequestStatus(
                         String requestStatus);
@@ -21,38 +29,35 @@ public interface AccountRequestRepository
         long countByRequestStatusIgnoreCase(
                         String requestStatus);
 
-        boolean existsByWellnessHub_LicenseIdAndRequestStatus(
+        // =============================
+        // ตรวจคำขอซ้ำด้วย License ID
+        // =============================
+
+        boolean existsByLicenseIdAndRequestStatus(
                         Integer licenseId,
                         String requestStatus);
 
-        long deleteByWellnessHub_LicenseIdAndRequestStatus(
+        long deleteByLicenseIdAndRequestStatus(
                         Integer licenseId,
                         String requestStatus);
 
-        void deleteByWellnessHub_LicenseId(
+        void deleteByLicenseId(
                         Integer licenseId);
+
+        // =============================
+        // Search
+        // =============================
+
+        List<AccountRequest> findByUsernameIgnoreCaseOrderByRequestIdDesc(
+                        String username);
+
+        List<AccountRequest> findByUsernameContainingIgnoreCaseOrderByRequestIdDesc(
+                        String username);
 
         List<AccountRequest> findByWellnessHubNameContainingIgnoreCaseOrderByRequestIdDesc(
                         String wellnessHubName);
 
-        List<AccountRequest> findByWellnessHub_LicenseIdOrderByRequestIdDesc(
+        List<AccountRequest> findByLicenseIdOrderByRequestIdDesc(
                         Integer licenseId);
 
-        // =============================
-        // Emergency Service
-        // =============================
-
-        boolean existsByEmergencyService_LicenseIdAndRequestStatus(
-                        Integer licenseId,
-                        String requestStatus);
-
-        long deleteByEmergencyService_LicenseIdAndRequestStatus(
-                        Integer licenseId,
-                        String requestStatus);
-
-        List<AccountRequest> findByEmergencyService_LicenseIdOrderByRequestIdDesc(
-                        Integer licenseId);
-
-        List<AccountRequest> findByEmergencyService_WellnessHubNameContainingIgnoreCaseOrderByRequestIdDesc(
-                        String wellnessHubName);
 }

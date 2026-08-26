@@ -4,28 +4,21 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faShieldHeart,
-  faCircleUser,
-  faChartPie,
-  faClipboardCheck,
-  faRoute,
-  faShop,
-  faNewspaper,
-  faRightFromBracket,
-  faPlus,
-  faMagnifyingGlass,
-  faRotate,
-  faSpinner,
-  faCircleExclamation,
-  faPenToSquare,
-  faTrashCan,
+  faImage,
   faCircleCheck,
   faCircleXmark,
   faXmark,
-  faImage,
+  faTrashCan,
+  faSpinner,
+  faPlus,
+  faMagnifyingGlass,
+  faRotate,
+  faPenToSquare,
+  faCircleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./ListOfficialArticle.css";
+import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 
 const API_URL = "http://localhost:8080/api/articles";
 const ROWS_PER_PAGE = 10;
@@ -258,8 +251,8 @@ function ListOfficialArticle() {
 
     const imageSource =
       article.img.startsWith("http://") ||
-      article.img.startsWith("https://") ||
-      article.img.startsWith("data:")
+        article.img.startsWith("https://") ||
+        article.img.startsWith("data:")
         ? article.img
         : `http://localhost:8080/uploads/articles/${article.img}`;
 
@@ -372,56 +365,7 @@ function ListOfficialArticle() {
         </div>
       )}
 
-      <nav className="sidebar-menu">
-        <div className="sidebar-top">
-          <div className="sidebar-logo">
-            <FontAwesomeIcon icon={faShieldHeart} />
-            <span>Admin Panel</span>
-          </div>
-
-          <div className="user-profile-box">
-            <FontAwesomeIcon icon={faCircleUser} />
-
-            <div className="user-info">
-              <span className="user-label">ผู้ใช้งานปัจจุบัน:</span>
-
-              <span className="user-name">{adminName}</span>
-            </div>
-          </div>
-
-          <p className="menu-label">เมนูหลัก</p>
-
-          <Link to="/dashboard" className="menu-item">
-            <i className="fa-solid fa-chart-pie"></i> แผงควบคุมหลัก
-          </Link>
-          <Link to="/listAccountRequest" className="menu-item">
-            <i className="fa-solid fa-clipboard-check"></i> ตรวจสอบคำขอสิทธิ์
-            <span className="badge-counter">5</span>
-          </Link>
-
-          <p className="menu-label" style={{ marginTop: "20px" }}>
-            การจัดการข้อมูล
-          </p>
-          <Link to="/listMainRoute" className="menu-item ">
-            <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
-          </Link>
-          <Link to="/listWellnessHub" className="menu-item">
-            <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
-          </Link>
-          <Link to="/listOfficialArticle" className="menu-item active">
-            <i className="fa-solid fa-newspaper"></i> จัดการบทความ
-          </Link>
-        </div>
-
-        <button
-          type="button"
-          className="btn-sidebar-logout"
-          onClick={handleLogout}
-        >
-          <FontAwesomeIcon icon={faRightFromBracket} />
-          ออกจากระบบ
-        </button>
-      </nav>
+      <AdminSidebar activeMenu="articles" />
 
       <main className="official-article-main">
         <div className="official-article-container">

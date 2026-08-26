@@ -6,7 +6,15 @@ import com.example.wellness.service.WellnessHubService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
@@ -33,8 +41,8 @@ public class WellnessHubController {
      * - emergency_services
      */
     @GetMapping
-    public ResponseEntity<List<WellnessHub>> getAll() {
-        List<WellnessHub> results = wellnessHubService.getAllHubs();
+    public ResponseEntity<List<WellnessHub>> listWellnessHub() {
+        List<WellnessHub> results = wellnessHubService.listWellnessHub();
 
         return ResponseEntity.ok(results);
     }
@@ -47,10 +55,10 @@ public class WellnessHubController {
      * รองรับทั้ง Wellness Hub และ Emergency Service
      */
     @PostMapping("/search")
-    public ResponseEntity<List<WellnessHub>> getFilteredWellnessHubs(
+    public ResponseEntity<List<WellnessHub>> listWellnessHub(
             @RequestBody(required = false) Map<String, Object> payload) {
         List<WellnessHub> results = wellnessHubService
-                .searchWellnessHubs(payload);
+                .listWellnessHub(payload);
 
         return ResponseEntity.ok(results);
     }
@@ -63,9 +71,9 @@ public class WellnessHubController {
      * Service จะตรวจทั้งสองตาราง
      */
     @GetMapping("/{id}")
-    public ResponseEntity<WellnessHub> getById(
+    public ResponseEntity<WellnessHub> viewWellnessHubDetail(
             @PathVariable Integer id) {
-        WellnessHub result = wellnessHubService.getHubById(id);
+        WellnessHub result = wellnessHubService.viewWellnessHubDetail(id);
 
         if (result == null) {
             return ResponseEntity
@@ -88,7 +96,7 @@ public class WellnessHubController {
      * -> emergency_services
      */
     @PostMapping
-    public ResponseEntity<?> create(
+    public ResponseEntity<?> createWellnessHub(
             @RequestBody WellnessHub hub) {
         try {
             WellnessHub createdHub = wellnessHubService
@@ -120,12 +128,12 @@ public class WellnessHubController {
      * - Emergency -> Wellness
      */
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(
+    public ResponseEntity<?> editWellnessHub(
             @PathVariable Integer id,
             @RequestBody WellnessHub hub) {
         try {
             WellnessHub updatedHub = wellnessHubService
-                    .updateWellnessHub(
+                    .editWellnessHub(
                             id,
                             hub);
 

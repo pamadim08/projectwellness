@@ -8,10 +8,12 @@
   --request-red: #c82333;
   --request-blue: #0056b3;
 
+  display: flex;
   width: 100%;
   min-height: 100vh;
   background: var(--request-background);
   font-family: "Sarabun", sans-serif;
+  box-sizing: border-box;
 }
 
 /* =====================================================
@@ -179,9 +181,10 @@
 ===================================================== */
 
 .account-request-main {
-  width: calc(100% - 275px);
+  flex: 1;
+  min-width: 0;
   min-height: 100vh;
-  margin-left: 275px;
+  margin-left: 0;
   padding: 30px 40px 60px;
 
   background: var(--request-background);

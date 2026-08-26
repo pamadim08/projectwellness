@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import axios from "axios";
-
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,9 +12,8 @@ import {
   Route,
   Search,
 } from "lucide-react";
-
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-
+import LoadingState from "../../Components/LoadingState/LoadingState";
 import "./SearchResults.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
@@ -41,6 +38,15 @@ const SEARCH_TYPES = [
 ];
 
 const ALLOWED_TYPES = SEARCH_TYPES.map((type) => type.value);
+
+// Cache สำหรับเก็บผลการค้นหาแยกตาม Type และ Keyword
+const searchResultsCache = new Map();
+
+const getSearchCacheKey = (keyword, type) => {
+  return `${String(type || "ALL").toUpperCase()}::${String(keyword || "")
+    .trim()
+    .toLowerCase()}`;
+};
 
 function removeHtml(value = "") {
   return String(value)
@@ -76,66 +82,89 @@ function getErrorMessage(error) {
 
 export default function SearchResults() {
   const navigate = useNavigate();
-
   const [searchParams] = useSearchParams();
 
   const queryKeyword = searchParams.get("q") || "";
-
   const queryType = searchParams.get("type") || "ALL";
 
   const normalizedType = ALLOWED_TYPES.includes(queryType.toUpperCase())
     ? queryType.toUpperCase()
     : "ALL";
 
-  const [keyword, setKeyword] = useState(queryKeyword);
+  const searchCacheKey = getSearchCacheKey(queryKeyword, normalizedType);
 
+  const [keyword, setKeyword] = useState(queryKeyword);
   const [searchType, setSearchType] = useState(normalizedType);
 
-  const [searchData, setSearchData] = useState(null);
+  // ดึงค่าจาก Cache ทันทีหากมีอยู่เดิม เพื่อป้องกัน UI/Spinner กระพริบ
+  const [searchData, setSearchData] = useState(() => {
+    return searchResultsCache.get(searchCacheKey) ?? null;
+  });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    return (
+      Boolean(queryKeyword.trim()) &&
+      !searchResultsCache.has(searchCacheKey)
+    );
+  });
 
   const [error, setError] = useState("");
-
   const [validationError, setValidationError] = useState("");
 
-  const loadSearchResults = useCallback(async () => {
-    const normalizedKeyword = queryKeyword.trim();
+  const loadSearchResults = useCallback(
+    async (forceRefresh = false) => {
+      const normalizedKeyword = queryKeyword.trim();
 
-    if (!normalizedKeyword) {
-      setSearchData(null);
-      setError("กรุณากรอกคำค้นหา");
-      setLoading(false);
-      return;
-    }
+      if (!normalizedKeyword) {
+        setSearchData(null);
+        setError("กรุณากรอกคำค้นหา");
+        setLoading(false);
+        return;
+      }
 
-    if (normalizedKeyword.length > 100) {
-      setSearchData(null);
-      setError("คำค้นหาต้องไม่เกิน 100 ตัวอักษร");
-      setLoading(false);
-      return;
-    }
+      if (normalizedKeyword.length > 100) {
+        setSearchData(null);
+        setError("คำค้นหาต้องไม่เกิน 100 ตัวอักษร");
+        setLoading(false);
+        return;
+      }
 
-    setLoading(true);
-    setError("");
+      const cacheKey = getSearchCacheKey(normalizedKeyword, normalizedType);
 
-    try {
-      const response = await axios.get(`${API_BASE_URL}/home/search`, {
-        params: {
-          q: normalizedKeyword,
-          type: normalizedType,
-        },
-        timeout: 30000,
-      });
+      // มี Cache แล้ว และไม่ได้สั่ง Force Refresh → นำ Cache มาใช้ทันทีโดยไม่ยิง API
+      if (searchResultsCache.has(cacheKey) && !forceRefresh) {
+        setSearchData(searchResultsCache.get(cacheKey));
+        setError("");
+        setLoading(false);
+        return;
+      }
 
-      setSearchData(response.data || null);
-    } catch (requestError) {
-      setSearchData(null);
-      setError(getErrorMessage(requestError));
-    } finally {
-      setLoading(false);
-    }
-  }, [queryKeyword, normalizedType]);
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await axios.get(`${API_BASE_URL}/home/search`, {
+          params: {
+            q: normalizedKeyword,
+            type: normalizedType,
+          },
+          timeout: 30000,
+        });
+
+        const result = response.data || null;
+
+        // บันทึกลง Cache
+        searchResultsCache.set(cacheKey, result);
+        setSearchData(result);
+      } catch (requestError) {
+        setSearchData(null);
+        setError(getErrorMessage(requestError));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [queryKeyword, normalizedType]
+  );
 
   useEffect(() => {
     setKeyword(queryKeyword);
@@ -146,18 +175,18 @@ export default function SearchResults() {
 
   const routes = useMemo(
     () => (Array.isArray(searchData?.routes) ? searchData.routes : []),
-    [searchData],
+    [searchData]
   );
 
   const wellnessHubs = useMemo(
     () =>
       Array.isArray(searchData?.wellnessHubs) ? searchData.wellnessHubs : [],
-    [searchData],
+    [searchData]
   );
 
   const articles = useMemo(
     () => (Array.isArray(searchData?.articles) ? searchData.articles : []),
-    [searchData],
+    [searchData]
   );
 
   const handleSubmit = (event) => {
@@ -179,26 +208,18 @@ export default function SearchResults() {
 
     navigate(
       `/search?q=${encodeURIComponent(
-        normalizedKeyword,
-      )}&type=${encodeURIComponent(searchType)}`,
+        normalizedKeyword
+      )}&type=${encodeURIComponent(searchType)}`
     );
   };
 
   if (loading) {
     return (
-      <main className="search-results-page search-results-page--loading">
-        <section
-          className="search-results-loading"
-          aria-label="กำลังค้นหาข้อมูล"
-          aria-busy="true"
-        >
-          <div className="search-results-spinner" />
-
-          <h1>กำลังค้นหาข้อมูล</h1>
-
-          <p>ระบบกำลังค้นหาเส้นทาง สถานประกอบการ และบทความที่เกี่ยวข้อง</p>
-        </section>
-      </main>
+      <LoadingState
+        fullPage
+        title="กำลังค้นหาข้อมูล"
+        message="ระบบกำลังค้นหาเส้นทาง สถานประกอบการ และบทความที่เกี่ยวข้อง กรุณารอสักครู่"
+      />
     );
   }
 
@@ -217,8 +238,7 @@ export default function SearchResults() {
 
           {queryKeyword && (
             <p className="search-results-hero__description">
-              ผลลัพธ์ที่เกี่ยวข้องกับ
-              <strong>“{queryKeyword}”</strong>
+              ผลลัพธ์ที่เกี่ยวข้องกับ <strong>“{queryKeyword}”</strong>
             </p>
           )}
 
@@ -241,7 +261,6 @@ export default function SearchResults() {
 
             <div className="search-results-form__input">
               <Search />
-
               <input
                 type="text"
                 value={keyword}
@@ -249,7 +268,6 @@ export default function SearchResults() {
                 placeholder="ค้นหาเส้นทาง สถานประกอบการ หรือบทความ..."
                 onChange={(event) => {
                   setKeyword(event.target.value);
-
                   if (validationError) {
                     setValidationError("");
                   }
@@ -276,12 +294,9 @@ export default function SearchResults() {
         {error && (
           <section className="search-results-state search-results-state--error">
             <CircleAlert />
-
             <h2>ไม่สามารถค้นหาข้อมูลได้</h2>
-
             <p>{error}</p>
-
-            <button type="button" onClick={loadSearchResults}>
+            <button type="button" onClick={() => loadSearchResults(true)}>
               <RefreshCw />
               ลองใหม่
             </button>
@@ -324,9 +339,7 @@ export default function SearchResults() {
             {searchData.totalResults === 0 ? (
               <section className="search-results-state">
                 <Search />
-
                 <h2>ไม่พบข้อมูลที่ค้นหา</h2>
-
                 <p>ลองใช้คำค้นที่สั้นลง หรือตรวจสอบการสะกดอีกครั้ง</p>
               </section>
             ) : (
@@ -338,7 +351,6 @@ export default function SearchResults() {
                         <p>WELLNESS ROUTES</p>
                         <h2>เส้นทางท่องเที่ยว</h2>
                       </div>
-
                       <span>{routes.length} รายการ</span>
                     </div>
 
@@ -350,7 +362,6 @@ export default function SearchResults() {
                         >
                           <div className="search-result-card__cover search-result-card__cover--route">
                             <Route />
-
                             <span>{route.pinCount || 0} จุดแนะนำ</span>
                           </div>
 
@@ -395,7 +406,6 @@ export default function SearchResults() {
                         <p>WELLNESS PLACES</p>
                         <h2>สถานประกอบการ</h2>
                       </div>
-
                       <span>{wellnessHubs.length} รายการ</span>
                     </div>
 
@@ -453,16 +463,14 @@ export default function SearchResults() {
                         <p>WELLNESS STORIES</p>
                         <h2>บทความสุขภาพ</h2>
                       </div>
-
                       <span>{articles.length} รายการ</span>
                     </div>
 
                     <div className="search-results-grid">
                       {articles.map((article) => {
                         const articleDescription = removeHtml(
-                          article.articleDetail || "",
+                          article.articleDetail || ""
                         );
-
                         const publishedDate = formatDate(article.publishDate);
 
                         return (
@@ -477,7 +485,7 @@ export default function SearchResults() {
                                   alt={article.articleTitle}
                                   onError={(event) => {
                                     event.currentTarget.classList.add(
-                                      "search-result-card__image--hidden",
+                                      "search-result-card__image--hidden"
                                     );
                                   }}
                                 />

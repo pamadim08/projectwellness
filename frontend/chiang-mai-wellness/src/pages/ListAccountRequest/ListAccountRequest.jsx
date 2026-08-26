@@ -1,25 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faShieldHeart,
-  faCircleUser,
-  faChartPie,
-  faClipboardCheck,
-  faRoute,
-  faShop,
-  faNewspaper,
-  faRightFromBracket,
+  faCircleExclamation,
   faMagnifyingGlass,
   faRotate,
   faSpinner,
-  faCircleExclamation,
   faPenToSquare,
   faCircleCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./ListAccountRequest.css";
+import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 
 const API_URL = "http://localhost:8080/api/account-requests";
 const ROWS_PER_PAGE = 10;
@@ -239,6 +232,13 @@ function ListAccountRequest() {
     );
   };
 
+  const pendingCount = useMemo(() => {
+    return accountRequests.filter((request) => {
+      const status = normalizeStatus(request.requestStatus || request.status);
+      return status === "PENDING";
+    }).length;
+  }, [accountRequests]);
+
   const filteredRequests = useMemo(() => {
     const normalizedKeyword = searchKeyword.trim().toLowerCase();
 
@@ -334,9 +334,8 @@ function ListAccountRequest() {
       {/* 🌟 Toast แจ้งผลหลังกลับมาจากหน้า Approve */}
       {popupAlert.show && (
         <div
-          className={`gov-toast-alert ${
-            popupAlert.isSuccess ? "alert-success" : "alert-error"
-          }`}
+          className={`gov-toast-alert ${popupAlert.isSuccess ? "alert-success" : "alert-error"
+            }`}
         >
           <div className="toast-content-wrapper">
             <i
@@ -364,46 +363,6 @@ function ListAccountRequest() {
           >
             <i className="fa-solid fa-xmark"></i>
           </button>
-        </div>
-      )}
-
-      {/* 🌟 Popup ยืนยันออกจากระบบ */}
-      {showLogoutPopup && (
-        <div
-          className="popup-bg"
-          onClick={() => setShowLogoutPopup(false)}
-        >
-          <div
-            className="popup logout-confirm-popup"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="popup-icon logout">
-              <FontAwesomeIcon icon={faRightFromBracket} />
-            </div>
-
-            <h3>ยืนยันการออกจากระบบ</h3>
-
-            <p>คุณต้องการออกจากระบบใช่หรือไม่?</p>
-
-            <div className="popup-buttons">
-              <button
-                type="button"
-                className="cancel-btn"
-                onClick={() => setShowLogoutPopup(false)}
-              >
-                ยกเลิก
-              </button>
-
-              <button
-                type="button"
-                className="logout-confirm-btn"
-                onClick={handleConfirmLogout}
-              >
-                <FontAwesomeIcon icon={faRightFromBracket} />
-                ออกจากระบบ
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -453,62 +412,10 @@ function ListAccountRequest() {
         </div>
       )}
 
-      <nav className="account-request-sidebar">
-        <div className="account-request-sidebar-top">
-          <div className="account-request-sidebar-logo">
-            <FontAwesomeIcon icon={faShieldHeart} />
-            <span>Admin Panel</span>
-          </div>
-
-          <div className="account-request-user-profile">
-            <FontAwesomeIcon icon={faCircleUser} />
-
-            <div className="account-request-user-info">
-              <span className="account-request-user-label">
-                ผู้ใช้งานปัจจุบัน:
-              </span>
-
-              <span className="account-request-user-name">{adminName}</span>
-            </div>
-          </div>
-
-          <p className="account-request-menu-label">เมนูหลัก</p>
-
-          <Link to="/dashboard" className="menu-item">
-            <i className="fa-solid fa-chart-pie"></i> แผงควบคุมหลัก
-          </Link>
-
-          <Link to="/listAccountRequest" className="menu-item active">
-            <i className="fa-solid fa-clipboard-check"></i> ตรวจสอบคำขอสิทธิ์
-            <span className="badge-counter">5</span>
-          </Link>
-
-          <p className="menu-label" style={{ marginTop: "20px" }}>
-            การจัดการข้อมูล
-          </p>
-
-          <Link to="/listMainRoute" className="menu-item">
-            <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
-          </Link>
-
-          <Link to="/listWellnessHub" className="menu-item">
-            <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
-          </Link>
-
-          <Link to="/listOfficialArticle" className="menu-item">
-            <i className="fa-solid fa-newspaper"></i> จัดการบทความ
-          </Link>
-        </div>
-
-        <button
-          type="button"
-          className="account-request-logout-button"
-          onClick={handleLogout}
-        >
-          <FontAwesomeIcon icon={faRightFromBracket} />
-          ออกจากระบบ
-        </button>
-      </nav>
+      <AdminSidebar
+        activeMenu="account-requests"
+        pendingCount={pendingCount}
+      />
 
       <main className="account-request-main">
         <div className="account-request-container">

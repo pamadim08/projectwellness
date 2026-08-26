@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import axios from "axios";
-
 import {
   ArrowRight,
-  Building2,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
   Filter,
-  Flag,
   MapPin,
   Navigation,
   RefreshCw,
@@ -17,116 +13,75 @@ import {
   Search,
   X,
 } from "lucide-react";
-
 import { Link } from "react-router-dom";
-
+import LoadingState from "../../Components/LoadingState/LoadingState";
 import "./RouteList.css";
 
-const API_URL = "http://localhost:8080/api/home/routes";
-
+// API URL สำหรับดึงข้อมูลเส้นทางแนะนำ
+const API_URL = "http://localhost:8080/api/home/recommended-routes";
 const ITEMS_PER_PAGE = 9;
 
 const CATEGORY_OPTIONS = [
-  {
-    id: "C01",
-    label: "นวดและสปาเพื่อสุขภาพ",
-  },
-  {
-    id: "C02",
-    label: "คลินิกและสถานพยาบาล",
-  },
-  {
-    id: "C03",
-    label: "อาหารและเครื่องดื่มเพื่อสุขภาพ",
-  },
-  {
-    id: "C04",
-    label: "ที่พักเพื่อสุขภาพ",
-  },
-  {
-    id: "C05",
-    label: "แหล่งท่องเที่ยวเชิงสุขภาพ",
-  },
+  { id: "C01", label: "นวดและสปาเพื่อสุขภาพ" },
+  { id: "C02", label: "คลินิกและสถานพยาบาล" },
+  { id: "C03", label: "อาหารและเครื่องดื่มเพื่อสุขภาพ" },
+  { id: "C04", label: "ที่พักเพื่อสุขภาพ" },
+  { id: "C05", label: "แหล่งท่องเที่ยวเชิงสุขภาพ" },
 ];
+
+const ROUTE_CATEGORY_DISPLAY = {
+  C01: {
+    name: "นวด/สปาเพื่อสุขภาพ",
+    color: "#519B67",
+    background: "#EAF5ED",
+  },
+  C02: {
+    name: "คลินิก/สถานพยาบาล",
+    color: "#3662A1",
+    background: "#EAF0F8",
+  },
+  C03: {
+    name: "อาหารและเครื่องดื่ม",
+    color: "#E49141",
+    background: "#FFF0E3",
+  },
+  C04: {
+    name: "ที่พักฟื้นฟูสุขภาพ",
+    color: "#7864D2",
+    background: "#F0EDFB",
+  },
+  C05: {
+    name: "สถานที่ท่องเที่ยว",
+    color: "#54A6D3",
+    background: "#EAF6FC",
+  },
+};
 
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
 }
 
-function parseCategoryIds(value) {
-  if (!hasValue(value)) {
-    return [];
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(String);
-  }
-
-  if (typeof value === "object") {
-    return [];
-  }
-
-  const normalizedValue = String(value).trim();
-
-  try {
-    const parsedValue = JSON.parse(normalizedValue);
-
-    if (Array.isArray(parsedValue)) {
-      return parsedValue.map(String);
+function getCategoryStyle(categoryId) {
+  return (
+    ROUTE_CATEGORY_DISPLAY[categoryId] || {
+      name: "",
+      color: "#076653",
+      background: "#E2FBCE",
     }
-  } catch (error) {
-    return [normalizedValue];
-  }
-
-  return [normalizedValue];
+  );
 }
 
 function getSortedDistricts(route) {
-  if (!Array.isArray(route?.details)) {
+  if (!Array.isArray(route?.districts)) {
     return [];
   }
 
-  return [...route.details]
-    .filter((detail) => detail && detail.district)
-    .sort(
-      (first, second) =>
-        Number(first.orderNumber || 0) - Number(second.orderNumber || 0),
-    )
-    .map((detail) => ({
-      districtId: detail.district?.districtId,
-      districtName: detail.district?.districtName,
-    }))
-    .filter((district) => hasValue(district.districtName));
-}
-
-function getDistrictPath(route) {
-  const districts = getSortedDistricts(route);
-
-  if (districts.length === 0) {
-    return "ยังไม่ได้กำหนดเส้นทางอำเภอ";
-  }
-
-  return districts.map((district) => `อ.${district.districtName}`).join(" → ");
-}
-
-function getStartDistrict(route) {
-  const districts = getSortedDistricts(route);
-
-  return districts[0]?.districtName || "-";
-}
-
-function getEndDistrict(route) {
-  const districts = getSortedDistricts(route);
-
-  return districts[districts.length - 1]?.districtName || "-";
-}
-
-function getCategoryLabels(route) {
-  const categoryIds = parseCategoryIds(route?.categoryId || route?.categoryIds);
-
-  return CATEGORY_OPTIONS.filter((category) =>
-    categoryIds.includes(category.id),
-  );
+  return route.districts
+    .filter((district) => district && district.districtName)
+    .map((district) => ({
+      districtId: district.districtId,
+      districtName: district.districtName,
+    }));
 }
 
 function getErrorMessage(error) {
@@ -142,19 +97,12 @@ function getErrorMessage(error) {
 
 export default function RouteList() {
   const [routes, setRoutes] = useState([]);
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
-
   const [keyword, setKeyword] = useState("");
-
   const [selectedCategory, setSelectedCategory] = useState("ALL");
-
   const [sortOption, setSortOption] = useState("LATEST");
-
   const [currentPage, setCurrentPage] = useState(1);
-
   const [showFilters, setShowFilters] = useState(false);
 
   const loadRoutes = useCallback(async () => {
@@ -165,7 +113,6 @@ export default function RouteList() {
       const response = await axios.get(API_URL, {
         timeout: 30000,
       });
-
       setRoutes(Array.isArray(response.data) ? response.data : []);
     } catch (requestError) {
       setRoutes([]);
@@ -187,9 +134,9 @@ export default function RouteList() {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     const result = routes.filter((route) => {
-      const categoryIds = parseCategoryIds(
-        route.categoryId || route.categoryIds,
-      );
+      const categoryIds = Array.isArray(route.categories)
+        ? route.categories.map((category) => category.categoryId)
+        : [];
 
       const districtNames = getSortedDistricts(route)
         .map((district) => district.districtName)
@@ -201,6 +148,9 @@ export default function RouteList() {
           .toLowerCase()
           .includes(normalizedKeyword) ||
         String(route.routeDescription || "")
+          .toLowerCase()
+          .includes(normalizedKeyword) ||
+        String(route.districtsPassed || "")
           .toLowerCase()
           .includes(normalizedKeyword) ||
         districtNames.toLowerCase().includes(normalizedKeyword);
@@ -242,7 +192,6 @@ export default function RouteList() {
 
   const paginatedRoutes = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-
     return filteredRoutes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredRoutes, currentPage]);
 
@@ -264,7 +213,6 @@ export default function RouteList() {
     }
 
     setCurrentPage(page);
-
     window.scrollTo({
       top: 250,
       behavior: "smooth",
@@ -276,9 +224,7 @@ export default function RouteList() {
       <header className="route-list-hero">
         <div className="route-list-container">
           <p className="route-list-eyebrow">CHIANG MAI WELLNESS</p>
-
           <h1>เส้นทางท่องเที่ยวเชิงสุขภาพ</h1>
-
           <p className="route-list-hero__description">
             ค้นหาเส้นทางสุขภาพในจังหวัดเชียงใหม่ พร้อมดูพื้นที่ที่เดินทางผ่าน
             สถานประกอบการ และจุดบริการที่เกี่ยวข้อง
@@ -291,7 +237,6 @@ export default function RouteList() {
           <div className="route-list-search-heading">
             <div>
               <h2>ค้นหาเส้นทาง</h2>
-
               <p>ค้นหาจากชื่อเส้นทาง อำเภอ หรือรายละเอียดที่คุณสนใจ</p>
             </div>
 
@@ -310,7 +255,6 @@ export default function RouteList() {
           <div className="route-list-search-row">
             <div className="route-list-search-input">
               <Search />
-
               <input
                 type="text"
                 value={keyword}
@@ -340,14 +284,12 @@ export default function RouteList() {
           >
             <div className="route-list-filter-group">
               <label htmlFor="route-category-filter">หมวดหมู่</label>
-
               <select
                 id="route-category-filter"
                 value={selectedCategory}
                 onChange={(event) => setSelectedCategory(event.target.value)}
               >
                 <option value="ALL">ทุกหมวดหมู่</option>
-
                 {CATEGORY_OPTIONS.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.label}
@@ -358,16 +300,13 @@ export default function RouteList() {
 
             <div className="route-list-filter-group">
               <label htmlFor="route-sort-filter">เรียงตาม</label>
-
               <select
                 id="route-sort-filter"
                 value={sortOption}
                 onChange={(event) => setSortOption(event.target.value)}
               >
                 <option value="LATEST">อัปเดตล่าสุด</option>
-
                 <option value="NAME_ASC">ชื่อเส้นทาง ก–ฮ</option>
-
                 <option value="HUB_DESC">จำนวนสถานประกอบการมากที่สุด</option>
               </select>
             </div>
@@ -386,23 +325,17 @@ export default function RouteList() {
         </section>
 
         {loading && (
-          <section className="route-list-state">
-            <div className="route-list-spinner" />
-
-            <h2>กำลังโหลดเส้นทาง</h2>
-
-            <p>ระบบกำลังเตรียมข้อมูลเส้นทางท่องเที่ยวเชิงสุขภาพ</p>
-          </section>
+          <LoadingState
+            title="กำลังโหลดเส้นทางสุขภาพ"
+            message="ระบบกำลังเตรียมข้อมูลเส้นทางท่องเที่ยวเชิงสุขภาพ กรุณารอสักครู่"
+          />
         )}
 
         {!loading && error && (
           <section className="route-list-state route-list-state--error">
             <CircleAlert />
-
             <h2>ไม่สามารถโหลดข้อมูลได้</h2>
-
             <p>{error}</p>
-
             <button type="button" onClick={loadRoutes}>
               <RefreshCw />
               ลองใหม่
@@ -415,15 +348,11 @@ export default function RouteList() {
             <section className="route-list-summary">
               <div>
                 <h2>เส้นทางทั้งหมด</h2>
-
-                <span>
-                  เลือกเส้นทางที่เหมาะกับรูปแบบและความสนใจของคุณ
-                </span>
+                <span>เลือกเส้นทางที่เหมาะกับรูปแบบและความสนใจของคุณ</span>
               </div>
 
               <div className="route-list-summary__count">
                 <strong>{filteredRoutes.length}</strong>
-
                 <span>เส้นทาง</span>
               </div>
             </section>
@@ -431,11 +360,8 @@ export default function RouteList() {
             {filteredRoutes.length === 0 ? (
               <section className="route-list-state">
                 <Search />
-
                 <h2>ไม่พบเส้นทาง</h2>
-
                 <p>ไม่พบข้อมูลที่ตรงกับคำค้นหาหรือตัวกรองที่เลือก</p>
-
                 {hasActiveFilters && (
                   <button type="button" onClick={clearFilters}>
                     <X />
@@ -446,149 +372,123 @@ export default function RouteList() {
             ) : (
               <>
                 <section className="route-list-grid">
-                  {paginatedRoutes.map((routeItem) => {
-                    const categoryLabels = getCategoryLabels(routeItem);
+                  {paginatedRoutes.map((routeItem) => (
+                    <article
+                      key={routeItem.routeId}
+                      className="route-list-card"
+                    >
+                      {/* รูปภาพ routeImage หรือ Placeholder */}
+                      <div className="route-list-card__image">
+                        {routeItem.routeImage ? (
+                          <img
+                            src={routeItem.routeImage}
+                            alt={routeItem.routeName}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="route-list-card__image-placeholder">
+                            <Route />
+                          </div>
+                        )}
 
-                    const districts = getSortedDistricts(routeItem);
+                        <div className="route-list-card__image-overlay">
+                          <span>WELLNESS ROUTE</span>
+                        </div>
+                      </div>
 
-                    return (
-                      <article
-                        key={routeItem.routeId}
-                        className="route-list-card"
-                      >
-                        <aside className="route-list-card__rail">
-                          <div className="route-list-card__rail-heading">
+                      {/* CONTENT */}
+                      <div className="route-list-card__body">
+                        <div className="route-list-card__heading">
+                          <div className="route-list-card__icon">
                             <Navigation />
-                            <span>เส้นทาง</span>
                           </div>
 
-                          <div className="route-list-card__rail-route">
-                            <div className="route-list-card__rail-stop">
-                              <span className="route-list-card__rail-dot route-list-card__rail-dot--start" />
-
-                              <span>เริ่มต้น</span>
-                            </div>
-
-                            <span className="route-list-card__rail-line" />
-
-                            <div className="route-list-card__rail-stop">
-                              <span className="route-list-card__rail-dot" />
-
-                              <span>ระหว่างทาง</span>
-                            </div>
-
-                            <span className="route-list-card__rail-line" />
-
-                            <div className="route-list-card__rail-stop">
-                              <span className="route-list-card__rail-finish">
-                                <Flag />
-                              </span>
-
-                              <span>ปลายทาง</span>
-                            </div>
+                          <div>
+                            <p>WELLNESS ROUTE</p>
+                            <span>เส้นทางท่องเที่ยวเชิงสุขภาพ</span>
                           </div>
+                        </div>
 
-                          <div className="route-list-card__rail-stats">
-                            <div>
-                              <Building2 />
+                        <h3>{routeItem.routeName}</h3>
 
-                              <strong>
-                                {Number(routeItem.pinCount || 0)}
-                              </strong>
-
-                              <span>จุดแนะนำ</span>
-                            </div>
-
-                            <div>
-                              <MapPin />
-
-                              <strong>{districts.length}</strong>
-
-                              <span>อำเภอ</span>
-                            </div>
-                          </div>
-                        </aside>
-
-                        <div className="route-list-card__body">
-                          <p className="route-list-card__eyebrow">
-                            เส้นทางท่องเที่ยวเชิงสุขภาพ
+                        {hasValue(routeItem.routeDescription) && (
+                          <p className="route-list-card__description">
+                            {routeItem.routeDescription}
                           </p>
+                        )}
 
-                          <h3>{routeItem.routeName}</h3>
-
-                          {hasValue(routeItem.routeDescription) && (
-                            <p className="route-list-card__description">
-                              {routeItem.routeDescription}
-                            </p>
-                          )}
-
-                          <div className="route-list-card__journey">
-                            <div className="route-list-card__journey-point">
-                              <span>จุดเริ่มต้น</span>
-
-                              <strong>อ.{getStartDistrict(routeItem)}</strong>
-                            </div>
-
-                            <div
-                              className="route-list-card__journey-line"
-                              aria-hidden="true"
-                            >
-                              <span />
-                              <ArrowRight />
-                            </div>
-
-                            <div className="route-list-card__journey-point route-list-card__journey-point--end">
-                              <span>จุดสิ้นสุด</span>
-
-                              <strong>อ.{getEndDistrict(routeItem)}</strong>
-                            </div>
-                          </div>
-
-                          <div className="route-list-card__path">
-                            <MapPin />
-
-                            <div>
-                              <span className="route-list-card__path-label">
-                                พื้นที่ที่เดินทางผ่าน
-                              </span>
-
-                              <span className="route-list-card__path-value">
-                                {getDistrictPath(routeItem)}
-                              </span>
-                            </div>
-                          </div>
-
-                          {categoryLabels.length > 0 && (
+                        {/* Category Chip (Filter EM/BLS/ALS และใช้ชื่อตรงกับหน้า Home) */}
+                        {Array.isArray(routeItem.categories) &&
+                          routeItem.categories.length > 0 && (
                             <div className="route-list-card__categories">
-                              {categoryLabels.slice(0, 3).map((category) => (
-                                <span key={category.id}>
-                                  <span
-                                    className={`route-list-card__category-dot route-list-card__category-dot--${category.id.toLowerCase()}`}
-                                  />
-
-                                  {category.label}
-                                </span>
-                              ))}
-
-                              {categoryLabels.length > 3 && (
-                                <span className="route-list-card__category-more">
-                                  +{categoryLabels.length - 3}
-                                </span>
-                              )}
+                              {routeItem.categories
+                                .filter((category) => {
+                                  const id = String(
+                                    category.categoryId || "",
+                                  ).toUpperCase();
+                                  return !(
+                                    id.startsWith("EM") ||
+                                    id.includes("BLS") ||
+                                    id.includes("ALS")
+                                  );
+                                })
+                                .map((category) => {
+                                  const categoryStyle = getCategoryStyle(
+                                    category.categoryId,
+                                  );
+                                  return (
+                                    <span
+                                      className="route-category"
+                                      key={category.categoryId}
+                                      style={{
+                                        color: categoryStyle.color,
+                                        background: categoryStyle.background,
+                                      }}
+                                    >
+                                      <span
+                                        className="route-category-dot"
+                                        style={{
+                                          background: categoryStyle.color,
+                                        }}
+                                      />
+                                      {categoryStyle.name ||
+                                        category.categoryName}
+                                    </span>
+                                  );
+                                })}
                             </div>
                           )}
 
+                        {/* พื้นที่ที่เดินทางผ่าน */}
+                        <div className="route-list-card__path">
+                          <MapPin />
+                          <div>
+                            <span>พื้นที่ที่เดินทางผ่าน</span>
+                            <strong>
+                              {routeItem.districtsPassed ||
+                                "ยังไม่ได้กำหนดพื้นที่"}
+                            </strong>
+                          </div>
+                        </div>
+
+                        {/* Footer และ Count */}
+                        <div className="route-list-card__footer">
                           <Link
                             to={`/wellness-routes/${routeItem.routeId}`}
-                            className="route-list-card__link"
+                            className="route-list-card__button"
                           >
-                            <span>ดูรายละเอียดเส้นทาง</span>
+                            ดูรายละเอียดเส้นทาง
                             <ArrowRight />
                           </Link>
+
+                          <div className="route-list-card__count">
+                            <MapPin />
+                            {routeItem.pinCount || 0} จุดแนะนำ
+                          </div>
                         </div>
-                      </article>
-                    );
-                  })}
+                      </div>
+                    </article>
+                  ))}
                 </section>
 
                 {totalPages > 1 && (
@@ -606,9 +506,7 @@ export default function RouteList() {
                     </button>
 
                     {Array.from(
-                      {
-                        length: totalPages,
-                      },
+                      { length: totalPages },
                       (_, index) => index + 1,
                     ).map((page) => (
                       <button

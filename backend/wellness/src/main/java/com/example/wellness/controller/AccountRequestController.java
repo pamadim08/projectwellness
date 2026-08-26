@@ -4,7 +4,15 @@ import com.example.wellness.model.AccountRequest;
 import com.example.wellness.service.AccountRequestService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,31 +33,22 @@ public class AccountRequestController {
     // Track Request (Public API)
     // =========================
     @GetMapping("/track")
-    public ResponseEntity<?> trackRequests(@RequestParam String query) {
+    public ResponseEntity<?> trackRequestStatus(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String query) {
         try {
-            List<AccountRequest> requests = service.trackRequests(query);
+            String targetUsername = (username != null && !username.trim().isEmpty()) ? username : query;
+            List<AccountRequest> requests = service.trackRequestStatus(targetUsername);
 
-            /*
-             * แปลงข้อมูลส่งเฉพาะ Map เพื่อไม่ให้หลุดข้อมูล Sensitive เช่น
-             * verificationDocuments, รูปภาพ Base64 ออกไปยังหน้า Public
-             */
             List<Map<String, Object>> results = requests.stream()
                     .map(request -> {
                         Map<String, Object> map = new LinkedHashMap<>();
 
-                        Integer licenseId = null;
-
-                        if (request.getWellnessHub() != null) {
-                            licenseId = request
-                                    .getWellnessHub()
-                                    .getLicenseId();
-                        } else if (request.getEmergencyService() != null) {
-                            licenseId = request
-                                    .getEmergencyService()
-                                    .getLicenseId();
-                        }
+                        Integer licenseId = getLicenseId(request);
 
                         map.put("requestId", request.getRequestId());
+                        map.put("username", request.getUsername());
+                        map.put("requesterName", request.getRequesterName());
                         map.put("licenseId", licenseId);
                         map.put("wellnessHubName", request.getWellnessHubName());
                         map.put("requestStatus", request.getRequestStatus());
@@ -74,9 +73,9 @@ public class AccountRequestController {
     // Create Request
     // =========================
     @PostMapping
-    public ResponseEntity<?> createRequest(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> requestWellnessHubAccount(@RequestBody Map<String, Object> payload) {
         try {
-            AccountRequest savedRequest = service.createRequest(payload);
+            AccountRequest savedRequest = service.requestWellnessHubAccount(payload);
 
             return ResponseEntity
                     .status(HttpStatus.CREATED)
@@ -93,8 +92,8 @@ public class AccountRequestController {
     // List Account Request
     // =========================
     @GetMapping
-    public List<AccountRequest> getAllRequests() {
-        return service.getAllRequests();
+    public List<AccountRequest> listAccountRequest() {
+        return service.listAccountRequest();
     }
 
     // =========================
@@ -109,8 +108,8 @@ public class AccountRequestController {
     // Approve
     // =========================
     @PutMapping("/{id}/approve")
-    public AccountRequest approve(@PathVariable Integer id) {
-        return service.approveRequest(id);
+    public AccountRequest approveAccountRequest(@PathVariable Integer id) {
+        return service.approveAccountRequest(id);
     }
 
     // =========================
@@ -126,10 +125,12 @@ public class AccountRequestController {
     // =========================
     // Helper Methods
     // =========================
+    private Integer getLicenseId(AccountRequest request) {
+        return request.getLicenseId();
+    }
+
     private String maskEmail(String email) {
-        if (email == null ||
-                email.isBlank() ||
-                !email.contains("@")) {
+        if (email == null || email.isBlank() || !email.contains("@")) {
             return null;
         }
 

@@ -1,9 +1,12 @@
 package com.example.wellness.controller;
 
 import com.example.wellness.model.Category;
-import com.example.wellness.repository.CategoryRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import com.example.wellness.service.CategoryService;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.List;
 
 @RestController
@@ -11,11 +14,14 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:3000")
 public class CategoryController {
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+    private final CategoryService categoryService;
+
+    public CategoryController(CategoryService categoryService) {
+        this.categoryService = categoryService;
+    }
 
     @GetMapping
-    public List<Category> getAllCategories() {
-        return categoryRepository.findAll(); // ดึงหมวดหมู่ทั้งหมดส่งกลับไปเป็นอาเรย์ให้ React
+    public List<Category> listAllCategory() {
+        return categoryService.listAllCategory();
     }
 }

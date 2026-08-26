@@ -2,9 +2,12 @@ package com.example.wellness.service;
 
 import com.example.wellness.model.AccountRequest;
 import com.example.wellness.model.Category;
+import com.example.wellness.model.District;
 import com.example.wellness.model.EmergencyService;
 import com.example.wellness.model.WellnessHub;
 import com.example.wellness.repository.AccountRequestRepository;
+import com.example.wellness.repository.CategoryRepository;
+import com.example.wellness.repository.DistrictRepository;
 import com.example.wellness.repository.EmergencyServiceRepository;
 import com.example.wellness.repository.WellnessHubRepository;
 
@@ -12,11 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 public class AccountRequestService {
@@ -29,16 +29,22 @@ public class AccountRequestService {
         private final WellnessHubRepository wellnessHubRepository;
         private final EmergencyServiceRepository emergencyServiceRepository;
         private final EmailService emailService;
+        private final CategoryRepository categoryRepository;
+        private final DistrictRepository districtRepository;
 
         public AccountRequestService(
                         AccountRequestRepository repository,
                         WellnessHubRepository wellnessHubRepository,
                         EmergencyServiceRepository emergencyServiceRepository,
-                        EmailService emailService) {
+                        EmailService emailService,
+                        CategoryRepository categoryRepository,
+                        DistrictRepository districtRepository) {
                 this.repository = repository;
                 this.wellnessHubRepository = wellnessHubRepository;
                 this.emergencyServiceRepository = emergencyServiceRepository;
                 this.emailService = emailService;
+                this.categoryRepository = categoryRepository;
+                this.districtRepository = districtRepository;
         }
 
         // =====================================================
@@ -46,7 +52,7 @@ public class AccountRequestService {
         // =====================================================
 
         @Transactional(readOnly = true)
-        public List<AccountRequest> getAllRequests() {
+        public List<AccountRequest> listAccountRequest() {
                 return repository.findAllByOrderByRequestIdDesc();
         }
 
@@ -64,11 +70,11 @@ public class AccountRequestService {
         }
 
         // =====================================================
-        // สร้างคำขอ
+        // สร้างคำขอ (ส่วนที่ 1)
         // =====================================================
 
         @Transactional
-        public AccountRequest createRequest(Map<String, Object> payload) {
+        public AccountRequest requestWellnessHubAccount(Map<String, Object> payload) {
                 if (payload == null) {
                         throw new RuntimeException("ไม่พบข้อมูลคำขอ");
                 }
@@ -79,49 +85,14 @@ public class AccountRequestService {
                                 "เลขใบอนุญาตสถานประกอบการไม่ถูกต้อง");
 
                 /*
-                 * ค้นหาเลขใบอนุญาตจากทั้งสองตาราง
+                 * ตรวจคำขอที่กำลังรอ / อนุมัติแล้ว
                  */
-                WellnessHub wellnessHub = wellnessHubRepository
-                                .findById(licenseId)
-                                .orElse(null);
-
-                EmergencyService emergencyService = emergencyServiceRepository
-                                .findById(licenseId)
-                                .orElse(null);
-
-                if (wellnessHub == null && emergencyService == null) {
-                        throw new RuntimeException("ไม่พบข้อมูลสถานประกอบการ");
-                }
-
-                /*
-                 * ป้องกันกรณีเลขใบอนุญาตซ้ำกันสองตาราง
-                 */
-                if (wellnessHub != null && emergencyService != null) {
-                        throw new RuntimeException("พบเลขใบอนุญาตซ้ำกันในระบบ กรุณาติดต่อผู้ดูแลระบบ");
-                }
-
-                boolean isEmergency = emergencyService != null;
-
-                /*
-                 * ตรวจคำขอที่กำลังรอ
-                 */
-                boolean hasPendingRequest = isEmergency
-                                ? repository.existsByEmergencyService_LicenseIdAndRequestStatus(licenseId,
-                                                STATUS_PENDING)
-                                : repository.existsByWellnessHub_LicenseIdAndRequestStatus(licenseId, STATUS_PENDING);
-
+                boolean hasPendingRequest = repository.existsByLicenseIdAndRequestStatus(licenseId, STATUS_PENDING);
                 if (hasPendingRequest) {
                         throw new RuntimeException("สถานประกอบการนี้มีคำขอที่กำลังรอตรวจสอบอยู่แล้ว");
                 }
 
-                /*
-                 * ตรวจคำขอที่อนุมัติแล้ว
-                 */
-                boolean hasApprovedRequest = isEmergency
-                                ? repository.existsByEmergencyService_LicenseIdAndRequestStatus(licenseId,
-                                                STATUS_APPROVED)
-                                : repository.existsByWellnessHub_LicenseIdAndRequestStatus(licenseId, STATUS_APPROVED);
-
+                boolean hasApprovedRequest = repository.existsByLicenseIdAndRequestStatus(licenseId, STATUS_APPROVED);
                 if (hasApprovedRequest) {
                         throw new RuntimeException("สถานประกอบการนี้ได้รับการอนุมัติสิทธิ์แล้ว");
                 }
@@ -129,11 +100,7 @@ public class AccountRequestService {
                 /*
                  * ลบคำขอเดิมที่ถูกปฏิเสธ เพื่ออนุญาตให้ส่งคำขอใหม่
                  */
-                long deletedRejectedRequests = isEmergency
-                                ? repository.deleteByEmergencyService_LicenseIdAndRequestStatus(licenseId,
-                                                STATUS_REJECTED)
-                                : repository.deleteByWellnessHub_LicenseIdAndRequestStatus(licenseId, STATUS_REJECTED);
-
+                long deletedRejectedRequests = repository.deleteByLicenseIdAndRequestStatus(licenseId, STATUS_REJECTED);
                 if (deletedRejectedRequests > 0) {
                         System.out.println("ลบคำขอที่ถูกปฏิเสธเดิมจำนวน " + deletedRejectedRequests
                                         + " รายการ สำหรับ licenseId: " + licenseId);
@@ -145,6 +112,14 @@ public class AccountRequestService {
 
                 String requesterName = getRequiredString(payload, "requesterName", "กรุณาระบุชื่อผู้ยื่นคำขอ");
                 String userEmail = getRequiredString(payload, "userEmail", "กรุณาระบุอีเมล");
+                String username = getRequiredString(payload, "username", "กรุณาระบุ Username").trim();
+                if (username.contains(" ")) {
+                        throw new RuntimeException("Username ต้องไม่มีช่องว่าง");
+                }
+                if (!username.matches("^[\\x21-\\x7E]{4,20}$")) {
+                        throw new RuntimeException("Username ต้องเป็นภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษ ความยาว 4–20 ตัวอักษร");
+                }
+                String password = getRequiredString(payload, "password", "กรุณาระบุ Password");
                 String wellnessHubName = getRequiredString(payload, "wellnessHubName", "กรุณาระบุชื่อสถานประกอบการ");
                 String address = getRequiredString(payload, "address", "กรุณาระบุที่อยู่");
                 String tellInformation = getRequiredString(payload, "tellInformation", "กรุณาระบุเบอร์โทรศัพท์");
@@ -159,6 +134,9 @@ public class AccountRequestService {
 
                 AccountRequest request = new AccountRequest();
 
+                request.setLicenseId(licenseId);
+                request.setUsername(username);
+                request.setPassword(password);
                 request.setRequesterName(requesterName);
                 request.setUserEmail(userEmail);
                 request.setContactInformation(getOptionalString(payload, "contactInformation"));
@@ -181,20 +159,8 @@ public class AccountRequestService {
                 request.setVerificationDocuments(verificationDocuments);
                 request.setVerificationDocumentName(getOptionalString(payload, "verificationDocumentName"));
 
-                /*
-                 * ผูกกับสถานประกอบการตามตารางต้นทาง
-                 */
-                if (wellnessHub != null) {
-                        request.setWellnessHub(wellnessHub);
-                        request.setEmergencyService(null);
-                        request.setCategory(wellnessHub.getCategory());
-                        request.setDistrict(wellnessHub.getDistrict());
-                } else {
-                        request.setWellnessHub(null);
-                        request.setEmergencyService(emergencyService);
-                        request.setCategory(emergencyService.getCategory());
-                        request.setDistrict(emergencyService.getDistrict());
-                }
+                request.setCategory(getCategory(payload));
+                request.setDistrict(getDistrict(payload));
 
                 request.setRequestStatus(STATUS_PENDING);
                 request.setRejectionReason(null);
@@ -204,11 +170,11 @@ public class AccountRequestService {
         }
 
         // =====================================================
-        // อนุมัติคำขอ
+        // อนุมัติคำขอ (ส่วนที่ 2 - รองรับทั้ง WellnessHub & EmergencyService)
         // =====================================================
 
         @Transactional
-        public AccountRequest approveRequest(Integer id) {
+        public AccountRequest approveAccountRequest(Integer id) {
                 if (id == null || id <= 0) {
                         return null;
                 }
@@ -227,40 +193,68 @@ public class AccountRequestService {
                         throw new RuntimeException("ไม่สามารถอนุมัติคำขอที่ถูกปฏิเสธแล้วได้");
                 }
 
-                WellnessHub wellnessHub = request.getWellnessHub();
-                EmergencyService emergencyService = request.getEmergencyService();
-
-                if (wellnessHub == null && emergencyService == null) {
-                        throw new RuntimeException("ไม่พบข้อมูลสถานประกอบการ");
-                }
-
-                if (wellnessHub != null && emergencyService != null) {
-                        throw new RuntimeException("คำขอมีข้อมูลสถานประกอบการซ้ำกันสองประเภท");
-                }
-
-                Integer licenseId = wellnessHub != null ? wellnessHub.getLicenseId() : emergencyService.getLicenseId();
-                Category category = wellnessHub != null ? wellnessHub.getCategory() : emergencyService.getCategory();
-
-                String username = generateUsername(licenseId, category);
-                String password = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-
                 /*
                  * ตรวจ Username ซ้ำทั้งสองตาราง
                  */
-                if (wellnessHubRepository.existsByUsername(username)
-                                || emergencyServiceRepository.existsByUsername(username)) {
+                if (wellnessHubRepository.existsByUsername(request.getUsername())
+                                || emergencyServiceRepository.existsByUsername(request.getUsername())) {
                         throw new RuntimeException("Username ถูกใช้งานแล้ว");
                 }
 
+                Category category = request.getCategory();
+                if (category == null || category.getCategoryId() == null) {
+                        throw new RuntimeException("ไม่พบข้อมูลหมวดหมู่ในคำขอ");
+                }
+
                 /*
-                 * อัปเดตข้อมูลกลับไปยังตารางที่ถูกต้อง
+                 * แยกบันทึกตามหมวดหมู่ (Emergency Service vs Wellness Hub)
                  */
-                if (wellnessHub != null) {
-                        updateWellnessHubFromRequest(wellnessHub, request, username, password);
-                        wellnessHubRepository.save(wellnessHub);
-                } else {
-                        updateEmergencyFromRequest(emergencyService, request, username, password);
+                boolean isEmergency = isEmergencyCategory(category.getCategoryId());
+
+                if (isEmergency) {
+                        EmergencyService emergencyService = new EmergencyService();
+                        emergencyService.setLicenseId(request.getLicenseId());
+                        emergencyService.setUsername(request.getUsername());
+                        emergencyService.setPassword(request.getPassword());
+                        emergencyService.setStatus("ACTIVE");
+                        emergencyService.setWellnessHubName(request.getWellnessHubName());
+                        emergencyService.setAddress(request.getAddress());
+                        emergencyService.setContactInformation(request.getContactInformation());
+                        emergencyService.setTelInformation(request.getTellInformation());
+                        emergencyService.setGoogleMapsLink(request.getGoogleMapsLink());
+                        emergencyService.setWellnessHubDescription(request.getWellnessHubDescription());
+                        emergencyService.setWellnessHubImg(request.getWellnessHubImg());
+                        emergencyService.setWellnessHubGallery(request.getWellnessHubGallery());
+                        emergencyService.setWellnessHubLatitude(request.getWellnessHubLatitude());
+                        emergencyService.setWellnessHubLongitude(request.getWellnessHubLongitude());
+                        emergencyService.setCertificateType(request.getCertificateType());
+                        emergencyService.setOperatingHours(request.getOperatingHours());
+                        emergencyService.setCategory(request.getCategory());
+                        emergencyService.setDistrict(request.getDistrict());
+
                         emergencyServiceRepository.save(emergencyService);
+                } else {
+                        WellnessHub wellnessHub = new WellnessHub();
+                        wellnessHub.setLicenseId(request.getLicenseId());
+                        wellnessHub.setUsername(request.getUsername());
+                        wellnessHub.setPassword(request.getPassword());
+                        wellnessHub.setStatus("ACTIVE");
+                        wellnessHub.setWellnessHubName(request.getWellnessHubName());
+                        wellnessHub.setAddress(request.getAddress());
+                        wellnessHub.setContactInformation(request.getContactInformation());
+                        wellnessHub.setTelInformation(request.getTellInformation());
+                        wellnessHub.setGoogleMapsLink(request.getGoogleMapsLink());
+                        wellnessHub.setWellnessHubDescription(request.getWellnessHubDescription());
+                        wellnessHub.setWellnessHubImg(request.getWellnessHubImg());
+                        wellnessHub.setWellnessHubGallery(request.getWellnessHubGallery());
+                        wellnessHub.setWellnessHubLatitude(request.getWellnessHubLatitude());
+                        wellnessHub.setWellnessHubLongitude(request.getWellnessHubLongitude());
+                        wellnessHub.setCertificateType(request.getCertificateType());
+                        wellnessHub.setOperatingHours(request.getOperatingHours());
+                        wellnessHub.setCategory(request.getCategory());
+                        wellnessHub.setDistrict(request.getDistrict());
+
+                        wellnessHubRepository.save(wellnessHub);
                 }
 
                 request.setRequestStatus(STATUS_APPROVED);
@@ -272,9 +266,9 @@ public class AccountRequestService {
                 emailService.sendApproveEmail(
                                 savedRequest.getUserEmail(),
                                 savedRequest.getWellnessHubName(),
-                                licenseId,
-                                username,
-                                password);
+                                savedRequest.getLicenseId(),
+                                savedRequest.getUsername(),
+                                savedRequest.getPassword());
 
                 return savedRequest;
         }
@@ -311,21 +305,6 @@ public class AccountRequestService {
                         throw new RuntimeException("เหตุผลการไม่อนุมัติต้องไม่เกิน 255 ตัวอักษร");
                 }
 
-                WellnessHub wellnessHub = request.getWellnessHub();
-                EmergencyService emergencyService = request.getEmergencyService();
-
-                if (wellnessHub == null && emergencyService == null) {
-                        throw new RuntimeException("ไม่พบข้อมูลสถานประกอบการ");
-                }
-
-                if (wellnessHub != null && emergencyService != null) {
-                        throw new RuntimeException("คำขอมีข้อมูลสถานประกอบการซ้ำกันสองประเภท");
-                }
-
-                Integer licenseId = wellnessHub != null
-                                ? wellnessHub.getLicenseId()
-                                : emergencyService.getLicenseId();
-
                 request.setRequestStatus(STATUS_REJECTED);
                 request.setRejectionReason(reason.trim());
                 request.setProcessedDate(LocalDateTime.now());
@@ -335,157 +314,64 @@ public class AccountRequestService {
                 emailService.sendRejectEmail(
                                 savedRequest.getUserEmail(),
                                 savedRequest.getWellnessHubName(),
-                                licenseId,
+                                savedRequest.getLicenseId(),
                                 savedRequest.getRejectionReason());
 
                 return savedRequest;
         }
 
         // =====================================================
-        // ติดตามสถานะคำขอ
+        // ติดตามสถานะคำขอ (ค้นหาด้วย Username)
         // =====================================================
 
         @Transactional(readOnly = true)
-        public List<AccountRequest> trackRequests(String query) {
-                if (query == null || query.trim().isEmpty()) {
-                        throw new RuntimeException("กรุณาระบุเลขใบอนุญาตหรือชื่อสถานประกอบการ");
+        public List<AccountRequest> trackRequestStatus(String username) {
+                if (username == null || username.trim().isEmpty()) {
+                        throw new RuntimeException("กรุณาระบุชื่อผู้ใช้งาน (Username)");
                 }
 
-                String normalizedQuery = query.trim();
+                String normalizedUsername = username.trim();
 
-                /*
-                 * ค้นหาด้วยเลขใบอนุญาต
-                 */
-                if (normalizedQuery.matches("\\d+")) {
-                        try {
-                                Integer licenseId = Integer.valueOf(normalizedQuery);
-
-                                if (licenseId <= 0) {
-                                        throw new RuntimeException("เลขใบอนุญาตต้องมากกว่า 0");
-                                }
-
-                                List<AccountRequest> results = new ArrayList<>();
-
-                                results.addAll(repository.findByWellnessHub_LicenseIdOrderByRequestIdDesc(licenseId));
-                                results.addAll(repository
-                                                .findByEmergencyService_LicenseIdOrderByRequestIdDesc(licenseId));
-
-                                results.sort(Comparator.comparing(
-                                                AccountRequest::getRequestId,
-                                                Comparator.nullsLast(Comparator.reverseOrder())));
-
-                                return results;
-
-                        } catch (NumberFormatException exception) {
-                                throw new RuntimeException("รูปแบบเลขใบอนุญาตไม่ถูกต้อง");
-                        }
-                }
-
-                /*
-                 * ค้นหาด้วยชื่อที่เก็บใน AccountRequest จึงค้นหาได้ทั้ง Wellness และ Emergency
-                 */
-                if (normalizedQuery.length() < 2) {
-                        throw new RuntimeException("กรุณากรอกชื่อสถานประกอบการอย่างน้อย 2 ตัวอักษร");
-                }
-
-                return repository.findByWellnessHubNameContainingIgnoreCaseOrderByRequestIdDesc(normalizedQuery);
-        }
-
-        // =====================================================
-        // อัปเดต WellnessHub จากคำขอ
-        // =====================================================
-
-        private void updateWellnessHubFromRequest(
-                        WellnessHub hub,
-                        AccountRequest request,
-                        String username,
-                        String password) {
-                hub.setUsername(username);
-                hub.setPassword(password);
-                hub.setStatus("ACTIVE");
-                hub.setWellnessHubName(request.getWellnessHubName());
-                hub.setContactInformation(request.getContactInformation());
-                hub.setTelInformation(request.getTellInformation());
-                hub.setAddress(request.getAddress());
-                hub.setGoogleMapsLink(request.getGoogleMapsLink());
-                hub.setWellnessHubDescription(request.getWellnessHubDescription());
-                hub.setWellnessHubImg(request.getWellnessHubImg());
-                hub.setWellnessHubGallery(request.getWellnessHubGallery());
-                hub.setWellnessHubLatitude(request.getWellnessHubLatitude());
-                hub.setWellnessHubLongitude(request.getWellnessHubLongitude());
-                hub.setCertificateType(request.getCertificateType());
-                hub.setOperatingHours(request.getOperatingHours());
-                hub.setCategory(request.getCategory());
-                hub.setDistrict(request.getDistrict());
-        }
-
-        // =====================================================
-        // อัปเดต EmergencyService จากคำขอ
-        // =====================================================
-
-        private void updateEmergencyFromRequest(
-                        EmergencyService emergency,
-                        AccountRequest request,
-                        String username,
-                        String password) {
-                emergency.setUsername(username);
-                emergency.setPassword(password);
-                emergency.setStatus("ACTIVE");
-                emergency.setWellnessHubName(request.getWellnessHubName());
-                emergency.setContactInformation(request.getContactInformation());
-                emergency.setTelInformation(request.getTellInformation());
-                emergency.setAddress(request.getAddress());
-                emergency.setGoogleMapsLink(request.getGoogleMapsLink());
-                emergency.setWellnessHubDescription(request.getWellnessHubDescription());
-                emergency.setWellnessHubImg(request.getWellnessHubImg());
-                emergency.setWellnessHubGallery(request.getWellnessHubGallery());
-                emergency.setWellnessHubLatitude(request.getWellnessHubLatitude());
-                emergency.setWellnessHubLongitude(request.getWellnessHubLongitude());
-                emergency.setCertificateType(request.getCertificateType());
-                emergency.setOperatingHours(request.getOperatingHours());
-                emergency.setCategory(request.getCategory());
-                emergency.setDistrict(request.getDistrict());
-        }
-
-        // =====================================================
-        // สร้าง Username
-        // =====================================================
-
-        private String generateUsername(Integer licenseId, Category category) {
-                if (licenseId == null || licenseId <= 0) {
-                        throw new RuntimeException("เลขใบอนุญาตสถานประกอบการไม่ถูกต้อง");
-                }
-
-                if (category == null || category.getCategoryId() == null) {
-                        throw new RuntimeException("ไม่พบหมวดหมู่ของสถานประกอบการ");
-                }
-
-                String categoryId = category.getCategoryId().trim().toUpperCase();
-
-                String categoryEnglish = switch (categoryId) {
-                        case "C01" -> "spa";
-                        case "C02" -> "clinic";
-                        case "C03" -> "food";
-                        case "C04" -> "stay";
-                        case "C05" -> "attraction";
-                        case "EM01" -> "rescue";
-                        case "EM02" -> "hospital";
-                        default -> throw new RuntimeException("ไม่รองรับหมวดหมู่รหัส " + categoryId);
-                };
-
-                String paddedLicenseId = String.format("%010d", licenseId);
-                String username = categoryEnglish + paddedLicenseId;
-
-                if (!username.matches("^[A-Za-z0-9]{13,20}$")) {
-                        throw new RuntimeException("Username ที่ระบบสร้างไม่เป็นไปตามเงื่อนไข");
-                }
-
-                return username;
+                return repository.findByUsernameIgnoreCaseOrderByRequestIdDesc(normalizedUsername);
         }
 
         // =====================================================
         // Helper Methods
         // =====================================================
+
+        private boolean isEmergencyCategory(String categoryId) {
+                if (categoryId == null) {
+                        return false;
+                }
+                String normalized = categoryId.trim().toUpperCase();
+                return normalized.startsWith("EM") || normalized.equals("EM01") || normalized.equals("EM02");
+        }
+
+        private Category getCategory(Map<String, Object> payload) {
+                Object catVal = payload.get("categoryId");
+                if (catVal == null || catVal.toString().trim().isEmpty()) {
+                        throw new RuntimeException("กรุณาระบุรหัสหมวดหมู่ (categoryId)");
+                }
+                String categoryId = catVal.toString().trim();
+
+                return categoryRepository.findById(categoryId)
+                                .orElseThrow(() -> new RuntimeException("ไม่พบหมวดหมู่รหัส " + categoryId));
+        }
+
+        private District getDistrict(Map<String, Object> payload) {
+                Object distVal = payload.get("districtId");
+                if (distVal == null || distVal.toString().trim().isEmpty()) {
+                        throw new RuntimeException("กรุณาระบุรหัสอำเภอ (districtId)");
+                }
+
+                try {
+                        Integer districtId = Integer.valueOf(distVal.toString().trim());
+                        return districtRepository.findById(districtId)
+                                        .orElseThrow(() -> new RuntimeException("ไม่พบอำเภอรหัส " + districtId));
+                } catch (NumberFormatException exception) {
+                        throw new RuntimeException("รูปแบบรหัสอำเภอไม่ถูกต้อง");
+                }
+        }
 
         private String getRequiredString(Map<String, Object> payload, String key, String errorMessage) {
                 Object value = payload.get(key);

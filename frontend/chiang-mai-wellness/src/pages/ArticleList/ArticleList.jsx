@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 import { Link } from "react-router-dom";
-
+import LoadingState from "../../Components/LoadingState/LoadingState";
 import "./ArticleList.css";
 
 const API_URL = "http://localhost:8080/api/home/articles";
@@ -371,13 +371,10 @@ export default function ArticleList() {
         </section>
 
         {loading && (
-          <section className="article-list-state">
-            <div className="article-list-spinner" />
-
-            <h2>กำลังโหลดบทความ</h2>
-
-            <p>ระบบกำลังเตรียมเนื้อหาบทความสำหรับคุณ</p>
-          </section>
+          <LoadingState
+            title="กำลังโหลดบทความ"
+            message="ระบบกำลังเตรียมเนื้อหาบทความสำหรับคุณ กรุณารอสักครู่"
+          />
         )}
 
         {!loading && error && (

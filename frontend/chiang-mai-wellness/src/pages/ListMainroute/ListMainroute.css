@@ -19,6 +19,7 @@
 
 .gov-main-content {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   background: var(--gov-bg);
   padding: 30px 40px 60px;

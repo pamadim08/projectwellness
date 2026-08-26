@@ -1,0 +1,203 @@
+/* ==========================================================================
+   CHIANG MAI WELLNESS ROUTE - FOOTER STYLING
+   ========================================================================== */
+
+.footer {
+  width: 100%;
+  background: #153226;
+  color: #d1ded7;
+  position: relative;
+  margin-top: auto;
+  font-family: inherit;
+}
+
+/* 🌿 เส้น Accent ด้านบนของ Footer */
+.footer__top-accent {
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    #1b4332 0%,
+    #2d6a4f 40%,
+    #d4a340 75%,
+    #e9c46a 100%
+  );
+}
+
+.footer__container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 48px 24px 24px;
+}
+
+.footer__main {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.2fr;
+  gap: 40px;
+  padding-bottom: 36px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 🌟 ฝั่งชื่อระบบและคำอธิบายสั้นๆ */
+.footer__brand-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+}
+
+.footer__brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.footer__brand-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1e5a44 0%, #2c7a5c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.footer__brand-icon {
+  color: #a7f3d0;
+  font-size: 20px;
+}
+
+.footer__brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.footer__brand-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #ffffff;
+}
+
+.footer__brand-sub {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #e9c46a;
+  margin-top: 3px;
+}
+
+.footer__brand-desc {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #9cb5a8;
+  margin: 0;
+}
+
+/* 🌟 คอลัมน์เมนู */
+.footer__heading {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+  letter-spacing: 0.5px;
+  position: relative;
+  display: inline-block;
+}
+
+.footer__heading::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 24px;
+  height: 2px;
+  background: #d4a340;
+  border-radius: 2px;
+}
+
+.footer__nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer__link {
+  color: #adc5b7;
+  text-decoration: none;
+  font-size: 13.5px;
+  transition: color 0.2s ease, transform 0.2s ease;
+  display: inline-block;
+}
+
+.footer__link:hover {
+  color: #ffffff;
+  transform: translateX(3px);
+}
+
+.footer__link--subtle {
+  color: #7b998a;
+  font-size: 12.5px;
+}
+
+.footer__link--subtle:hover {
+  color: #d1ded7;
+}
+
+/* 🌟 แถบลิขสิทธิ์ด้านล่าง */
+.footer__bottom {
+  padding-top: 24px;
+  text-align: center;
+}
+
+.footer__copyright {
+  font-size: 12.5px;
+  color: #789988;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.footer__copyright strong {
+  color: #c0d8cc;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 992px) {
+  .footer__main {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+
+  .footer__brand-col {
+    grid-column: 1 / -1;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .footer__container {
+    padding: 36px 18px 20px;
+  }
+
+  .footer__main {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .footer__brand-title {
+    font-size: 15px;
+  }
+
+  .footer__brand-desc {
+    font-size: 12.5px;
+  }
+}

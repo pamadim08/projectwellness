@@ -7,6 +7,7 @@ import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 
 // ฝั่งผู้ใช้ทั่วไป
 import Navbar from "./Components/Navbar/Navbar";
+import Footer from "./Components/Footer/Footer";
 import HomePage from "./pages/HomePage/HomePage";
 
 // ฝั่งแอดมิน
@@ -37,6 +38,7 @@ function PublicLayout({ children }) {
     <>
       <Navbar />
       <main>{children}</main>
+      <Footer />
     </>
   );
 }
@@ -77,6 +79,14 @@ function App() {
             element={
               <PublicLayout>
                 <WellnessHubDetail />
+              </PublicLayout>
+            }
+          />
+          <Route
+            path="/request-wellness-hub-account"
+            element={
+              <PublicLayout>
+                <RequestWellnessHubAccount />
               </PublicLayout>
             }
           />

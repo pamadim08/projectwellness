@@ -2,7 +2,6 @@ package com.example.wellness.service;
 
 import com.example.wellness.model.Category;
 import com.example.wellness.repository.CategoryRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,11 +9,14 @@ import java.util.List;
 @Service
 public class CategoryService {
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+    private final CategoryRepository categoryRepository;
+
+    public CategoryService(CategoryRepository categoryRepository) {
+        this.categoryRepository = categoryRepository;
+    }
 
     // 1. ดึงข้อมูลรายการหมวดหมู่บริการสุขภาพทั้งหมดพ่นสีลงฟอร์ม
-    public List<Category> getAllCategories() {
+    public List<Category> listAllCategory() {
         return categoryRepository.findAll();
     }
 

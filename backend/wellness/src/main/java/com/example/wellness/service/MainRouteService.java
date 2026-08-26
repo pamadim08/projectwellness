@@ -1,22 +1,27 @@
 package com.example.wellness.service;
 
+import com.example.wellness.model.Category;
+import com.example.wellness.model.District;
 import com.example.wellness.model.MainRoute;
 import com.example.wellness.model.MainRouteDetail;
-import com.example.wellness.model.District;
-import com.example.wellness.model.Category;
-import com.example.wellness.repository.MainRouteRepository;
-import com.example.wellness.repository.DistrictRepository;
 import com.example.wellness.repository.CategoryRepository;
-import com.example.wellness.repository.WellnessHubRepository;
+import com.example.wellness.repository.DistrictRepository;
 import com.example.wellness.repository.EmergencyServiceRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.wellness.repository.MainRouteRepository;
+import com.example.wellness.repository.WellnessHubRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,22 +30,26 @@ public class MainRouteService {
     // 🌟 6. เพิ่มค่าคงที่สำหรับหมวดฉุกเฉิน
     private static final List<String> REQUIRED_EMERGENCY_CATEGORY_IDS = List.of("EM01", "EM02");
 
-    @Autowired
-    private MainRouteRepository mainRouteRepository;
+    private final MainRouteRepository mainRouteRepository;
+    private final DistrictRepository districtRepository;
+    private final CategoryRepository categoryRepository;
+    private final WellnessHubRepository wellnessHubRepository;
+    private final EmergencyServiceRepository emergencyServiceRepository;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private DistrictRepository districtRepository;
-
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
-    private WellnessHubRepository wellnessHubRepository;
-
-    @Autowired
-    private EmergencyServiceRepository emergencyServiceRepository;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    public MainRouteService(
+            MainRouteRepository mainRouteRepository,
+            DistrictRepository districtRepository,
+            CategoryRepository categoryRepository,
+            WellnessHubRepository wellnessHubRepository,
+            EmergencyServiceRepository emergencyServiceRepository) {
+        this.mainRouteRepository = mainRouteRepository;
+        this.districtRepository = districtRepository;
+        this.categoryRepository = categoryRepository;
+        this.wellnessHubRepository = wellnessHubRepository;
+        this.emergencyServiceRepository = emergencyServiceRepository;
+        this.objectMapper = new ObjectMapper();
+    }
 
     // 🌟 6. เพิ่ม Helper Normalize เพื่อรวม EM01 และ EM02 เสมอ
     private List<String> normalizeCategoryIds(Object categoryIdsRaw) {

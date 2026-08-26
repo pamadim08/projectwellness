@@ -1,7 +1,5 @@
 import { useCallback, useState } from "react";
-
 import axios from "axios";
-
 import {
   Building2,
   CheckCircle2,
@@ -11,8 +9,9 @@ import {
   LoaderCircle,
   Search,
   ShieldX,
+  User,
 } from "lucide-react";
-
+import LoadingState from "../../Components/LoadingState/LoadingState";
 import "./TrackAccountRequest.css";
 
 const API_URL = "http://localhost:8080/api/account-requests/track";
@@ -35,7 +34,7 @@ function getStatusInformation(status) {
       label: "อนุมัติแล้ว",
       className: "track-request-status track-request-status--approved",
       icon: CheckCircle2,
-      description: "บัญชีผู้ใช้งานจะถูกจัดส่งไปยังอีเมลที่ใช้ยื่นคำขอ",
+      description: "คำขอได้รับการอนุมัติแล้ว และสามารถเข้าสู่ระบบผู้ให้บริการได้",
     };
   }
 
@@ -44,7 +43,7 @@ function getStatusInformation(status) {
       label: "ไม่อนุมัติ",
       className: "track-request-status track-request-status--rejected",
       icon: ShieldX,
-      description: "สามารถแก้ไขข้อมูลหรือเอกสารและส่งคำขอใหม่ได้",
+      description: "สามารถตรวจสอบเหตุผล และยื่นคำขอใหม่ได้",
     };
   }
 
@@ -86,29 +85,19 @@ function getErrorMessage(error) {
 }
 
 export default function TrackAccountRequest() {
-  const [keyword, setKeyword] = useState("");
+  const [username, setUsername] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
 
-  const searchRequests = useCallback(async (searchKeyword) => {
-    const normalizedKeyword = searchKeyword.trim();
-    const isNumeric = /^\d+$/.test(normalizedKeyword);
+  const searchRequests = useCallback(async (searchUsername) => {
+    const normalizedUsername = searchUsername.trim();
 
-    if (!normalizedKeyword) {
-      setError("กรุณากรอกเลขใบอนุญาตหรือชื่อสถานประกอบการ");
+    if (!normalizedUsername) {
+      setError("กรุณากรอกชื่อผู้ใช้งาน (Username)");
       setResults([]);
       setSearched(false);
-
-      return;
-    }
-
-    if (!isNumeric && normalizedKeyword.length < 2) {
-      setError("กรุณากรอกชื่อสถานประกอบการอย่างน้อย 2 ตัวอักษร");
-      setResults([]);
-      setSearched(false);
-
       return;
     }
 
@@ -119,7 +108,7 @@ export default function TrackAccountRequest() {
     try {
       const response = await axios.get(API_URL, {
         params: {
-          query: normalizedKeyword,
+          username: normalizedUsername,
         },
         timeout: 30000,
       });
@@ -140,11 +129,11 @@ export default function TrackAccountRequest() {
       return;
     }
 
-    searchRequests(keyword);
+    searchRequests(username);
   };
 
-  const handleKeywordChange = (event) => {
-    setKeyword(event.target.value);
+  const handleUsernameChange = (event) => {
+    setUsername(event.target.value);
 
     if (error) {
       setError("");
@@ -160,7 +149,7 @@ export default function TrackAccountRequest() {
           <h1>ติดตามสถานะคำขอ</h1>
 
           <p className="track-request-hero__description">
-            ตรวจสอบผลการพิจารณาคำขอด้วยเลขใบอนุญาต หรือชื่อสถานประกอบการ
+            ตรวจสอบผลการพิจารณาคำขอเปิดบัญชีผู้ใช้ด้วยชื่อผู้ใช้งาน (Username)
           </p>
         </div>
       </header>
@@ -173,9 +162,9 @@ export default function TrackAccountRequest() {
             </div>
 
             <div>
-              <h2>ค้นหาคำขอ</h2>
+              <h2>ค้นหาคำขอด้วย Username</h2>
 
-              <p>ใช้เลขใบอนุญาต หรือชื่อสถานประกอบการอย่างน้อย 2 ตัวอักษร</p>
+              <p>ระบุชื่อผู้ใช้งาน (Username) ที่ใช้ในการยื่นคำขอเพื่อตรวจสอบสถานะ</p>
             </div>
           </div>
 
@@ -185,14 +174,14 @@ export default function TrackAccountRequest() {
             noValidate
           >
             <div className="track-request-search-input">
-              <Search />
+              <User className="track-request-search-input-icon" />
 
               <input
                 type="text"
-                value={keyword}
-                onChange={handleKeywordChange}
-                placeholder="เลขใบอนุญาต หรือชื่อสถานประกอบการ"
-                aria-label="เลขใบอนุญาตหรือชื่อสถานประกอบการ"
+                value={username}
+                onChange={handleUsernameChange}
+                placeholder="ระบุชื่อผู้ใช้งาน (Username) เช่น wellness_hub01"
+                aria-label="ระบุชื่อผู้ใช้งาน (Username)"
                 autoComplete="off"
               />
             </div>
@@ -206,7 +195,7 @@ export default function TrackAccountRequest() {
               ) : (
                 <>
                   <Search />
-                  ค้นหา
+                  ค้นหาสถานะ
                 </>
               )}
             </button>
@@ -222,15 +211,10 @@ export default function TrackAccountRequest() {
         </section>
 
         {loading && (
-          <section className="track-request-state">
-            <div className="track-request-state__icon">
-              <LoaderCircle className="track-request-state__spinner" />
-            </div>
-
-            <h2>กำลังตรวจสอบสถานะ</h2>
-
-            <p>ระบบกำลังค้นหาคำขอที่เกี่ยวข้อง กรุณารอสักครู่</p>
-          </section>
+          <LoadingState
+            title="กำลังตรวจสอบสถานะคำขอ"
+            message="ระบบกำลังค้นหาคำขอที่ตรงกับ Username กรุณารอสักครู่"
+          />
         )}
 
         {!loading && searched && !error && results.length === 0 && (
@@ -239,12 +223,12 @@ export default function TrackAccountRequest() {
               <FileSearch2 />
             </div>
 
-            <h2>ไม่พบคำขอ</h2>
+            <h2>ไม่พบคำขอสำหรับ Username นี้</h2>
 
             <p>
-              ไม่พบข้อมูลที่ตรงกับ <strong>“{keyword.trim()}”</strong>
+              ไม่พบข้อมูลคำขอที่ตรงกับชื่อผู้ใช้ <strong>“{username.trim()}”</strong>
               <br />
-              กรุณาตรวจสอบข้อมูลที่ใช้ค้นหาอีกครั้ง
+              กรุณาตรวจสอบความถูกต้องของ Username อีกครั้ง
             </p>
           </section>
         )}
@@ -255,10 +239,10 @@ export default function TrackAccountRequest() {
               <div>
                 <p>ผลการตรวจสอบ</p>
 
-                <h2>สถานะคำขอ</h2>
+                <h2>สถานะคำขอเปิดใช้งานบัญชี</h2>
 
                 <span>
-                  พบ {results.length} รายการจากคำค้นหา “{keyword.trim()}”
+                  พบ {results.length} รายการสำหรับ Username “{username.trim()}”
                 </span>
               </div>
 
@@ -273,10 +257,10 @@ export default function TrackAccountRequest() {
               <table className="track-request-table">
                 <thead>
                   <tr>
-                    <th>เลขใบอนุญาต</th>
+                    <th>ชื่อผู้ใช้งาน (Username)</th>
                     <th>สถานประกอบการ</th>
                     <th>สถานะ</th>
-                    <th>รายละเอียด</th>
+                    <th>รายละเอียด / การดำเนินการ</th>
                   </tr>
                 </thead>
 
@@ -291,14 +275,13 @@ export default function TrackAccountRequest() {
                     return (
                       <tr key={request.requestId}>
                         <td
-                          data-label="เลขใบอนุญาต"
+                          data-label="Username"
                           className="track-request-table__license"
                         >
-                          <span>
-                            {request.licenseId ||
-                              request.wellnessHub?.licenseId ||
-                              "-"}
-                          </span>
+                          <div className="track-request-table__username-box">
+                            <User size={16} />
+                            <strong>{request.username || "-"}</strong>
+                          </div>
                         </td>
 
                         <td data-label="สถานประกอบการ">
@@ -309,9 +292,15 @@ export default function TrackAccountRequest() {
 
                             <div>
                               <strong>{request.wellnessHubName || "-"}</strong>
-
+                              {hasValue(request.licenseId) && (
+                                <span className="track-request-hub-license">
+                                  เลขที่ใบอนุญาต: {request.licenseId}
+                                </span>
+                              )}
                               {hasValue(request.userEmail) && (
-                                <span>{request.userEmail}</span>
+                                <span className="track-request-hub-email">
+                                  อีเมล: {request.userEmail}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -333,14 +322,14 @@ export default function TrackAccountRequest() {
                               "REJECTED" &&
                               hasValue(request.rejectionReason) && (
                                 <div className="track-request-rejection-reason">
-                                  <strong>เหตุผล:</strong>{" "}
+                                  <strong>เหตุผลที่ไม่อนุมัติ:</strong>{" "}
                                   {request.rejectionReason}
                                 </div>
                               )}
 
                             {hasValue(request.processedDate) && (
-                              <span>
-                                ดำเนินการเมื่อ{" "}
+                              <span className="track-request-processed-time">
+                                วันที่ดำเนินการ:{" "}
                                 {formatProcessedDate(request.processedDate)}
                               </span>
                             )}
@@ -361,8 +350,10 @@ export default function TrackAccountRequest() {
           <div>
             <h3>หลังจากคำขอได้รับการอนุมัติ</h3>
 
-            <p>ระบบจะส่งชื่อผู้ใช้และรหัสผ่านไปยังอีเมลที่ใช้ยื่นคำขอ
-              โดยปกติใช้เวลาตรวจสอบประมาณ 1–3 วันทำการ</p>
+            <p>
+              ท่านสามารถใช้ <strong>Username</strong> และรหัสผ่านที่ตั้งไว้ขณะยื่นคำขอ
+              เข้าสู่ระบบในส่วนของ <strong>"เข้าสู่ระบบสถานบริการ"</strong> ได้ทันที
+            </p>
           </div>
         </aside>
       </div>

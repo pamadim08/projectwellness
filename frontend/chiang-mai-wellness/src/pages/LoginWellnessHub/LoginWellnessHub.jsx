@@ -12,6 +12,7 @@ import {
   LoaderCircle,
   LogIn,
   ShieldCheck,
+  UserPlus,
   UserRound,
 } from "lucide-react";
 
@@ -100,18 +101,18 @@ export default function LoginWellnessHub() {
       validationErrors.username = "กรุณากรอกชื่อผู้ใช้";
     } else if (/\s/.test(username)) {
       validationErrors.username = "ชื่อผู้ใช้ต้องไม่มีช่องว่าง";
-    } else if (!/^[A-Za-z0-9]{13,20}$/.test(username)) {
+    } else if (!/^[\x21-\x7E]{4,20}$/.test(username)) {
       validationErrors.username =
-        "ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษหรือตัวเลข ความยาว 13–20 ตัวอักษร";
+        "ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษ ความยาว 4–20 ตัวอักษร";
     }
 
     if (!password) {
       validationErrors.password = "กรุณากรอกรหัสผ่าน";
     } else if (/\s/.test(password)) {
       validationErrors.password = "รหัสผ่านต้องไม่มีช่องว่าง";
-    } else if (!/^[A-Za-z0-9]{8}$/.test(password)) {
+    } else if (!/^[\x21-\x7E]{8}$/.test(password)) {
       validationErrors.password =
-        "รหัสผ่านต้องเป็นภาษาอังกฤษหรือตัวเลขจำนวน 8 ตัวอักษร";
+        "รหัสผ่านต้องเป็นภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษจำนวน 8 ตัวอักษร";
     }
 
     setErrors(validationErrors);
@@ -329,7 +330,7 @@ export default function LoginWellnessHub() {
               </div>
 
               <div className="provider-login-field__support">
-                <span>ภาษาอังกฤษหรือตัวเลข 13–20 ตัวอักษร</span>
+                <span>ภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษ 4–20 ตัวอักษร</span>
               </div>
 
               {errors.username && (
@@ -416,13 +417,25 @@ export default function LoginWellnessHub() {
                 <span>ยังไม่มีบัญชีผู้ประกอบการ?</span>
 
                 <p>
-                  หากยื่นคำขอไว้แล้ว สามารถตรวจสอบผลการอนุมัติได้จากหน้าติดตามสถานะ
+                  ท่านสามารถยื่นคำขอเปิดบัญชีสถานประกอบการใหม่ เพื่อเข้าใช้งานระบบจัดการข้อมูล
                 </p>
               </div>
             </div>
 
             <div className="provider-login-help">
-              <Link to="/track-status">ติดตามสถานะคำขอ</Link>
+              <Link
+                to="/request-wellness-hub-account"
+                className="provider-login-help__request"
+              >
+                <UserPlus size={15} />
+                ยื่นคำขอสร้างบัญชีใหม่
+              </Link>
+
+              <span className="provider-login-help__separator">•</span>
+
+              <Link to="/track-status">
+                ติดตามสถานะคำขอ
+              </Link>
             </div>
 
             <div className="provider-login-admin">

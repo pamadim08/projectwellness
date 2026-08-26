@@ -177,9 +177,11 @@
    ========================================================================== */
 .main-content {
   flex: 1;
+  min-width: 0;
   background-color: var(--gov-bg);
   overflow-y: auto; /* ส่วนนี้จะเลื่อนขึ้นลงได้อิสระ */
   padding-bottom: 60px;
+  box-sizing: border-box;
 }
 
 /* จัดระเบียบแถบคัดกรองข้อมูลทรงเหลี่ยม */

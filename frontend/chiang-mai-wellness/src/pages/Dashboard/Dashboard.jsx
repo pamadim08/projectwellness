@@ -4,10 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faShieldHeart,
   faCircleUser,
   faClipboardCheck,
-  faRightFromBracket,
   faBuilding,
   faMapLocationDot,
   faFileCircleCheck,
@@ -21,8 +19,11 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./Dashboard.css";
+import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 
 const DASHBOARD_API = "http://localhost:8080/api/admin/dashboard";
+
+let dashboardCache = null;
 
 const CATEGORY_COLORS = {
   C01: "#2E9D62",
@@ -66,7 +67,13 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  const loadDashboard = async () => {
+  const loadDashboard = async (forceRefresh = false) => {
+    if (dashboardCache && !forceRefresh) {
+      setDashboard(dashboardCache);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setHasError(false);
 
@@ -74,36 +81,28 @@ function Dashboard() {
       const response = await axios.get(DASHBOARD_API);
       const data = response.data || {};
 
-      setDashboard({
+      const normalizedData = {
         totalWellnessHubs: Number(data.totalWellnessHubs) || 0,
-
         totalMainRoutes: Number(data.totalMainRoutes) || 0,
-
         totalAccountRequests: Number(data.totalAccountRequests) || 0,
-
         pendingAccountRequests: Number(data.pendingAccountRequests) || 0,
-
         approvedAccountRequests: Number(data.approvedAccountRequests) || 0,
-
         rejectedAccountRequests: Number(data.rejectedAccountRequests) || 0,
-
         pendingPercentage: Number(data.pendingPercentage) || 0,
-
         approvedPercentage: Number(data.approvedPercentage) || 0,
-
         rejectedPercentage: Number(data.rejectedPercentage) || 0,
-
         wellnessHubsByCategory: Array.isArray(data.wellnessHubsByCategory)
           ? data.wellnessHubsByCategory
           : [],
-
         wellnessHubsByDistrict: Array.isArray(data.wellnessHubsByDistrict)
           ? data.wellnessHubsByDistrict
           : [],
-      });
+      };
+
+      dashboardCache = normalizedData;
+      setDashboard(normalizedData);
     } catch (error) {
       console.error("ไม่สามารถโหลดข้อมูล Dashboard ได้", error);
-
       setDashboard(EMPTY_DASHBOARD);
       setHasError(true);
     } finally {
@@ -113,11 +112,9 @@ function Dashboard() {
 
   useEffect(() => {
     const storedAdminName = localStorage.getItem("adminName");
-
     if (storedAdminName) {
       setAdminName(storedAdminName);
     }
-
     loadDashboard();
   }, []);
 
@@ -165,7 +162,6 @@ function Dashboard() {
     if (districtData.length === 0) {
       return 0;
     }
-
     return Math.max(
       ...districtData.map((district) => district.wellnessHubCount),
     );
@@ -176,6 +172,7 @@ function Dashboard() {
   };
 
   const handleLogout = () => {
+    dashboardCache = null;
     localStorage.clear();
     navigate("/login");
   };
@@ -185,7 +182,6 @@ function Dashboard() {
       <div className="dashboard-loading-page">
         <div className="dashboard-loading-box">
           <FontAwesomeIcon icon={faSpinner} spin />
-
           <h2>กำลังโหลดข้อมูล Dashboard</h2>
           <p>กรุณารอสักครู่...</p>
         </div>
@@ -195,76 +191,24 @@ function Dashboard() {
 
   return (
     <div className="admin-dashboard-page">
-      <nav className="sidebar-menu">
-        <div className="sidebar-top">
-          <div className="sidebar-logo">
-            <FontAwesomeIcon icon={faShieldHeart} />
-            <span>Admin Panel</span>
-          </div>
-
-          <div className="user-profile-box">
-            <FontAwesomeIcon icon={faCircleUser} />
-
-            <div className="user-info">
-              <span className="user-label">ผู้ใช้งานปัจจุบัน:</span>
-
-              <span className="user-name">{adminName}</span>
-            </div>
-          </div>
-
-          <p className="menu-label">เมนูหลัก</p>
-
-          <Link to="/dashboard" className="menu-item active">
-            <i className="fa-solid fa-chart-pie"></i> แผงควบคุมหลัก
-          </Link>
-
-          <Link to="/listAccountRequest" className="menu-item">
-            <i className="fa-solid fa-clipboard-check"></i> ตรวจสอบคำขอสิทธิ์
-            <span className="badge-counter">5</span>
-          </Link>
-
-          <p className="menu-label" style={{ marginTop: "20px" }}>
-            การจัดการข้อมูล
-          </p>
-
-          <Link to="/listMainRoute" className="menu-item">
-            <i className="fa-solid fa-route"></i> จัดการเส้นทางสุขภาพ
-          </Link>
-
-          <Link to="/listWellnessHub" className="menu-item">
-            <i className="fa-solid fa-shop"></i> จัดการสถานประกอบการ
-          </Link>
-
-          <Link to="/listOfficialArticle" className="menu-item">
-            <i className="fa-solid fa-newspaper"></i> จัดการบทความ
-          </Link>
-        </div>
-
-        <button
-          type="button"
-          className="btn-sidebar-logout"
-          onClick={handleLogout}
-        >
-          <FontAwesomeIcon icon={faRightFromBracket} />
-          ออกจากระบบ
-        </button>
-      </nav>
+      <AdminSidebar
+        activeMenu="dashboard"
+        pendingCount={dashboard.pendingAccountRequests}
+      />
 
       <main className="dashboard-main">
         <div className="dashboard-container">
           <header className="dashboard-header">
             <div>
               <span className="dashboard-header-label">ภาพรวมระบบ</span>
-
               <h1>แผงควบคุมผู้ดูแลระบบ</h1>
-
               <p>สรุปข้อมูลเส้นทางสุขภาพ สถานประกอบการ และคำขอใช้งานระบบ</p>
             </div>
 
             <button
               type="button"
               className="dashboard-refresh-button"
-              onClick={loadDashboard}
+              onClick={() => loadDashboard(true)}
             >
               <FontAwesomeIcon icon={faRotate} />
               อัปเดตข้อมูล
@@ -274,10 +218,8 @@ function Dashboard() {
           {hasError && (
             <div className="dashboard-error">
               <FontAwesomeIcon icon={faTriangleExclamation} />
-
               <div>
                 <strong>ไม่สามารถโหลดข้อมูล Dashboard ได้</strong>
-
                 <span>กรุณาตรวจสอบ Backend และลองใหม่อีกครั้ง</span>
               </div>
             </div>
@@ -329,9 +271,7 @@ function Dashboard() {
             <div className="dashboard-section-heading">
               <div>
                 <span className="section-overline">ACCOUNT REQUESTS</span>
-
                 <h2>ภาพรวมสถานะคำขอเปิดบัญชี</h2>
-
                 <p>สรุปจำนวนและร้อยละของคำขอในแต่ละสถานะ</p>
               </div>
 
@@ -351,7 +291,6 @@ function Dashboard() {
               <div className="request-number-header">
                 <div>
                   <span>จำนวนคำขอทั้งหมด</span>
-
                   <strong>
                     {formatNumber(dashboard.totalAccountRequests)}
                   </strong>
@@ -389,9 +328,7 @@ function Dashboard() {
                 <span className="section-overline">
                   WELLNESS HUB CATEGORIES
                 </span>
-
                 <h2>สัดส่วนสถานประกอบการตามหมวดหมู่</h2>
-
                 <p>
                   แสดงจำนวนและร้อยละของสถานประกอบการแต่ละประเภทจากทั้งหมดในระบบ
                 </p>
@@ -411,9 +348,7 @@ function Dashboard() {
             ) : (
               <div className="dashboard-empty">
                 <FontAwesomeIcon icon={faChartPie} />
-
                 <strong>ยังไม่มีข้อมูลสถานประกอบการตามหมวดหมู่</strong>
-
                 <span>กรุณาตรวจสอบข้อมูลสถานประกอบการในระบบ</span>
               </div>
             )}
@@ -425,9 +360,7 @@ function Dashboard() {
                 <span className="section-overline">
                   WELLNESS HUB DISTRIBUTION
                 </span>
-
                 <h2>จำนวนสถานประกอบการแยกตามอำเภอ</h2>
-
                 <p>
                   เรียงจากอำเภอที่มีสถานประกอบการมากที่สุด
                   พร้อมรายละเอียดจำนวนในแต่ละหมวดหมู่
@@ -454,9 +387,7 @@ function Dashboard() {
             ) : (
               <div className="dashboard-empty">
                 <FontAwesomeIcon icon={faLocationDot} />
-
                 <strong>ยังไม่มีข้อมูลสถานประกอบการรายอำเภอ</strong>
-
                 <span>กรุณาตรวจสอบข้อมูลอำเภอและสถานประกอบการในระบบ</span>
               </div>
             )}
@@ -482,7 +413,6 @@ function SummaryCard({
         <div className="summary-card-icon">
           <FontAwesomeIcon icon={icon} />
         </div>
-
         <span className="summary-card-label">{title}</span>
       </div>
 
@@ -506,7 +436,6 @@ function RequestStatusRow({ title, value, percentage, type }) {
           <span className="request-status-dot" />
           <strong>{title}</strong>
         </div>
-
         <span>{Number(value || 0).toLocaleString("th-TH")} คำขอ</span>
       </div>
 
@@ -542,7 +471,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
 
   let accumulatedPercentage = 0;
 
-  // ตัวแปรสำหรับจำตำแหน่ง Y ล่าสุด เพื่อป้องกันการทับกันของข้อความ
   let lastRightY = -999;
   let lastLeftY = 999;
 
@@ -554,7 +482,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
 
     const startPercentage = accumulatedPercentage;
     const endPercentage = startPercentage + safePercentage;
-
     const middlePercentage = startPercentage + safePercentage / 2;
 
     accumulatedPercentage = endPercentage;
@@ -571,18 +498,14 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
     let middleY = centerY + Math.sin(angle) * lineMiddleRadius;
 
     const isRightSide = Math.cos(angle) >= 0;
-
-    // ระยะห่างแนวตั้งขั้นต่ำระหว่างเส้นชี้แต่ละเส้น
     const minGap = 24;
 
-    // ป้องกัน Y Collision แยกฝั่งซ้าย-ขวา
     if (isRightSide) {
       if (lastRightY !== -999 && middleY - lastRightY < minGap) {
         middleY = lastRightY + minGap;
       }
       lastRightY = middleY;
     } else {
-      // ฝั่งซ้ายข้อมูลจะถูกวาดจากล่างขึ้นบน (Y มีค่าลดลงเรื่อยๆ)
       if (lastLeftY !== 999 && lastLeftY - middleY < minGap) {
         middleY = lastLeftY - minGap;
       }
@@ -590,7 +513,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
     }
 
     const endX = middleX + (isRightSide ? lineEndDistance : -lineEndDistance);
-
     const endY = middleY;
 
     return {
@@ -619,9 +541,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
         padding: "28px 30px 32px",
       }}
     >
-      {/* ==========================================
-          Donut Chart
-      ========================================== */}
       <div
         style={{
           display: "flex",
@@ -648,7 +567,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
             role="img"
             aria-label="กราฟวงกลมแสดงสัดส่วนสถานประกอบการตามหมวดหมู่"
           >
-            {/* วงพื้นหลัง */}
             <circle
               cx={centerX}
               cy={centerY}
@@ -658,7 +576,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
               strokeWidth={strokeWidth}
             />
 
-            {/* ชิ้นส่วนของ Donut */}
             <g
               style={{
                 transform: `rotate(-90deg)`,
@@ -696,9 +613,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
               ))}
             </g>
 
-            {/* ==========================================
-                เส้นลาก + Percentage
-            ========================================== */}
             {chartSegments.map((category) => (
               <g key={`label-${category.categoryId}`} opacity="0">
                 <polyline
@@ -750,7 +664,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
               </g>
             ))}
 
-            {/* วงกลาง */}
             <circle cx={centerX} cy={centerY} r="65" fill="#ffffff">
               <animate
                 attributeName="r"
@@ -764,7 +677,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
               />
             </circle>
 
-            {/* จำนวนรวม */}
             <g opacity="0">
               <text
                 x={centerX}
@@ -803,9 +715,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
         </div>
       </div>
 
-      {/* ==========================================
-          Category Detail
-      ========================================== */}
       <div
         style={{
           display: "flex",
@@ -856,15 +765,6 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
               >
                 {category.categoryName}
               </strong>
-
-              <span
-                style={{
-                  color: "#94a3b8",
-                  fontSize: "11px",
-                }}
-              >
-                {category.categoryId}
-              </span>
             </div>
 
             <strong
@@ -902,13 +802,11 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
                 opacity: 0;
                 transform: translateX(18px);
               }
-
               to {
                 opacity: 1;
                 transform: translateX(0);
               }
             }
-
             @media (max-width: 1050px) {
               .admin-dashboard-page .dashboard-section {
                 overflow: hidden;
@@ -944,7 +842,6 @@ function DistrictRow({ rank, district, maximumCount }) {
         <div className="district-title-row">
           <div>
             <FontAwesomeIcon icon={faLocationDot} />
-
             <strong>อำเภอ{district.districtName}</strong>
           </div>
 
@@ -987,7 +884,6 @@ function DistrictRow({ rank, district, maximumCount }) {
                     : "fa-solid fa-chevron-down"
                 }
               ></i>
-
               {isExpanded
                 ? "ซ่อนรายละเอียดหมวดหมู่"
                 : `ดูรายละเอียดหมวดหมู่ (${district.categoryList.length})`}
@@ -1044,15 +940,6 @@ function DistrictRow({ rank, district, maximumCount }) {
                           }}
                         >
                           {category.categoryName}
-                        </span>
-
-                        <span
-                          style={{
-                            color: "#94a3b8",
-                            fontSize: "11px",
-                          }}
-                        >
-                          {category.categoryId}
                         </span>
                       </div>
 

@@ -10,7 +10,6 @@ import L from "leaflet";
 import "leaflet-routing-machine";
 import {
   ArrowLeft,
-  ArrowRight,
   Building2,
   CircleAlert,
   Flag,
@@ -31,10 +30,23 @@ import {
   Pencil,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import LoadingState from "../../Components/LoadingState/LoadingState";
 import "./RouteDetail.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
 const DEFAULT_CENTER = [18.7883, 98.9853];
+
+// Cache รายละเอียดเส้นทางระหว่างเปลี่ยนหน้า
+const routeDetailCache = new Map();
+
+export const clearRouteDetailCache = (routeId = null) => {
+  if (routeId !== null && routeId !== undefined) {
+    routeDetailCache.delete(String(routeId));
+    return;
+  }
+
+  routeDetailCache.clear();
+};
 
 const MASTER_CATEGORIES = [
   {
@@ -90,6 +102,72 @@ const MASTER_CATEGORIES = [
   },
 ];
 
+export function getCategoryStyle(categoryId = "") {
+  const normalizedId = String(categoryId || "")
+    .trim()
+    .toUpperCase();
+
+  if (
+    normalizedId.includes("C01") ||
+    normalizedId.includes("SPA") ||
+    normalizedId.includes("MASSAGE") ||
+    normalizedId.includes("นวด") ||
+    normalizedId.includes("สปา")
+  ) {
+    return { name: "นวด/สปาเพื่อสุขภาพ", color: "#2E9D62" };
+  }
+  if (
+    normalizedId.includes("C03") ||
+    normalizedId.includes("REST") ||
+    normalizedId.includes("FOOD") ||
+    normalizedId.includes("อาหาร")
+  ) {
+    return { name: "อาหารและเครื่องดื่ม", color: "#F28C28" };
+  }
+  if (
+    normalizedId.includes("C04") ||
+    normalizedId.includes("HOTEL") ||
+    normalizedId.includes("ACCOM") ||
+    normalizedId.includes("ที่พัก")
+  ) {
+    return { name: "ที่พักฟื้นฟูสุขภาพ", color: "#7C63D9" };
+  }
+  if (
+    normalizedId.includes("C02") ||
+    normalizedId.includes("CLINIC") ||
+    normalizedId.includes("คลินิก")
+  ) {
+    return { name: "คลินิก/สถานพยาบาล", color: "#2563A6" };
+  }
+  if (
+    normalizedId.includes("C05") ||
+    normalizedId.includes("ATTRACTION") ||
+    normalizedId.includes("TOURIST") ||
+    normalizedId.includes("TRAVEL") ||
+    normalizedId.includes("ท่องเที่ยว")
+  ) {
+    return { name: "สถานที่ท่องเที่ยว", color: "#28A9D8" };
+  }
+  if (
+    normalizedId.includes("EM02") ||
+    normalizedId.includes("HOSPITAL") ||
+    normalizedId.includes("โรงพยาบาล") ||
+    normalizedId.includes("ALS")
+  ) {
+    return { name: "โรงพยาบาล", color: "#D9434E" };
+  }
+  if (
+    normalizedId.includes("EM01") ||
+    normalizedId.includes("RESCUE") ||
+    normalizedId.includes("กู้ภัย") ||
+    normalizedId.includes("BLS")
+  ) {
+    return { name: "หน่วยกู้ภัย", color: "#E0A000" };
+  }
+
+  return { name: "อื่นๆ", color: "#64748B" };
+}
+
 function createCustomDivIcon(pinColor, pinIcon) {
   return L.divIcon({
     html: `
@@ -106,24 +184,14 @@ function createCustomDivIcon(pinColor, pinIcon) {
   });
 }
 
-function getErrorMessage(error) {
-  return (
-    error.response?.data?.message ||
-    "ไม่สามารถโหลดรายละเอียดเส้นทางได้ กรุณาลองใหม่อีกครั้ง"
-  );
-}
-
 function extractLatLng(item) {
-  if (!item) {
-    return null;
-  }
+  if (!item) return null;
 
   const lat =
     item.latitude ??
     item.district?.latitude ??
     item.wellnessHubLatitude ??
     item.lat;
-
   const lng =
     item.longitude ??
     item.district?.longitude ??
@@ -131,10 +199,8 @@ function extractLatLng(item) {
     item.lng;
 
   if (
-    lat === null ||
-    lat === undefined ||
-    lng === null ||
-    lng === undefined ||
+    lat == null ||
+    lng == null ||
     String(lat).trim() === "" ||
     String(lng).trim() === ""
   ) {
@@ -155,53 +221,37 @@ function extractLatLng(item) {
     return null;
   }
 
-  return {
-    lat: parsedLat,
-    lng: parsedLng,
-  };
+  return { lat: parsedLat, lng: parsedLng };
 }
 
 function isMapReady(map, container) {
-  if (!map || !container || !container.isConnected) {
-    return false;
-  }
-
+  if (!map || !container || !container.isConnected) return false;
   try {
     return map.getContainer?.() === container && Boolean(map._loaded);
-  } catch (error) {
+  } catch {
     return false;
   }
 }
 
 function hasValue(value) {
-  if (value === null || value === undefined) {
-    return false;
-  }
-
+  if (value === null || value === undefined) return false;
   const text = String(value).trim();
-
   return (
     text !== "" && text !== "#ERROR!" && text !== "undefined" && text !== "null"
   );
 }
 
 function normalizeImageSource(imageValue) {
-  if (!hasValue(imageValue)) {
-    return "";
-  }
-
+  if (!hasValue(imageValue)) return "";
   let normalizedValue = imageValue;
-
   if (typeof normalizedValue === "string") {
     const trimmedValue = normalizedValue.trim();
-
     try {
       const parsedValue = JSON.parse(trimmedValue);
-
       normalizedValue = Array.isArray(parsedValue)
         ? parsedValue[0] || ""
         : trimmedValue;
-    } catch (error) {
+    } catch {
       normalizedValue = trimmedValue;
     }
   }
@@ -210,10 +260,7 @@ function normalizeImageSource(imageValue) {
     normalizedValue = normalizedValue[0] || "";
   }
 
-  if (!hasValue(normalizedValue)) {
-    return "";
-  }
-
+  if (!hasValue(normalizedValue)) return "";
   const imageSource = String(normalizedValue).trim();
 
   if (
@@ -245,8 +292,17 @@ export default function RouteDetail() {
   const { routeId } = useParams();
   const navigate = useNavigate();
 
-  const [routeData, setRouteData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const normalizedRouteId = Number(routeId);
+  const routeCacheKey = String(routeId);
+
+  const [routeData, setRouteData] = useState(() => {
+    return routeDetailCache.get(routeCacheKey) ?? null;
+  });
+
+  const [loading, setLoading] = useState(() => {
+    return !routeDetailCache.has(routeCacheKey);
+  });
+
   const [error, setError] = useState("");
   const [activeFilters, setActiveFilters] = useState({});
   const [isEditingDistricts, setIsEditingDistricts] = useState(false);
@@ -258,8 +314,6 @@ export default function RouteDetail() {
   const districtLayerRef = useRef(null);
   const routingControlRef = useRef(null);
   const routeBoundsRef = useRef(null);
-
-  /* ใช้สำหรับเชื่อม Card ด้านขวากับ Marker บนแผนที่ */
   const hubMarkersRef = useRef(new Map());
   const hubHighlightRef = useRef(null);
 
@@ -282,7 +336,6 @@ export default function RouteDetail() {
     ) {
       return MASTER_CATEGORIES.find((c) => c.id === "HOSPITAL");
     }
-
     if (
       catKey.includes("EM01") ||
       catKey.includes("RESCUE") ||
@@ -291,7 +344,6 @@ export default function RouteDetail() {
     ) {
       return MASTER_CATEGORIES.find((c) => c.id === "RESCUE");
     }
-
     if (
       catKey.includes("C01") ||
       catKey.includes("SPA") ||
@@ -301,7 +353,6 @@ export default function RouteDetail() {
     ) {
       return MASTER_CATEGORIES.find((c) => c.id === "SPA");
     }
-
     if (
       catKey.includes("C03") ||
       catKey.includes("REST") ||
@@ -310,7 +361,6 @@ export default function RouteDetail() {
     ) {
       return MASTER_CATEGORIES.find((c) => c.id === "RESTAURANT");
     }
-
     if (
       catKey.includes("C04") ||
       catKey.includes("HOTEL") ||
@@ -319,7 +369,6 @@ export default function RouteDetail() {
     ) {
       return MASTER_CATEGORIES.find((c) => c.id === "HOTEL");
     }
-
     if (
       catKey.includes("C02") ||
       catKey.includes("CLINIC") ||
@@ -327,7 +376,6 @@ export default function RouteDetail() {
     ) {
       return MASTER_CATEGORIES.find((c) => c.id === "CLINIC");
     }
-
     if (
       catKey.includes("C05") ||
       catKey.includes("ATTRACTION") ||
@@ -351,99 +399,106 @@ export default function RouteDetail() {
   }, [routeData]);
 
   const availableCategories = useMemo(() => {
-    if (!wellnessHubs.length) {
-      return [];
-    }
-
+    if (!wellnessHubs.length) return [];
     const foundCategoryIds = new Set(
       wellnessHubs.map((hub) => getCategoryInfo(hub)?.id).filter(Boolean),
     );
-
     return MASTER_CATEGORIES.filter((cat) => foundCategoryIds.has(cat.id));
   }, [wellnessHubs, getCategoryInfo]);
 
-  const loadRouteDetail = useCallback(async () => {
-    const normalizedRouteId = Number(routeId);
-
-    console.log("RouteDetail URL param:", routeId);
-    console.log("RouteDetail normalized ID:", normalizedRouteId);
-
-    if (!Number.isInteger(normalizedRouteId) || normalizedRouteId <= 0) {
-      setRouteData(null);
-      setError("รหัสเส้นทางไม่ถูกต้อง");
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    const apiUrl = `${API_BASE_URL}/home/routes/${normalizedRouteId}`;
-
-    try {
-      console.log("กำลังเรียก API:", apiUrl);
-
-      const response = await axios.get(apiUrl, {
-        timeout: 60000,
-      });
-
-      console.log("Route Detail status:", response.status);
-      console.log("Route Detail routeId:", response.data?.routeId);
-
-      if (!response.data) {
-        setRouteData(null);
-        setError("ไม่พบข้อมูลเส้นทางที่ต้องการ");
-        return;
-      }
-
-      const responseRouteId = Number(response.data.routeId);
+  const loadRouteDetail = useCallback(
+    async (forceRefresh = false) => {
+      const normalizedRouteId = Number(routeId);
+      const cacheKey = String(routeId);
 
       if (
-        !Number.isInteger(responseRouteId) ||
-        responseRouteId !== normalizedRouteId
+        !Number.isInteger(normalizedRouteId) ||
+        normalizedRouteId <= 0
       ) {
-        console.error("Route ID ไม่ตรงกัน", {
-          requested: normalizedRouteId,
-          received: response.data.routeId,
-        });
+        setRouteData(null);
+        setError("รหัสเส้นทางไม่ถูกต้อง");
+        setLoading(false);
+        return;
+      }
+
+      // มี Cache แล้ว → ใช้ทันที ไม่ยิง API ซ้ำ
+      if (
+        routeDetailCache.has(cacheKey) &&
+        !forceRefresh
+      ) {
+        setRouteData(
+          routeDetailCache.get(cacheKey)
+        );
+
+        setError("");
+        setLoading(false);
+
+        return;
+      }
+
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await axios.get(
+          `${API_BASE_URL}/home/routes/${normalizedRouteId}`,
+          {
+            // เพิ่มจาก 15 วินาที → 30 วินาที
+            timeout: 30000,
+          }
+        );
+
+        if (!response.data) {
+          setRouteData(null);
+          setError(
+            "ไม่พบข้อมูลเส้นทางที่ต้องการ"
+          );
+
+          return;
+        }
+
+        const data = response.data;
+
+        // เก็บข้อมูล Route นี้ไว้ใน Cache
+        routeDetailCache.set(
+          cacheKey,
+          data
+        );
+
+        setRouteData(data);
+
+      } catch (requestError) {
 
         setRouteData(null);
-        setError("ข้อมูลเส้นทางที่ได้รับไม่ตรงกับเส้นทางที่เลือก");
-        return;
+
+        setError(
+          requestError.code === "ECONNABORTED"
+            ? "โหลดข้อมูลเส้นทางใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง"
+            : requestError.response?.data?.message ||
+              "ไม่สามารถโหลดรายละเอียดเส้นทางได้"
+        );
+
+      } finally {
+
+        setLoading(false);
+
       }
-
-      setRouteData(response.data);
-    } catch (requestError) {
-      console.error("Route Detail API ERROR", {
-        requestedRouteId: normalizedRouteId,
-        url: requestError.config?.url,
-        method: requestError.config?.method,
-        status: requestError.response?.status,
-        statusText: requestError.response?.statusText,
-        code: requestError.code,
-        message: requestError.message,
-        responseData: requestError.response?.data,
-      });
-
-      setRouteData(null);
-
-      if (requestError.code === "ECONNABORTED") {
-        setError("โหลดข้อมูลเส้นทางใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง");
-        return;
-      }
-
-      setError(
-        requestError.response?.data?.message ||
-          requestError.message ||
-          "ไม่สามารถโหลดรายละเอียดเส้นทางได้ กรุณาลองใหม่อีกครั้ง",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [routeId]);
+    },
+    [routeId]
+  );
 
   useEffect(() => {
-    loadRouteDetail();
+    let isMounted = true;
+    const fetch = async () => {
+      if (isMounted) {
+        await loadRouteDetail();
+      }
+    };
+    fetch();
+
+    return () => {
+      isMounted = false;
+    };
   }, [loadRouteDetail]);
 
   useEffect(() => {
@@ -452,16 +507,12 @@ export default function RouteDetail() {
         acc[cat.id] = true;
         return acc;
       }, {});
-
       setActiveFilters(initialFilters);
     }
   }, [availableCategories]);
 
   const districts = useMemo(() => {
-    if (!Array.isArray(routeData?.districts)) {
-      return [];
-    }
-
+    if (!Array.isArray(routeData?.districts)) return [];
     return [...routeData.districts].sort(
       (a, b) => Number(a.orderNumber || 0) - Number(b.orderNumber || 0),
     );
@@ -472,279 +523,123 @@ export default function RouteDetail() {
       setVisibleDistrictIds([]);
       return;
     }
-
     setVisibleDistrictIds(
-      districts.map((district, index) =>
-        String(district.districtId ?? `district-${index}`),
-      ),
+      districts.map((d, i) => String(d.districtId ?? `district-${i}`)),
     );
   }, [districts]);
 
   const visibleDistricts = useMemo(() => {
     const visibleDistrictSet = new Set(visibleDistrictIds);
-
-    return districts.filter((district, index) => {
-      const districtKey = String(district.districtId ?? `district-${index}`);
-
-      return visibleDistrictSet.has(districtKey);
-    });
+    return districts.filter((d, i) =>
+      visibleDistrictSet.has(String(d.districtId ?? `district-${i}`)),
+    );
   }, [districts, visibleDistrictIds]);
 
   const visibleWellnessHubs = useMemo(() => {
-    if (!wellnessHubs.length) {
-      return [];
-    }
-
-    if (!visibleDistricts.length) {
-      return [];
-    }
+    if (!wellnessHubs.length || !visibleDistricts.length) return [];
 
     const visibleDistrictIdSet = new Set(
       visibleDistricts
-        .map((district) => district.districtId)
-        .filter(
-          (districtId) =>
-            districtId !== null &&
-            districtId !== undefined &&
-            String(districtId).trim() !== "",
-        )
-        .map((districtId) => String(districtId)),
+        .map((d) => d.districtId)
+        .filter((id) => id != null && String(id).trim() !== "")
+        .map(String),
     );
 
     const visibleDistrictNames = new Set(
       visibleDistricts
-        .map(
-          (district) =>
-            district.districtName || district.district?.districtName || "",
-        )
-        .map((name) => String(name).trim())
+        .map((d) => d.districtName || d.district?.districtName || "")
+        .map((n) => String(n).trim())
         .filter(Boolean),
     );
 
     return wellnessHubs.filter((hub) => {
       const hubDistrictId = hub.districtId ?? hub.district?.districtId ?? null;
-
       const hubDistrictName = String(
         hub.districtName || hub.district?.districtName || "",
       ).trim();
 
-      if (
-        hubDistrictId !== null &&
-        hubDistrictId !== undefined &&
-        String(hubDistrictId).trim() !== ""
-      ) {
+      if (hubDistrictId != null && String(hubDistrictId).trim() !== "") {
         return visibleDistrictIdSet.has(String(hubDistrictId));
       }
-
       return visibleDistrictNames.has(hubDistrictName);
     });
   }, [wellnessHubs, visibleDistricts]);
 
   const handleToggleDistrictVisibility = (district, index) => {
     const districtKey = String(district.districtId ?? `district-${index}`);
-
-    setVisibleDistrictIds((currentIds) => {
-      if (currentIds.includes(districtKey)) {
-        return currentIds.filter((id) => id !== districtKey);
-      }
-
-      return [...currentIds, districtKey];
-    });
+    setVisibleDistrictIds((curr) =>
+      curr.includes(districtKey)
+        ? curr.filter((id) => id !== districtKey)
+        : [...curr, districtKey],
+    );
   };
 
+  // 🗺️ 1. สร้าง Map Instance ครั้งเดียว
   useEffect(() => {
     const mapContainer = mapContainerRef.current;
+    if (loading || error || !routeData || !mapContainer) return;
 
-    if (loading || error || !routeData || !mapContainer || mapRef.current) {
-      return;
+    if (mapContainer._leaflet_id) {
+      mapContainer._leaflet_id = null;
     }
 
-    let isDisposed = false;
-    let hubsLayer = null;
-    let invalidateTimer = null;
+    if (mapRef.current) {
+      try {
+        mapRef.current.remove();
+      } catch {}
+      mapRef.current = null;
+    }
 
     const map = L.map(mapContainer, {
       zoomControl: true,
       scrollWheelZoom: false,
       doubleClickZoom: false,
-      touchZoom: false,
-      boxZoom: false,
       dragging: true,
       keyboard: true,
-      zoomAnimation: false,
-      fadeAnimation: false,
-      markerZoomAnimation: false,
     });
 
     mapRef.current = map;
+    map.setView(DEFAULT_CENTER, 10);
 
-    try {
-      map.setView(DEFAULT_CENTER, 10, {
-        animate: false,
-      });
-    } catch (err) {
-      console.warn("ไม่สามารถกำหนดตำแหน่งเริ่มต้นของ Map ได้:", err);
-    }
-
-    const tileLayer = L.tileLayer(
+    L.tileLayer(
       "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
       {
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       },
-    );
+    ).addTo(map);
 
-    tileLayer.addTo(map);
+    hubsLayerRef.current = L.layerGroup().addTo(map);
+    districtLayerRef.current = L.layerGroup().addTo(map);
 
-    hubsLayer = L.layerGroup().addTo(map);
-
-    hubsLayerRef.current = hubsLayer;
-
-    const districtLayer = L.layerGroup().addTo(map);
-
-    districtLayerRef.current = districtLayer;
-
-    invalidateTimer = window.setTimeout(() => {
-      if (
-        isDisposed ||
-        mapRef.current !== map ||
-        !isMapReady(map, mapContainer)
-      ) {
-        return;
+    const timer = setTimeout(() => {
+      if (mapRef.current === map && isMapReady(map, mapContainer)) {
+        map.invalidateSize();
       }
-
-      try {
-        map.invalidateSize({
-          animate: false,
-          pan: false,
-        });
-      } catch (err) {
-        console.warn("ไม่สามารถปรับขนาดแผนที่ได้:", err);
-      }
-    }, 200);
+    }, 100);
 
     return () => {
-      isDisposed = true;
-
-      if (invalidateTimer) {
-        window.clearTimeout(invalidateTimer);
-      }
-
+      clearTimeout(timer);
       hubMarkersRef.current.clear();
       hubHighlightRef.current = null;
-
-      if (mapRef.current === map) {
-        mapRef.current = null;
-      }
-
-      routeBoundsRef.current = null;
-
-      try {
-        map.stop();
-      } catch (err) {
-        console.warn("ไม่สามารถหยุด Map animation ได้:", err);
-      }
-
-      try {
-        if (map.scrollWheelZoom?.enabled()) {
-          map.scrollWheelZoom.disable();
-        }
-
-        if (map.doubleClickZoom?.enabled()) {
-          map.doubleClickZoom.disable();
-        }
-
-        if (map.touchZoom?.enabled()) {
-          map.touchZoom.disable();
-        }
-
-        if (map.boxZoom?.enabled()) {
-          map.boxZoom.disable();
-        }
-
-        if (map.keyboard?.enabled()) {
-          map.keyboard.disable();
-        }
-
-        if (map.dragging?.enabled()) {
-          map.dragging.disable();
-        }
-
-        if (map.tap?.enabled()) {
-          map.tap.disable();
-        }
-      } catch (err) {
-        console.warn("ไม่สามารถปิด Map handlers ได้:", err);
-      }
-
-      const activeRoutingControl = routingControlRef.current;
-
-      if (activeRoutingControl) {
+      if (routingControlRef.current) {
         try {
-          activeRoutingControl.off();
-
-          if (activeRoutingControl._map === map) {
-            map.removeControl(activeRoutingControl);
+          const ctrl = routingControlRef.current;
+          ctrl.off();
+          if (ctrl._map) {
+            ctrl._map.removeControl(ctrl);
           }
-        } catch (err) {
-          console.warn("ไม่สามารถลบ Routing Control ได้:", err);
-        }
-
-        if (routingControlRef.current === activeRoutingControl) {
-          routingControlRef.current = null;
-        }
+        } catch {}
+        routingControlRef.current = null;
       }
-
-      const currentDistrictLayer = districtLayerRef.current;
-
-      if (currentDistrictLayer) {
-        try {
-          currentDistrictLayer.clearLayers();
-
-          if (map.hasLayer(currentDistrictLayer)) {
-            map.removeLayer(currentDistrictLayer);
-          }
-        } catch (err) {
-          console.warn("ไม่สามารถล้าง Layer อำเภอได้:", err);
-        }
-
-        if (districtLayerRef.current === currentDistrictLayer) {
-          districtLayerRef.current = null;
-        }
-      }
-
-      if (hubsLayer) {
-        try {
-          hubsLayer.clearLayers();
-
-          if (map.hasLayer(hubsLayer)) {
-            map.removeLayer(hubsLayer);
-          }
-        } catch (err) {
-          console.warn("ไม่สามารถล้าง Layer สถานประกอบการได้:", err);
-        }
-
-        if (hubsLayerRef.current === hubsLayer) {
-          hubsLayerRef.current = null;
-        }
-
-        hubsLayer = null;
-      }
-
-      try {
-        map.off();
-      } catch (err) {
-        console.warn("ไม่สามารถปิด Map events ได้:", err);
-      }
-
       try {
         map.remove();
-      } catch (err) {
-        console.warn("ไม่สามารถทำลาย Map ได้:", err);
-      }
+      } catch {}
+      mapRef.current = null;
     };
   }, [loading, error, routeData]);
 
+  // 🚗 2. คำนวณเส้นทาง OSRM ตามถนนจริง และปักหมุดอำเภอ
   useEffect(() => {
     const map = mapRef.current;
     const districtLayer = districtLayerRef.current;
@@ -755,23 +650,14 @@ export default function RouteDetail() {
       !districtLayer ||
       !mapContainer ||
       !isMapReady(map, mapContainer)
-    ) {
+    )
       return;
-    }
 
-    try {
-      districtLayer.clearLayers();
-    } catch (err) {
-      console.warn("ไม่สามารถล้างหมุดอำเภอได้:", err);
-      return;
-    }
+    districtLayer.clearLayers();
 
     visibleDistricts.forEach((district, index) => {
       const coords = extractLatLng(district);
-
-      if (!coords) {
-        return;
-      }
+      if (!coords) return;
 
       L.circleMarker([coords.lat, coords.lng], {
         radius: 10,
@@ -780,60 +666,32 @@ export default function RouteDetail() {
         fillColor: "#1a2332",
         fillOpacity: 1,
       }).addTo(districtLayer).bindPopup(`
-            <div
-              style="
-                font-family:'Sarabun',sans-serif;
-                text-align:center;
-                padding:2px;
-              "
-            >
-              <span
-                style="
-                  font-size:11px;
-                  color:#64748b;
-                  font-weight:bold;
-                  display:block;
-                "
-              >
-                จุดที่ ${district.orderNumber || index + 1}
-              </span>
-
-              <strong
-                style="
-                  font-size:14px;
-                  color:#0f172a;
-                "
-              >
-                อำเภอ${
-                  district.districtName || district.district?.districtName || ""
-                }
-              </strong>
-            </div>
-          `);
+        <div style="font-family:'Sarabun',sans-serif;text-align:center;padding:2px;">
+          <span style="font-size:11px;color:#64748b;font-weight:bold;display:block;">
+            จุดที่ ${district.orderNumber || index + 1}
+          </span>
+          <strong style="font-size:14px;color:#0f172a;">
+            อำเภอ${district.districtName || district.district?.districtName || ""}
+          </strong>
+        </div>
+      `);
     });
 
-    const currentRoutingControl = routingControlRef.current;
-
-    if (currentRoutingControl) {
+    const activeRouting = routingControlRef.current;
+    if (activeRouting) {
       try {
-        currentRoutingControl.off();
-
-        if (currentRoutingControl._map === map) {
-          map.removeControl(currentRoutingControl);
+        activeRouting.off();
+        if (activeRouting._map === map) {
+          map.removeControl(activeRouting);
         }
-      } catch (err) {
-        console.warn("ไม่สามารถลบ Routing Control เดิมได้:", err);
-      }
-
-      if (routingControlRef.current === currentRoutingControl) {
-        routingControlRef.current = null;
-      }
+      } catch {}
+      routingControlRef.current = null;
     }
 
     const waypoints = visibleDistricts
-      .map((district) => extractLatLng(district))
+      .map((d) => extractLatLng(d))
       .filter(Boolean)
-      .map((coords) => L.latLng(coords.lat, coords.lng));
+      .map((c) => L.latLng(c.lat, c.lng));
 
     if (waypoints.length === 0) {
       routeBoundsRef.current = null;
@@ -842,161 +700,95 @@ export default function RouteDetail() {
 
     try {
       const bounds = L.latLngBounds(waypoints);
-
       routeBoundsRef.current = bounds.isValid() ? bounds : null;
-    } catch (err) {
+    } catch {
       routeBoundsRef.current = null;
-
-      console.warn("ไม่สามารถสร้างขอบเขตเส้นทางที่แสดงได้:", err);
     }
 
-    if (waypoints.length < 2) {
-      return;
-    }
+    let routingControlInstance = null;
 
-    let routingControl = null;
+    if (waypoints.length >= 2) {
+      try {
+        routingControlInstance = L.Routing.control({
+          waypoints,
+          router: L.Routing.osrmv1({
+            serviceUrl: "https://router.project-osrm.org/route/v1",
+            timeout: 15000,
+          }),
+          lineOptions: {
+            styles: [{ color: "#28a745", weight: 5, opacity: 0.85 }],
+          },
+          createMarker: () => null,
+          show: false,
+          addWaypoints: false,
+          draggableWaypoints: false,
+          fitSelectedRoutes: false,
+        });
 
-    try {
-      routingControl = L.Routing.control({
-        waypoints,
-
-        router: L.Routing.osrmv1({
-          serviceUrl: "https://router.project-osrm.org/route/v1",
-        }),
-
-        lineOptions: {
-          styles: [
-            {
-              color: "#28a745",
-              weight: 5,
-              opacity: 0.85,
-            },
-          ],
-        },
-
-        createMarker: () => null,
-        show: false,
-        addWaypoints: false,
-        draggableWaypoints: false,
-        fitSelectedRoutes: false,
-      });
-
-      routingControl.on("routingerror", (routingError) => {
-        if (mapRef.current !== map || !isMapReady(map, mapContainer)) {
-          return;
-        }
-
-        console.warn(
-          "ไม่สามารถคำนวณเส้นทางจาก Routing Service ได้:",
-          routingError,
-        );
-      });
-
-      routingControl.addTo(map);
-      routingControlRef.current = routingControl;
-    } catch (err) {
-      console.error("ขัดข้องในการสร้าง Routing Control:", err);
-
-      if (routingControlRef.current === routingControl) {
-        routingControlRef.current = null;
+        routingControlInstance.addTo(map);
+        routingControlRef.current = routingControlInstance;
+      } catch (err) {
+        console.warn("Routing creation error:", err);
       }
     }
 
     return () => {
-      if (!routingControl) {
-        return;
-      }
-
-      try {
-        routingControl.off();
-
-        if (mapRef.current === map && routingControl._map === map) {
-          map.removeControl(routingControl);
+      if (routingControlInstance) {
+        try {
+          routingControlInstance.off();
+          if (routingControlInstance._map === map) {
+            map.removeControl(routingControlInstance);
+          }
+        } catch {}
+        if (routingControlRef.current === routingControlInstance) {
+          routingControlRef.current = null;
         }
-      } catch (err) {
-        console.warn("ไม่สามารถ cleanup Routing Control ได้:", err);
-      }
-
-      if (routingControlRef.current === routingControl) {
-        routingControlRef.current = null;
       }
     };
   }, [visibleDistricts]);
 
+  // 📍 3. วาดหมุดสถานประกอบการ + Popup
   useEffect(() => {
     const map = mapRef.current;
     const hubsLayer = hubsLayerRef.current;
     const mapContainer = mapContainerRef.current;
 
-    if (!map || !hubsLayer || !mapContainer || !isMapReady(map, mapContainer)) {
+    if (!map || !hubsLayer || !mapContainer || !isMapReady(map, mapContainer))
       return;
-    }
 
-    try {
-      hubsLayer.clearLayers();
-      hubMarkersRef.current.clear();
+    hubsLayer.clearLayers();
+    hubMarkersRef.current.clear();
 
-      if (hubHighlightRef.current) {
-        try {
-          map.removeLayer(hubHighlightRef.current);
-        } catch (highlightError) {
-          console.warn(
-            "ไม่สามารถล้าง Highlight ของสถานประกอบการได้:",
-            highlightError,
-          );
-        }
-
-        hubHighlightRef.current = null;
-      }
-    } catch (err) {
-      console.warn("ไม่สามารถล้างหมุดสถานประกอบการได้:", err);
-      return;
+    if (hubHighlightRef.current) {
+      try {
+        map.removeLayer(hubHighlightRef.current);
+      } catch {}
+      hubHighlightRef.current = null;
     }
 
     visibleWellnessHubs.forEach((hub) => {
-      if (mapRef.current !== map || !isMapReady(map, mapContainer)) {
-        return;
-      }
-
       const coords = extractLatLng(hub);
-
-      if (!coords) {
-        return;
-      }
+      if (!coords) return;
 
       const catInfo = getCategoryInfo(hub);
-
-      if (!catInfo || !activeFilters[catInfo.id]) {
-        return;
-      }
+      if (!catInfo || !activeFilters[catInfo.id]) return;
 
       const customIcon = createCustomDivIcon(catInfo.color, catInfo.icon);
-
       const imageSource = normalizeImageSource(hub.wellnessHubImg);
-
       const licenseId = hub.licenseId || hub.wellnessHubId || "";
-
       const districtName = hub.districtName || hub.district?.districtName || "";
 
       const safeName = escapeHtml(hub.wellnessHubName || "");
-
       const safeCategory = escapeHtml(catInfo.name || "");
-
       const safeDistrict = escapeHtml(districtName);
-
       const safeAddress = escapeHtml(hub.address || "");
-
       const safeTel = escapeHtml(hub.telInformation || "");
-
       const safeDescription = escapeHtml(hub.wellnessHubDescription || "");
-
       const safeImage = escapeHtml(imageSource);
-
       const safeLicenseId = escapeHtml(licenseId);
 
       const popupHtml = `
         <div class="route-hub-popup">
-
           <div class="route-hub-popup__image">
             ${
               imageSource
@@ -1005,500 +797,231 @@ export default function RouteDetail() {
                     src="${safeImage}"
                     alt="${safeName}"
                     loading="lazy"
-                    onerror="
-                      this.style.display='none';
-                      this.nextElementSibling.style.display='flex';
-                    "
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
                   />
-
-                  <div
-                    class="route-hub-popup__image-fallback"
-                    style="
-                      display:none;
-                      --popup-category-color:${catInfo.color};
-                      --popup-category-background:${catInfo.color}18;
-                    "
-                  >
-                    <span class="route-hub-popup__image-fallback-icon">
-                      <i class="fa-solid ${catInfo.icon}"></i>
-                    </span>
-
-                    <span class="route-hub-popup__image-fallback-text">
-                      ${safeCategory}
-                    </span>
+                  <div class="route-hub-popup__image-fallback" style="display:none;--popup-category-color:${catInfo.color};--popup-category-background:${catInfo.color}18;">
+                    <span class="route-hub-popup__image-fallback-icon"><i class="fa-solid ${catInfo.icon}"></i></span>
+                    <span class="route-hub-popup__image-fallback-text">${safeCategory}</span>
                   </div>
                 `
                 : `
-                  <div
-                    class="route-hub-popup__image-fallback"
-                    style="
-                      display:flex;
-                      --popup-category-color:${catInfo.color};
-                      --popup-category-background:${catInfo.color}18;
-                    "
-                  >
-                    <span class="route-hub-popup__image-fallback-icon">
-                      <i class="fa-solid ${catInfo.icon}"></i>
-                    </span>
-
-                    <span class="route-hub-popup__image-fallback-text">
-                      ${safeCategory}
-                    </span>
+                  <div class="route-hub-popup__image-fallback" style="display:flex;--popup-category-color:${catInfo.color};--popup-category-background:${catInfo.color}18;">
+                    <span class="route-hub-popup__image-fallback-icon"><i class="fa-solid ${catInfo.icon}"></i></span>
+                    <span class="route-hub-popup__image-fallback-text">${safeCategory}</span>
                   </div>
                 `
             }
           </div>
-
           <div class="route-hub-popup__content">
-
             ${
               hasValue(catInfo.name)
                 ? `
-                  <div class="route-hub-popup__category">
-                    <span
-                      class="route-hub-popup__category-dot"
-                      style="background:${catInfo.color};"
-                    ></span>
-
-                    <span>
-                      ${safeCategory}
-                    </span>
-                  </div>
-                `
+              <div class="route-hub-popup__category">
+                <span class="route-hub-popup__category-dot" style="background:${catInfo.color};"></span>
+                <span>${safeCategory}</span>
+              </div>
+            `
                 : ""
             }
-
-            ${
-              hasValue(hub.wellnessHubName)
-                ? `
-                  <h3 class="route-hub-popup__title">
-                    ${safeName}
-                  </h3>
-                `
-                : ""
-            }
-
+            ${hasValue(hub.wellnessHubName) ? `<h3 class="route-hub-popup__title">${safeName}</h3>` : ""}
             ${
               hasValue(districtName) ||
               hasValue(hub.address) ||
               hasValue(hub.telInformation)
                 ? `
-                  <div class="route-hub-popup__meta">
-
-                    ${
-                      hasValue(districtName)
-                        ? `
-                          <div class="route-hub-popup__meta-row">
-                            <span class="route-hub-popup__meta-icon">
-                              <i class="fa-solid fa-location-dot"></i>
-                            </span>
-
-                            <span>
-                              อ. ${safeDistrict}
-                            </span>
-                          </div>
-                        `
-                        : ""
-                    }
-
-                    ${
-                      hasValue(hub.address)
-                        ? `
-                          <div
-                            class="
-                              route-hub-popup__meta-row
-                              route-hub-popup__meta-row--address
-                            "
-                          >
-                            <span class="route-hub-popup__meta-icon">
-                              <i class="fa-solid fa-map"></i>
-                            </span>
-
-                            <span>
-                              ${safeAddress}
-                            </span>
-                          </div>
-                        `
-                        : ""
-                    }
-
-                    ${
-                      hasValue(hub.telInformation)
-                        ? `
-                          <div class="route-hub-popup__meta-row">
-                            <span class="route-hub-popup__meta-icon">
-                              <i class="fa-solid fa-phone"></i>
-                            </span>
-
-                            <span>
-                              ${safeTel}
-                            </span>
-                          </div>
-                        `
-                        : ""
-                    }
-
+              <div class="route-hub-popup__meta">
+                ${
+                  hasValue(districtName)
+                    ? `
+                  <div class="route-hub-popup__meta-row">
+                    <span class="route-hub-popup__meta-icon"><i class="fa-solid fa-location-dot"></i></span>
+                    <span>อ. ${safeDistrict}</span>
                   </div>
                 `
-                : ""
-            }
-
-            ${
-              hasValue(hub.wellnessHubDescription)
-                ? `
-                  <p class="route-hub-popup__description">
-                    ${safeDescription}
-                  </p>
+                    : ""
+                }
+                ${
+                  hasValue(hub.address)
+                    ? `
+                  <div class="route-hub-popup__meta-row route-hub-popup__meta-row--address">
+                    <span class="route-hub-popup__meta-icon"><i class="fa-solid fa-map"></i></span>
+                    <span>${safeAddress}</span>
+                  </div>
                 `
+                    : ""
+                }
+                ${
+                  hasValue(hub.telInformation)
+                    ? `
+                  <div class="route-hub-popup__meta-row">
+                    <span class="route-hub-popup__meta-icon"><i class="fa-solid fa-phone"></i></span>
+                    <span>${safeTel}</span>
+                  </div>
+                `
+                    : ""
+                }
+              </div>
+            `
                 : ""
             }
-
+            ${hasValue(hub.wellnessHubDescription) ? `<p class="route-hub-popup__description">${safeDescription}</p>` : ""}
             ${
               hasValue(licenseId)
                 ? `
-                  <button
-                    type="button"
-                    class="route-hub-popup__button"
-                    data-license-id="${safeLicenseId}"
-                  >
-                    <span>
-                      ดูรายละเอียดเพิ่มเติม
-                    </span>
-
-                    <span
-                      class="route-hub-popup__button-arrow"
-                      aria-hidden="true"
-                    >
-                      →
-                    </span>
-                  </button>
-                `
+              <button type="button" class="route-hub-popup__button" data-license-id="${safeLicenseId}">
+                <span>ดูรายละเอียดเพิ่มเติม</span>
+                <span class="route-hub-popup__button-arrow" aria-hidden="true">→</span>
+              </button>
+            `
                 : ""
             }
-
           </div>
         </div>
       `;
 
       try {
-        const marker = L.marker([coords.lat, coords.lng], {
-          icon: customIcon,
-        });
-
+        const marker = L.marker([coords.lat, coords.lng], { icon: customIcon });
         marker.bindPopup(popupHtml, {
           closeButton: true,
-
-          /*
-           * ไม่ให้ Leaflet ขยับแผนที่เองแรงเกินไป
-           * เราจะจัดมุมกล้องเองใน handleFocusWellnessHub
-           */
           autoPan: false,
-
           maxWidth: 286,
           minWidth: 286,
-
           className: "route-hub-leaflet-popup",
         });
 
         marker.on("popupopen", (event) => {
-          if (mapRef.current !== map || !isMapReady(map, mapContainer)) {
-            return;
-          }
-
           const popupElement = event.popup?.getElement();
-
-          if (!popupElement) {
-            return;
-          }
-
-          const detailButton = popupElement.querySelector(
+          const detailButton = popupElement?.querySelector(
             ".route-hub-popup__button",
           );
-
-          if (!detailButton) {
-            return;
+          if (detailButton) {
+            detailButton.onclick = () => {
+              const selectedLicenseId =
+                detailButton.getAttribute("data-license-id");
+              if (selectedLicenseId)
+                navigate(`/wellness-hubs/${selectedLicenseId}`);
+            };
           }
-
-          detailButton.onclick = () => {
-            const selectedLicenseId =
-              detailButton.getAttribute("data-license-id");
-
-            if (!selectedLicenseId || String(selectedLicenseId).trim() === "") {
-              return;
-            }
-
-            navigate(`/wellness-hubs/${selectedLicenseId}`);
-          };
         });
 
         marker.addTo(hubsLayer);
-
         const markerKey = String(hub.licenseId || hub.wellnessHubId || "");
-
-        if (markerKey) {
-          hubMarkersRef.current.set(markerKey, marker);
-        }
+        if (markerKey) hubMarkersRef.current.set(markerKey, marker);
       } catch (err) {
-        console.warn(`ไม่สามารถปักหมุด ${hub.wellnessHubName || ""}:`, err);
+        console.warn("Marker bind error:", err);
       }
     });
   }, [visibleWellnessHubs, activeFilters, getCategoryInfo, navigate]);
 
   const handleToggleFilter = (catId) => {
-    setActiveFilters((prev) => ({
-      ...prev,
-      [catId]: !prev[catId],
-    }));
+    setActiveFilters((prev) => ({ ...prev, [catId]: !prev[catId] }));
   };
 
   const handleShowAllCategories = () => {
-    const nextFilters = availableCategories.reduce((acc, cat) => {
-      acc[cat.id] = true;
-      return acc;
-    }, {});
-
+    const nextFilters = availableCategories.reduce(
+      (acc, cat) => ({ ...acc, [cat.id]: true }),
+      {},
+    );
     setActiveFilters(nextFilters);
   };
 
   const handleHideAllCategories = () => {
-    const nextFilters = availableCategories.reduce((acc, cat) => {
-      acc[cat.id] = false;
-      return acc;
-    }, {});
-
+    const nextFilters = availableCategories.reduce(
+      (acc, cat) => ({ ...acc, [cat.id]: false }),
+      {},
+    );
     setActiveFilters(nextFilters);
   };
 
   const handleResetRouteView = () => {
     const map = mapRef.current;
     const bounds = routeBoundsRef.current;
-    const mapContainer = mapContainerRef.current;
-
-    if (
-      !map ||
-      !bounds ||
-      !bounds.isValid() ||
-      !mapContainer ||
-      !isMapReady(map, mapContainer)
-    ) {
-      return;
-    }
-
-    try {
-      map.stop();
-
-      map.fitBounds(bounds, {
-        padding: [50, 50],
-        animate: false,
-      });
-    } catch (err) {
-      console.warn("ไม่สามารถแสดงภาพรวมเส้นทางได้:", err);
-    }
+    if (!map || !bounds || !bounds.isValid()) return;
+    map.fitBounds(bounds, { padding: [50, 50], animate: false });
   };
 
   const handleFocusDistrict = (district) => {
     const map = mapRef.current;
     const coords = extractLatLng(district);
     const mapContainer = mapContainerRef.current;
+    if (!map || !coords || !mapContainer) return;
 
-    if (!map || !coords || !mapContainer || !isMapReady(map, mapContainer)) {
-      return;
-    }
-
-    try {
-      map.stop();
-
-      map.flyTo([coords.lat, coords.lng], 12, {
-        animate: true,
-        duration: 0.6,
-      });
-
-      if (mapContainer.isConnected) {
-        mapContainer.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }
-    } catch (err) {
-      console.warn("ไม่สามารถเลื่อนไปยังอำเภอที่เลือกได้:", err);
-    }
+    map.flyTo([coords.lat, coords.lng], 12, { animate: true, duration: 0.5 });
+    mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  /*
-   * การ์ดด้านขวา:
-   * - ไม่ Navigate
-   * - เลื่อนไป Map
-   * - Zoom ไป Marker
-   * - สร้างวง Highlight
-   * - เปิด Popup
-   */
   const handleFocusWellnessHub = (hub) => {
     const map = mapRef.current;
     const mapContainer = mapContainerRef.current;
-
-    if (!map || !mapContainer || !isMapReady(map, mapContainer)) {
-      return;
-    }
+    if (!map || !mapContainer) return;
 
     const coords = extractLatLng(hub);
+    if (!coords) return;
 
-    if (!coords) {
+    const catInfo = getCategoryInfo(hub);
+    const markerKey = String(hub.licenseId || hub.wellnessHubId || "");
+    const marker = hubMarkersRef.current.get(markerKey);
+
+    if (catInfo?.id && !activeFilters[catInfo.id]) {
+      setActiveFilters((cur) => ({ ...cur, [catInfo.id]: true }));
+      map.setView([coords.lat, coords.lng], 13, { animate: false });
+      mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
-    const catInfo = getCategoryInfo(hub);
+    map.setView([coords.lat, coords.lng], 13, { animate: false });
 
-    const markerKey = String(hub.licenseId || hub.wellnessHubId || "");
-
-    const marker = hubMarkersRef.current.get(markerKey);
-
-    try {
-      map.stop();
-
-      /*
-       * ถ้าหมวดนี้ถูกซ่อน
-       * เปิดหมวดกลับมาก่อน
-       */
-      if (catInfo?.id && !activeFilters[catInfo.id]) {
-        setActiveFilters((current) => ({
-          ...current,
-          [catInfo.id]: true,
-        }));
-
-        /*
-         * แค่พา Map มาแถวนี้
-         * ไม่ซูมเข้า 16
-         */
-        map.setView([coords.lat, coords.lng], 13, {
-          animate: false,
-        });
-
-        mapContainer.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-
-        return;
-      }
-
-      /*
-       * Zoom 13
-       * เพื่อให้เห็นพื้นที่รอบ ๆ + Marker + Popup
-       */
-      map.setView([coords.lat, coords.lng], 13, {
-        animate: false,
-      });
-
-      /*
-       * ลบ Highlight เดิม
-       */
-      if (hubHighlightRef.current) {
-        try {
-          map.removeLayer(hubHighlightRef.current);
-        } catch (highlightError) {
-          console.warn("ไม่สามารถลบ Highlight เดิมได้:", highlightError);
-        }
-
-        hubHighlightRef.current = null;
-      }
-
-      /*
-       * วงเน้นรอบหมุด
-       */
-      const highlight = L.circleMarker([coords.lat, coords.lng], {
-        radius: 25,
-        color: catInfo?.color || "#F28C28",
-        weight: 4,
-        opacity: 0.95,
-        fillColor: catInfo?.color || "#F28C28",
-        fillOpacity: 0.1,
-        interactive: false,
-        className: "route-detail-hub-highlight",
-      }).addTo(map);
-
-      hubHighlightRef.current = highlight;
-
-      /*
-       * เลื่อนหน้าให้ Map มาอยู่กลาง viewport
-       */
-      mapContainer.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-
-      if (!marker) {
-        return;
-      }
-
-      /*
-       * รอ scrollIntoView ก่อน
-       */
-      window.setTimeout(() => {
-        try {
-          /*
-           * เปิด Popup โดยไม่ให้ Leaflet auto-pan
-           */
-          marker.openPopup();
-
-          /*
-           * หลัง Popup render แล้ว
-           * เราจะจัดตำแหน่ง Marker ให้อยู่ช่วงล่างของ Map
-           *
-           * Popup อยู่เหนือ Marker
-           * จึงเหลือพื้นที่ด้านบนสำหรับ Popup
-           */
-          window.setTimeout(() => {
-            if (mapRef.current !== map || !isMapReady(map, mapContainer)) {
-              return;
-            }
-
-            const mapSize = map.getSize();
-
-            const markerPoint = map.latLngToContainerPoint([
-              coords.lat,
-              coords.lng,
-            ]);
-
-            /*
-             * ต้องการ Marker อยู่ประมาณ 72%
-             * ของความสูง Map
-             *
-             * เช่น Map สูง 500px
-             * Marker จะอยู่ราว y = 360
-             *
-             * ทำให้มีพื้นที่ด้านบนประมาณ 360px
-             * สำหรับ Popup
-             */
-            const targetPoint = L.point(mapSize.x * 0.52, mapSize.y * 0.72);
-
-            const offset = markerPoint.subtract(targetPoint);
-
-            map.panBy(offset, {
-              animate: true,
-              duration: 0.35,
-            });
-          }, 80);
-        } catch (popupError) {
-          console.warn("ไม่สามารถเปิด Popup ของสถานประกอบการได้:", popupError);
-        }
-      }, 320);
-    } catch (focusError) {
-      console.warn("ไม่สามารถไปยังสถานประกอบการที่เลือกได้:", focusError);
+    if (hubHighlightRef.current) {
+      try {
+        map.removeLayer(hubHighlightRef.current);
+      } catch {}
+      hubHighlightRef.current = null;
     }
+
+    const highlight = L.circleMarker([coords.lat, coords.lng], {
+      radius: 25,
+      color: catInfo?.color || "#F28C28",
+      weight: 4,
+      opacity: 0.95,
+      fillColor: catInfo?.color || "#F28C28",
+      fillOpacity: 0.1,
+      interactive: false,
+      className: "route-detail-hub-highlight",
+    }).addTo(map);
+
+    hubHighlightRef.current = highlight;
+    mapContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    if (!marker) return;
+
+    setTimeout(() => {
+      marker.openPopup();
+      setTimeout(() => {
+        if (!mapRef.current) return;
+        const mapSize = map.getSize();
+        const markerPoint = map.latLngToContainerPoint([
+          coords.lat,
+          coords.lng,
+        ]);
+
+        const targetPoint = L.point(
+          mapSize.x * 0.5,
+          Math.max(120, mapSize.y - 42),
+        );
+
+        const offset = markerPoint.subtract(targetPoint);
+        map.panBy(offset, { animate: true, duration: 0.35 });
+      }, 100);
+    }, 250);
   };
+
   if (loading) {
     return (
-      <main className="route-detail-page">
-        <div className="route-detail-container">
-          <section className="route-detail-state">
-            <div className="route-detail-spinner" />
-
-            <h1>กำลังโหลดรายละเอียดเส้นทาง</h1>
-
-            <p>ระบบกำลังเตรียมข้อมูลแผนที่ อำเภอ และสถานประกอบการ</p>
-          </section>
-        </div>
-      </main>
+      <LoadingState
+        fullPage
+        title="กำลังโหลดรายละเอียดเส้นทาง"
+        message="ระบบกำลังเตรียมข้อมูลแผนที่ อำเภอ และสถานประกอบการ"
+      />
     );
   }
 
@@ -1508,20 +1031,18 @@ export default function RouteDetail() {
         <div className="route-detail-container">
           <section className="route-detail-state">
             <CircleAlert />
-
             <h1>ไม่สามารถแสดงเส้นทางได้</h1>
-
             <p>{error || "ไม่พบข้อมูลเส้นทาง"}</p>
-
             <div className="route-detail-state__actions">
-              <button type="button" onClick={loadRouteDetail}>
+              <button
+                type="button"
+                onClick={() => loadRouteDetail(true)}
+              >
                 <RefreshCw />
                 ลองใหม่
               </button>
-
               <Link to="/">
-                <ArrowLeft />
-                กลับหน้าแรก
+                <ArrowLeft /> กลับหน้าแรก
               </Link>
             </div>
           </section>
@@ -1535,19 +1056,64 @@ export default function RouteDetail() {
       <header className="route-detail-hero">
         <div className="route-detail-container">
           <Link to="/" className="route-detail-back">
-            <ArrowLeft />
-            กลับหน้าแรก
+            <ArrowLeft /> กลับหน้าแรก
           </Link>
-
           <p className="route-detail-eyebrow">WELLNESS TOURISM ROUTE</p>
-
           <h1>{routeData.routeName}</h1>
-
           {routeData.routeDescription && (
             <p className="route-detail-hero__description">
               {routeData.routeDescription}
             </p>
           )}
+
+          {/* รายการ Categories ของ Route (กรอง EM ออก และใช้ชื่อจาก getCategoryStyle ให้เหมือนหน้า Home 100%) */}
+          {Array.isArray(routeData.categories) &&
+            routeData.categories.length > 0 && (
+              <div
+                className="route-detail-categories"
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                  marginTop: "16px",
+                  marginBottom: "8px",
+                }}
+              >
+                {routeData.categories
+                  .filter((category) => {
+                    const categoryId = String(category?.categoryId || "")
+                      .trim()
+                      .toUpperCase();
+                    return !categoryId.startsWith("EM");
+                  })
+                  .map((category, index) => {
+                    const categoryStyle = getCategoryStyle(category.categoryId);
+                    const displayName =
+                      categoryStyle?.name || category.categoryName || "อื่นๆ";
+                    const displayColor = categoryStyle?.color || "#64748B";
+
+                    return (
+                      <span
+                        key={category.categoryId || index}
+                        className="route-detail-category-badge"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "4px 12px",
+                          borderRadius: "9999px",
+                          fontSize: "13px",
+                          fontWeight: "500",
+                          backgroundColor: `${displayColor}15`,
+                          color: displayColor,
+                          border: `1px solid ${displayColor}30`,
+                        }}
+                      >
+                        {displayName}
+                      </span>
+                    );
+                  })}
+              </div>
+            )}
 
           <div className="route-detail-summary">
             {routeData.startDistrict && (
@@ -1555,10 +1121,8 @@ export default function RouteDetail() {
                 <div className="route-detail-summary__icon">
                   <Flag />
                 </div>
-
                 <div>
                   <span>อำเภอเริ่มต้น</span>
-
                   <strong>อ. {routeData.startDistrict}</strong>
                 </div>
               </article>
@@ -1569,10 +1133,8 @@ export default function RouteDetail() {
                 <div className="route-detail-summary__icon">
                   <MapPin />
                 </div>
-
                 <div>
                   <span>อำเภอปลายทาง</span>
-
                   <strong>อ. {routeData.endDistrict}</strong>
                 </div>
               </article>
@@ -1582,10 +1144,8 @@ export default function RouteDetail() {
               <div className="route-detail-summary__icon">
                 <Route />
               </div>
-
               <div>
                 <span>จำนวนอำเภอ</span>
-
                 <strong>
                   {routeData.districtCount || districts.length} อำเภอ
                 </strong>
@@ -1596,10 +1156,8 @@ export default function RouteDetail() {
               <div className="route-detail-summary__icon">
                 <Store />
               </div>
-
               <div>
                 <span>สถานประกอบการ</span>
-
                 <strong>
                   {routeData.wellnessHubCount || wellnessHubs.length} แห่ง
                 </strong>
@@ -1614,9 +1172,7 @@ export default function RouteDetail() {
           <div className="route-detail-heading">
             <div>
               <p>ROUTE MAP</p>
-
               <h2>แผนที่เส้นทาง</h2>
-
               <span>
                 หมุดหมายเลขแสดงลำดับอำเภอ และหมุดสีแสดงสถานประกอบการตามหมวดหมู่
               </span>
@@ -1635,26 +1191,21 @@ export default function RouteDetail() {
                           className="route-detail-map-action"
                           onClick={handleShowAllCategories}
                         >
-                          <Eye />
-                          แสดงทั้งหมด
+                          <Eye /> แสดงทั้งหมด
                         </button>
-
                         <button
                           type="button"
                           className="route-detail-map-action"
                           onClick={handleHideAllCategories}
                         >
-                          <EyeOff />
-                          ซ่อนทั้งหมด
+                          <EyeOff /> ซ่อนทั้งหมด
                         </button>
-
                         <button
                           type="button"
                           className="route-detail-map-action route-detail-map-action--primary"
                           onClick={handleResetRouteView}
                         >
-                          <Maximize2 />
-                          ดูเส้นทางทั้งหมด
+                          <Maximize2 /> ดูเส้นทางทั้งหมด
                         </button>
                       </div>
                     </div>
@@ -1662,16 +1213,12 @@ export default function RouteDetail() {
                     <div className="route-detail-filter-list">
                       {availableCategories.map((cat) => {
                         const isChecked = !!activeFilters[cat.id];
-
                         return (
                           <label
                             key={cat.id}
-                            className={`route-detail-filter-chip ${
-                              isChecked ? "active" : ""
-                            }`}
+                            className={`route-detail-filter-chip ${isChecked ? "active" : ""}`}
                             style={{
                               "--route-category-color": cat.color,
-
                               "--route-category-background": `${cat.color}15`,
                             }}
                           >
@@ -1679,11 +1226,8 @@ export default function RouteDetail() {
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => handleToggleFilter(cat.id)}
-                              style={{
-                                accentColor: cat.color,
-                              }}
+                              style={{ accentColor: cat.color }}
                             />
-
                             <span>{cat.name}</span>
                           </label>
                         );
@@ -1697,7 +1241,6 @@ export default function RouteDetail() {
                             <span className="route-detail-districts-title">
                               ลำดับอำเภอ
                             </span>
-
                             <span className="route-detail-districts-count">
                               {visibleDistricts.length}/{districts.length} อำเภอ
                             </span>
@@ -1705,15 +1248,10 @@ export default function RouteDetail() {
 
                           <button
                             type="button"
-                            className={`route-detail-district-edit ${
-                              isEditingDistricts ? "active" : ""
-                            }`}
-                            onClick={() =>
-                              setIsEditingDistricts((current) => !current)
-                            }
+                            className={`route-detail-district-edit ${isEditingDistricts ? "active" : ""}`}
+                            onClick={() => setIsEditingDistricts((c) => !c)}
                           >
                             <Pencil aria-hidden="true" />
-
                             <span>
                               {isEditingDistricts
                                 ? "เสร็จสิ้น"
@@ -1732,46 +1270,32 @@ export default function RouteDetail() {
                         <div
                           className="route-detail-districts-scroll"
                           role="list"
-                          aria-label="ลำดับอำเภอในเส้นทาง"
                         >
                           {districts.map((district, idx) => {
                             const order = district.orderNumber || idx + 1;
-
                             const name =
                               district.districtName ||
                               district.district?.districtName ||
                               "";
-
                             const districtKey = String(
                               district.districtId ?? `district-${idx}`,
                             );
-
                             const isDistrictVisible =
                               visibleDistrictIds.includes(districtKey);
 
                             return (
                               <div
-                                className={`route-detail-district-item ${
-                                  !isDistrictVisible
-                                    ? "route-detail-district-item--hidden"
-                                    : ""
-                                }`}
+                                className={`route-detail-district-item ${!isDistrictVisible ? "route-detail-district-item--hidden" : ""}`}
                                 key={`${district.districtId || idx}-${order}`}
                                 role="listitem"
                               >
                                 <div
-                                  className={`route-detail-district-chip-wrapper ${
-                                    isEditingDistricts
-                                      ? "route-detail-district-chip-wrapper--editing"
-                                      : ""
-                                  }`}
+                                  className={`route-detail-district-chip-wrapper ${isEditingDistricts ? "route-detail-district-chip-wrapper--editing" : ""}`}
                                 >
                                   {isEditingDistricts && (
                                     <label
                                       className="route-detail-district-toggle"
-                                      title={`${
-                                        isDistrictVisible ? "ซ่อน" : "แสดง"
-                                      } อ. ${name}`}
+                                      title={`${isDistrictVisible ? "ซ่อน" : "แสดง"} อ. ${name}`}
                                     >
                                       <input
                                         type="checkbox"
@@ -1783,7 +1307,6 @@ export default function RouteDetail() {
                                           )
                                         }
                                       />
-
                                       <span
                                         className="route-detail-district-checkbox"
                                         aria-hidden="true"
@@ -1801,7 +1324,6 @@ export default function RouteDetail() {
                                     <span className="route-detail-district-number">
                                       {order}
                                     </span>
-
                                     <span className="route-detail-district-name">
                                       อ. {name}
                                     </span>
@@ -1831,7 +1353,6 @@ export default function RouteDetail() {
 
                 <aside className="route-detail-legend">
                   <h3>คำอธิบายสัญลักษณ์</h3>
-
                   <div className="route-detail-legend__list">
                     <div className="route-detail-legend__item">
                       <span
@@ -1845,7 +1366,6 @@ export default function RouteDetail() {
                           display: "inline-block",
                         }}
                       />
-
                       <p>อำเภอตามลำดับเส้นทาง</p>
                     </div>
 
@@ -1860,7 +1380,6 @@ export default function RouteDetail() {
                             display: "inline-block",
                           }}
                         />
-
                         <p>{cat.name}</p>
                       </div>
                     ))}
@@ -1873,12 +1392,9 @@ export default function RouteDetail() {
               <div className="route-detail-explorer__places-header">
                 <div>
                   <p>WELLNESS PLACES</p>
-
                   <h2>สถานประกอบการในเส้นทาง</h2>
-
                   <span>เลือกสถานประกอบการเพื่อดูรายละเอียดเพิ่มเติม</span>
                 </div>
-
                 <span className="route-detail-explorer__places-count">
                   {visibleWellnessHubs.length} แห่ง
                 </span>
@@ -1890,7 +1406,6 @@ export default function RouteDetail() {
                   aria-hidden="true"
                 >
                   <span>เลื่อนดูรายการ</span>
-
                   <strong>↓</strong>
                 </div>
               )}
@@ -1900,7 +1415,6 @@ export default function RouteDetail() {
                   <div className="route-detail-hub-grid">
                     {visibleWellnessHubs.map((hub) => {
                       const catInfo = getCategoryInfo(hub);
-
                       return (
                         <article
                           key={hub.licenseId || hub.wellnessHubId}
@@ -1908,10 +1422,9 @@ export default function RouteDetail() {
                           role="button"
                           tabIndex={0}
                           onClick={() => handleFocusWellnessHub(hub)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
                               handleFocusWellnessHub(hub);
                             }
                           }}
@@ -1926,7 +1439,6 @@ export default function RouteDetail() {
                                 display: "inline-block",
                               }}
                             />
-
                             <p>{hub.categoryName || catInfo.name}</p>
                           </div>
 
@@ -1938,8 +1450,7 @@ export default function RouteDetail() {
 
                           {(hub.districtName || hub.district?.districtName) && (
                             <p className="route-detail-hub-card__location">
-                              <MapPin />
-                              อ.{" "}
+                              <MapPin /> อ.{" "}
                               {hub.districtName || hub.district?.districtName}
                             </p>
                           )}
@@ -1954,7 +1465,6 @@ export default function RouteDetail() {
                             <span className="route-detail-hub-card__focus-icon">
                               <MapPin aria-hidden="true" />
                             </span>
-
                             <span>ดูตำแหน่งบนแผนที่</span>
                           </div>
                         </article>
@@ -1964,9 +1474,7 @@ export default function RouteDetail() {
                 ) : (
                   <div className="route-detail-empty">
                     <Store />
-
                     <h3>ยังไม่มีสถานประกอบการ</h3>
-
                     <p>
                       ไม่พบสถานประกอบการที่ตรงกับอำเภอและหมวดหมู่ของเส้นทางนี้
                     </p>

@@ -1,6 +1,15 @@
 package com.example.wellness.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -28,11 +37,17 @@ public class AccountRequest {
 
     @Column(name = "tell_information", length = 10)
     private String tellInformation;
+    @Column(name = "username", nullable = false, length = 100)
+    private String username;
+
+    @Column(name = "password", nullable = false, length = 100)
+    private String password;
 
     // ============================
     // ข้อมูลสถานประกอบการ
     // ============================
-
+    @Column(name = "license_id")
+    private Integer licenseId;
     @Column(name = "wellness_hub_name", nullable = false, length = 255)
     private String wellnessHubName;
 
@@ -99,12 +114,5 @@ public class AccountRequest {
     @ManyToOne
     @JoinColumn(name = "district_id")
     private District district;
-
-    @ManyToOne
-    @JoinColumn(name = "license_id")
-    private WellnessHub wellnessHub;
-    @ManyToOne
-    @JoinColumn(name = "emergency_license_id")
-    private EmergencyService emergencyService;
 
 }

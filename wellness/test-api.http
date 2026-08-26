@@ -1,3 +1,0 @@
-### Get all wellness hubs
-GET http://localhost:8080/api/wellness-hubs
-

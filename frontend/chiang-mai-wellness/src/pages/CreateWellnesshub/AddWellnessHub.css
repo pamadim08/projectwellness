@@ -1,14 +1,18 @@
 /* การจัดโครงสร้างหน้าหลักแบบรวม Sidebar ตัวเดิม */
 .admin-layout {
   display: flex;
+  width: 100%;
   min-height: 100vh;
   background-color: #f4f6f9;
   font-family: "Sarabun", sans-serif;
+  box-sizing: border-box;
 }
 
 /* ส่วนแสดงผลขวาเนื้อหาหลัก */
 .main-content {
   flex: 1;
+  min-width: 0;
+  min-height: 100vh;
   padding: 30px;
   box-sizing: border-box;
 }

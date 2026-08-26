@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -628,6 +627,7 @@ public class HomeService {
                 putIfNotBlank(map, "telInformation", wellnessHub.getTelInformation());
                 putIfNotBlank(map, "googleMapsLink", wellnessHub.getGoogleMapsLink());
                 putIfNotBlank(map, "wellnessHubImg", wellnessHub.getWellnessHubImg());
+                putIfNotBlank(map, "wellnessHubGallery", wellnessHub.getWellnessHubGallery());
                 putIfNotBlank(map, "certificateType", wellnessHub.getCertificateType());
                 putIfNotBlank(map, "operatingHours", wellnessHub.getOperatingHours());
 
@@ -663,6 +663,7 @@ public class HomeService {
                 wellnessHub.setGoogleMapsLink(emergencyService.getGoogleMapsLink());
                 wellnessHub.setWellnessHubDescription(emergencyService.getWellnessHubDescription());
                 wellnessHub.setWellnessHubImg(emergencyService.getWellnessHubImg());
+                wellnessHub.setWellnessHubGallery(emergencyService.getWellnessHubGallery());
                 wellnessHub.setWellnessHubLatitude(emergencyService.getWellnessHubLatitude());
                 wellnessHub.setWellnessHubLongitude(emergencyService.getWellnessHubLongitude());
                 wellnessHub.setCertificateType(emergencyService.getCertificateType());

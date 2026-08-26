@@ -1,27 +1,18 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate, Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import {
-  faShieldHeart,
-  faCircleUser,
-  faChartPie,
-  faClipboardCheck,
-  faRoute,
-  faShop,
-  faNewspaper,
-  faRightFromBracket,
-  faCloudArrowUp,
+  faTrashCan,
   faPlus,
   faBold,
   faItalic,
   faUnderline,
-  faTrashCan,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./CreateOfficialArticle.css";
+import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 
 // กำหนดขนาดไฟล์สูงสุดเป็น 5MB ป้องกัน Base64 บวมจน Request พัง
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -249,45 +240,7 @@ function CreateOfficialArticle() {
   return (
     <div className="admin-layout">
       {/* Sidebar */}
-      <nav className="sidebar-menu">
-        <div className="sidebar-top">
-          <div className="sidebar-logo">
-            <FontAwesomeIcon icon={faShieldHeart} />
-            <span>Admin Panel</span>
-          </div>
-
-          <div className="user-profile-box">
-            <FontAwesomeIcon icon={faCircleUser} />
-            <div className="user-info">
-              <span className="user-label">ผู้ใช้งานปัจจุบัน:</span>
-              <span className="user-name">{adminName}</span>
-            </div>
-          </div>
-
-          <p className="menu-label">เมนูหลัก</p>
-          <Link className="menu-item" to="/admin/dashboard">
-            <FontAwesomeIcon icon={faChartPie} /> แผงควบคุมหลัก
-          </Link>
-          <Link className="menu-item" to="/admin/requests">
-            <FontAwesomeIcon icon={faClipboardCheck} /> ตรวจสอบคำขอสิทธิ์
-          </Link>
-
-          <p className="menu-label">การจัดการข้อมูล</p>
-          <Link className="menu-item" to="/listMainRoute">
-            <FontAwesomeIcon icon={faRoute} /> จัดการเส้นทางสุขภาพ
-          </Link>
-          <Link className="menu-item" to="/listWellnesshub">
-            <FontAwesomeIcon icon={faShop} /> จัดการสถานประกอบการ
-          </Link>
-          <Link className="menu-item active" to="/listOfficialArticle">
-            <FontAwesomeIcon icon={faNewspaper} /> จัดการบทความ
-          </Link>
-        </div>
-
-        <button className="btn-sidebar-logout" onClick={handleLogout}>
-          <FontAwesomeIcon icon={faRightFromBracket} /> ออกจากระบบ
-        </button>
-      </nav>
+      <AdminSidebar activeMenu="articles" />
 
       {/* Content */}
       <div className="main-content">

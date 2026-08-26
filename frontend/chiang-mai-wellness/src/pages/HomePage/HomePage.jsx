@@ -14,6 +14,10 @@ import "./HomePage.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
+// In-memory Cache ระหว่างการสลับหน้าใน Single Page App
+let homeRoutesCache = null;
+let homeArticlesCache = null;
+
 const HERO_SLIDES = [
   {
     id: 1,
@@ -129,16 +133,32 @@ export default function HomePage() {
   const [keyword, setKeyword] = useState("");
   const [searchError, setSearchError] = useState("");
 
-  const [routes, setRoutes] = useState([]);
-  const [articles, setArticles] = useState([]);
+  // อ่านค่าจาก Cache ทันทีในจังหวะ Init เพื่อไม่ให้ UI กระตุก/กะพริบ
+  const [routes, setRoutes] = useState(() =>
+    Array.isArray(homeRoutesCache) ? homeRoutesCache : []
+  );
+  const [articles, setArticles] = useState(() =>
+    Array.isArray(homeArticlesCache) ? homeArticlesCache : []
+  );
 
-  const [routesLoading, setRoutesLoading] = useState(true);
-  const [articlesLoading, setArticlesLoading] = useState(true);
+  const [routesLoading, setRoutesLoading] = useState(
+    !Array.isArray(homeRoutesCache)
+  );
+  const [articlesLoading, setArticlesLoading] = useState(
+    !Array.isArray(homeArticlesCache)
+  );
 
   const [routesError, setRoutesError] = useState("");
   const [articlesError, setArticlesError] = useState("");
 
-  const loadRoutes = useCallback(async (signal) => {
+  const loadRoutes = useCallback(async (signal, forceRefresh = false) => {
+    if (Array.isArray(homeRoutesCache) && !forceRefresh) {
+      setRoutes(homeRoutesCache);
+      setRoutesError("");
+      setRoutesLoading(false);
+      return;
+    }
+
     setRoutesLoading(true);
     setRoutesError("");
 
@@ -147,14 +167,15 @@ export default function HomePage() {
         `${API_BASE_URL}/home/recommended-routes`,
         {
           signal,
-          timeout: 10000,
-        },
+          timeout: 30000,
+        }
       );
 
       const routeList = Array.isArray(response.data)
         ? response.data.slice(0, 6)
         : [];
 
+      homeRoutesCache = routeList;
       setRoutes(routeList);
     } catch (error) {
       if (axios.isCancel(error) || signal?.aborted) {
@@ -162,14 +183,15 @@ export default function HomePage() {
       }
 
       console.error("โหลดเส้นทางแนะนำไม่สำเร็จ", error);
-
       setRoutes([]);
 
       setRoutesError(
         getErrorMessage(
           error,
-          "ไม่สามารถโหลดเส้นทางแนะนำได้ กรุณาลองใหม่อีกครั้ง",
-        ),
+          error.code === "ECONNABORTED"
+            ? "ระบบใช้เวลาโหลดเส้นทางนานกว่าปกติ กรุณาลองใหม่อีกครั้ง"
+            : "ไม่สามารถโหลดเส้นทางแนะนำได้ กรุณาลองใหม่อีกครั้ง"
+        )
       );
     } finally {
       if (!signal?.aborted) {
@@ -178,20 +200,31 @@ export default function HomePage() {
     }
   }, []);
 
-  const loadArticles = useCallback(async (signal) => {
+  const loadArticles = useCallback(async (signal, forceRefresh = false) => {
+    if (Array.isArray(homeArticlesCache) && !forceRefresh) {
+      setArticles(homeArticlesCache);
+      setArticlesError("");
+      setArticlesLoading(false);
+      return;
+    }
+
     setArticlesLoading(true);
     setArticlesError("");
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/home/latest-articles`, {
-        signal,
-        timeout: 10000,
-      });
+      const response = await axios.get(
+        `${API_BASE_URL}/home/latest-articles`,
+        {
+          signal,
+          timeout: 30000,
+        }
+      );
 
       const articleList = Array.isArray(response.data)
         ? response.data.slice(0, 6)
         : [];
 
+      homeArticlesCache = articleList;
       setArticles(articleList);
     } catch (error) {
       if (axios.isCancel(error) || signal?.aborted) {
@@ -199,14 +232,15 @@ export default function HomePage() {
       }
 
       console.error("โหลดบทความล่าสุดไม่สำเร็จ", error);
-
       setArticles([]);
 
       setArticlesError(
         getErrorMessage(
           error,
-          "ไม่สามารถโหลดบทความล่าสุดได้ กรุณาลองใหม่อีกครั้ง",
-        ),
+          error.code === "ECONNABORTED"
+            ? "ระบบใช้เวลาโหลดบทความนานกว่าปกติ กรุณาลองใหม่อีกครั้ง"
+            : "ไม่สามารถโหลดบทความล่าสุดได้ กรุณาลองใหม่อีกครั้ง"
+        )
       );
     } finally {
       if (!signal?.aborted) {
@@ -236,13 +270,6 @@ export default function HomePage() {
     return () => window.clearInterval(sliderTimer);
   }, [pauseSlider]);
 
-  const changeSlide = (direction) => {
-    setActiveSlide(
-      (currentSlide) =>
-        (currentSlide + direction + HERO_SLIDES.length) % HERO_SLIDES.length,
-    );
-  };
-
   const handleSearch = (event) => {
     event.preventDefault();
 
@@ -262,8 +289,8 @@ export default function HomePage() {
 
     navigate(
       `/search?q=${encodeURIComponent(
-        normalizedKeyword,
-      )}&type=${encodeURIComponent(searchType)}`,
+        normalizedKeyword
+      )}&type=${encodeURIComponent(searchType)}`
     );
   };
 
@@ -410,12 +437,10 @@ export default function HomePage() {
         className="homepage-section homepage-section--routes"
       >
         <div className="homepage-container">
-          {/* Recommended Routes Header */}
           <div className="homepage-section__header">
             <div>
               <div className="homepage-section__kicker">
                 <span className="homepage-section__kicker-bar" />
-
                 <span className="homepage-section__kicker-label">
                   Recommended Wellness Routes
                 </span>
@@ -435,7 +460,6 @@ export default function HomePage() {
               onClick={(event) => event.preventDefault()}
             >
               <span>ดูเส้นทางทั้งหมด</span>
-
               <ArrowRight aria-hidden="true" />
             </a>
           </div>
@@ -452,11 +476,8 @@ export default function HomePage() {
 
                   <div className="homepage-skeleton__content">
                     <div className="homepage-skeleton__line homepage-skeleton__line--label" />
-
                     <div className="homepage-skeleton__line homepage-skeleton__line--title" />
-
                     <div className="homepage-skeleton__line" />
-
                     <div className="homepage-skeleton__line homepage-skeleton__line--short" />
                   </div>
                 </div>
@@ -468,7 +489,10 @@ export default function HomePage() {
             <div className="homepage-state homepage-state--error" role="alert">
               <p>{routesError}</p>
 
-              <button type="button" onClick={() => loadRoutes()}>
+              <button
+                type="button"
+                onClick={() => loadRoutes(undefined, true)}
+              >
                 <RefreshCw />
                 ลองใหม่
               </button>
@@ -478,32 +502,26 @@ export default function HomePage() {
           {!routesLoading && !routesError && routes.length === 0 && (
             <div className="homepage-state">
               <MapPin className="homepage-state__icon" />
-
               <h3>ยังไม่มีเส้นทางแนะนำ</h3>
-
               <p>เมื่อผู้ดูแลเพิ่มเส้นทางแล้ว ข้อมูลจะแสดงในส่วนนี้</p>
             </div>
           )}
 
           {!routesLoading && !routesError && routes.length > 0 && (
             <div className="homepage-route-grid">
-              {routes.map((route, routeIndex) => {
+              {routes.map((route) => {
                 const routeId = route.routeId || route.id;
-
                 const routeName =
                   route.routeName || route.name || "เส้นทางสุขภาพ";
-
                 const routeDescription =
                   route.routeDescription ||
                   route.description ||
                   "ค้นพบประสบการณ์การท่องเที่ยวเชิงสุขภาพในเชียงใหม่";
-
                 const pinCount =
                   route.pinCount ||
                   route.wellnessHubCount ||
                   route.totalPins ||
                   0;
-
                 const routeImage =
                   route.img ||
                   route.image ||
@@ -526,9 +544,8 @@ export default function HomePage() {
                           className="homepage-route-card__image"
                           onError={(event) => {
                             event.currentTarget.style.display = "none";
-
                             event.currentTarget.parentElement?.classList.add(
-                              "homepage-route-card__visual--fallback",
+                              "homepage-route-card__visual--fallback"
                             );
                           }}
                         />
@@ -542,13 +559,10 @@ export default function HomePage() {
                           aria-hidden="true"
                         >
                           <span className="homepage-route-card__mockup-circle homepage-route-card__mockup-circle--one" />
-
                           <span className="homepage-route-card__mockup-circle homepage-route-card__mockup-circle--two" />
-
                           <div className="homepage-route-card__mockup-icon">
                             <Navigation />
                           </div>
-
                           <div className="homepage-route-card__mockup-path">
                             <span />
                             <span />
@@ -578,7 +592,6 @@ export default function HomePage() {
                           >
                             WELLNESS ROUTE
                           </p>
-
                           <span className="homepage-route-card__type">
                             เส้นทางท่องเที่ยวเชิงสุขภาพ
                           </span>
@@ -605,7 +618,7 @@ export default function HomePage() {
                               {route.categories
                                 .filter((category) => {
                                   const categoryId = String(
-                                    category?.categoryId || "",
+                                    category?.categoryId || ""
                                   )
                                     .trim()
                                     .toUpperCase();
@@ -618,9 +631,8 @@ export default function HomePage() {
 
                                   return (
                                     <span
-                                      key={`${
-                                        category.categoryId || "category"
-                                      }-${index}`}
+                                      key={`${category.categoryId || "category"
+                                        }-${index}`}
                                       className="homepage-card__category-chip"
                                       style={{
                                         color: categoryDisplay.color,
@@ -637,7 +649,6 @@ export default function HomePage() {
                                       >
                                         <span />
                                       </span>
-
                                       {categoryDisplay.name}
                                     </span>
                                   );
@@ -662,7 +673,6 @@ export default function HomePage() {
                             <span className="homepage-route-card__location-label">
                               พื้นที่ที่เดินทางผ่าน
                             </span>
-
                             <span className="homepage-route-card__location-value">
                               {route.districtsPassed}
                             </span>
@@ -676,7 +686,6 @@ export default function HomePage() {
                           className="homepage-route-card__link"
                         >
                           <span>ดูรายละเอียดเส้นทาง</span>
-
                           <ArrowRight />
                         </Link>
 
@@ -688,9 +697,7 @@ export default function HomePage() {
                           }}
                         >
                           <MapPin />
-
                           <strong>{pinCount}</strong>
-
                           <span>จุดแนะนำ</span>
                         </div>
                       </div>
@@ -709,12 +716,10 @@ export default function HomePage() {
         className="homepage-section homepage-section--articles"
       >
         <div className="homepage-container homepage-container--wide">
-          {/* Latest Articles Header */}
           <div className="homepage-section__header">
             <div>
               <div className="homepage-section__kicker">
                 <span className="homepage-section__kicker-bar" />
-
                 <span className="homepage-section__kicker-label">
                   Wellness Stories & Tips
                 </span>
@@ -734,7 +739,6 @@ export default function HomePage() {
               onClick={(event) => event.preventDefault()}
             >
               <span>ดูบทความทั้งหมด</span>
-
               <ArrowRight aria-hidden="true" />
             </a>
           </div>
@@ -751,9 +755,7 @@ export default function HomePage() {
 
                   <div className="homepage-skeleton__content">
                     <div className="homepage-skeleton__line homepage-skeleton__line--label" />
-
                     <div className="homepage-skeleton__line homepage-skeleton__line--title" />
-
                     <div className="homepage-skeleton__line" />
                   </div>
                 </div>
@@ -765,7 +767,10 @@ export default function HomePage() {
             <div className="homepage-state homepage-state--error" role="alert">
               <p>{articlesError}</p>
 
-              <button type="button" onClick={() => loadArticles()}>
+              <button
+                type="button"
+                onClick={() => loadArticles(undefined, true)}
+              >
                 <RefreshCw />
                 ลองใหม่
               </button>
@@ -775,9 +780,7 @@ export default function HomePage() {
           {!articlesLoading && !articlesError && articles.length === 0 && (
             <div className="homepage-state">
               <Newspaper className="homepage-state__icon" />
-
               <h3>ยังไม่มีบทความสุขภาพ</h3>
-
               <p>เมื่อมีบทความเผยแพร่แล้ว ข้อมูลจะแสดงในส่วนนี้</p>
             </div>
           )}
@@ -786,15 +789,11 @@ export default function HomePage() {
             <div className="homepage-article-grid">
               {articles.map((article) => {
                 const articleId = article.articleId;
-
                 const articleTitle = article.articleTitle || "บทความสุขภาพ";
-
                 const articleDescription = removeHtml(
-                  article.articleDetail || "",
+                  article.articleDetail || ""
                 );
-
                 const articleImage = article.img || "";
-
                 const publishedDate = article.publishDate;
 
                 return (
@@ -806,7 +805,7 @@ export default function HomePage() {
                           alt={articleTitle}
                           onError={(event) => {
                             event.currentTarget.classList.add(
-                              "homepage-article-card__image-hidden",
+                              "homepage-article-card__image-hidden"
                             );
                           }}
                         />
@@ -823,7 +822,6 @@ export default function HomePage() {
 
                         <p className="homepage-article-card__date">
                           <CalendarDays aria-hidden="true" />
-
                           {formatDate(publishedDate)}
                         </p>
                       </div>

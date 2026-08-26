@@ -1,27 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import {
-  faShieldHeart,
-  faCircleUser,
-  faChartPie,
-  faClipboardCheck,
-  faRoute,
-  faShop,
-  faNewspaper,
-  faRightFromBracket,
   faCheck,
   faXmark,
   faFilePdf,
   faMapMarkerAlt,
-  faArrowLeft,
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./ApproveAccountRequest.css";
+import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 
 // Helper Functions จัดฟอร์แมตข้อมูล
 
@@ -59,6 +50,20 @@ const formatOperatingHoursList = (hoursData) => {
       sunday: "วันอาทิตย์",
     };
 
+    const is24Hours = Object.keys(dayMap).every((dayKey) => {
+      const info = parsed[dayKey];
+      return (
+        info &&
+        info.active &&
+        info.open === "00:00" &&
+        (info.close === "23:59" || info.close === "24:00" || info.close === "00:00")
+      );
+    });
+
+    if (is24Hours) {
+      return ["เปิดให้บริการตลอด 24 ชั่วโมง (ทุกวัน)"];
+    }
+
     const activeDays = Object.entries(parsed)
       .filter(([_, info]) => info && info.active)
       .map(
@@ -81,6 +86,18 @@ const getImageUrl = (imgData) => {
   return `http://localhost:8080/uploads/${imgData}`;
 };
 
+// 4. แปลง Gallery JSON Array ป้องกัน JSON.parse error
+const parseGalleryImages = (galleryData) => {
+  if (!galleryData) return [];
+  if (Array.isArray(galleryData)) return galleryData;
+  try {
+    const parsed = JSON.parse(galleryData);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+};
+
 function ApproveAccountRequest() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -90,8 +107,6 @@ function ApproveAccountRequest() {
   const [showApprove, setShowApprove] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [reason, setReason] = useState("");
-
-  // 🌟 ป้องกันการกดซ้ำระหว่างส่งข้อมูล
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -109,11 +124,8 @@ function ApproveAccountRequest() {
     }
   };
 
-  // 🌟 ฟังก์ชันอนุมัติ
-  // ส่งสถานะกลับไปหน้า List เพื่ออัปเดตเฉพาะรายการเดิมโดยไม่โหลด List ใหม่
   const handleApprove = async () => {
     if (isSubmitting) return;
-
     setIsSubmitting(true);
 
     try {
@@ -139,8 +151,6 @@ function ApproveAccountRequest() {
     }
   };
 
-  // 🌟 ฟังก์ชันปฏิเสธ
-  // ส่งสถานะและเหตุผลกลับไปหน้า List เพื่อแสดงปุ่มดูเหตุผลโดยไม่โหลด List ใหม่
   const handleReject = async () => {
     if (!reason) {
       alert("กรุณาเลือกเหตุผลการไม่อนุมัติ");
@@ -148,7 +158,6 @@ function ApproveAccountRequest() {
     }
 
     if (isSubmitting) return;
-
     setIsSubmitting(true);
 
     try {
@@ -156,9 +165,7 @@ function ApproveAccountRequest() {
         `http://localhost:8080/api/account-requests/${id}/reject`,
         null,
         {
-          params: {
-            reason,
-          },
+          params: { reason },
         },
       );
 
@@ -216,7 +223,6 @@ function ApproveAccountRequest() {
     }
   };
 
-  // หน้ารอโหลดข้อมูลให้อยู่ตรงกลางจอ
   if (!request) {
     return (
       <div
@@ -247,70 +253,19 @@ function ApproveAccountRequest() {
   }
 
   const operatingHoursList = formatOperatingHoursList(request.operatingHours);
+  const galleryList = parseGalleryImages(request.wellnessHubGallery);
 
   return (
     <div className="admin-layout">
       {/* Sidebar */}
-      <nav className="sidebar-menu">
-        <div className="sidebar-top">
-          <div className="sidebar-logo">
-            <FontAwesomeIcon icon={faShieldHeart} />
-            <span>Admin Panel</span>
-          </div>
+      <AdminSidebar activeMenu="account-requests" />
 
-          <div className="user-profile-box">
-            <FontAwesomeIcon icon={faCircleUser} />
-            <div>
-              <span>ผู้ใช้งานปัจจุบัน:</span>
-              <br />
-              <b>{adminName}</b>
-            </div>
-          </div>
-
-          <p className="menu-label">เมนูหลัก</p>
-
-          <Link className="menu-item" to="/admin/dashboard">
-            <FontAwesomeIcon icon={faChartPie} />
-            แผงควบคุมหลัก
-          </Link>
-
-          <Link className="menu-item active">
-            <FontAwesomeIcon icon={faClipboardCheck} />
-            ตรวจสอบคำขอสิทธิ์
-          </Link>
-
-          <p className="menu-label">การจัดการข้อมูล</p>
-
-          <Link className="menu-item" to="/listMainRoute">
-            <FontAwesomeIcon icon={faRoute} />
-            จัดการเส้นทางสุขภาพ
-          </Link>
-
-          <Link className="menu-item" to="/listWellnesshub">
-            <FontAwesomeIcon icon={faShop} />
-            จัดการสถานประกอบการ
-          </Link>
-
-          <Link className="menu-item" to="/listOfficialArticle">
-            <FontAwesomeIcon icon={faNewspaper} />
-            จัดการบทความ
-          </Link>
-        </div>
-
-        <button className="btn-sidebar-logout" onClick={handleLogout}>
-          <FontAwesomeIcon icon={faRightFromBracket} />
-          ออกจากระบบ
-        </button>
-      </nav>
-
-      {/* Content */}
+      {/* Main Content */}
       <div className="main-content">
         <button
           className="back-btn"
           onClick={() => navigate("/listAccountRequest")}
-        >
-          <FontAwesomeIcon icon={faArrowLeft} /> กลับรายการคำร้อง
-        </button>
+        ></button>
 
         <div className="gov-header">
           <h2>พิจารณาคำร้องขอสิทธิ์</h2>
@@ -318,7 +273,36 @@ function ApproveAccountRequest() {
         </div>
 
         <div className="request-card">
+          {/* SECTION 1: ข้อมูลสถานประกอบการ */}
           <h3>ข้อมูลสถานประกอบการ</h3>
+
+          {request.wellnessHubImg && (
+            <div
+              className="cover-img-container"
+              style={{
+                width: "100%",
+                height: "260px",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+                overflow: "hidden",
+                marginBottom: "20px",
+                backgroundColor: "#f8fafc",
+              }}
+            >
+              <img
+                src={getImageUrl(request.wellnessHubImg)}
+                alt="Wellness Hub Cover"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
+            </div>
+          )}
 
           <div className="detail-grid">
             <div>
@@ -332,13 +316,8 @@ function ApproveAccountRequest() {
             </div>
 
             <div>
-              <label>Email</label>
-              <p>{request.userEmail || "-"}</p>
-            </div>
-
-            <div>
-              <label>เบอร์โทรศัพท์</label>
-              <p>{request.tellInformation || "-"}</p>
+              <label>เลขใบอนุญาตประกอบกิจการ</label>
+              <p>{request.licenseId || "-"}</p>
             </div>
 
             <div>
@@ -346,7 +325,17 @@ function ApproveAccountRequest() {
               <p>{formatCertificateType(request.certificateType)}</p>
             </div>
 
-            <div style={{ gridRow: "span 3" }}>
+            <div>
+              <label>เบอร์โทรศัพท์สถานประกอบการ</label>
+              <p>{request.tellInformation || "-"}</p>
+            </div>
+
+            <div>
+              <label>Email สถานประกอบการ</label>
+              <p>{request.userEmail || "-"}</p>
+            </div>
+
+            <div style={{ gridColumn: "1 / -1" }}>
               <label>เวลาทำการ</label>
               <div
                 style={{
@@ -360,13 +349,12 @@ function ApproveAccountRequest() {
                   <div
                     key={idx}
                     style={{
-                      padding: "10px",
+                      padding: "8px 12px",
                       backgroundColor: "#fafafa",
-                      border: "1px solid #999",
-                      borderRadius: "0px",
-                      color: "#333",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "4px",
+                      color: "#334155",
                       fontSize: "14px",
-                      boxSizing: "border-box",
                     }}
                   >
                     {hourText}
@@ -374,34 +362,90 @@ function ApproveAccountRequest() {
                 ))}
               </div>
             </div>
+          </div>
 
-            {request.wellnessHubImg && (
-              <div>
-                <label>รูปภาพสถานประกอบการ</label>
-                <div
-                  className="img-container"
-                  style={{
-                    marginTop: "6px",
-                    width: "100%",
-                    height: "220px",
-                    border: "1px solid #999",
-                  }}
-                >
-                  <img
-                    src={getImageUrl(request.wellnessHubImg)}
-                    alt="Wellness Hub Preview"
+          <hr
+            style={{
+              margin: "24px 0",
+              border: "0",
+              borderTop: "1px solid #e2e8f0",
+            }}
+          />
+
+          {/* SECTION 2: เกี่ยวกับสถานประกอบการ */}
+          <h3>เกี่ยวกับสถานประกอบการ</h3>
+          <p
+            className="description-text"
+            style={{ lineHeight: "1.6", color: "#475569" }}
+          >
+            {request.wellnessHubDescription || "ไม่มีรายละเอียดเพิ่มเติม"}
+          </p>
+
+          <hr
+            style={{
+              margin: "24px 0",
+              border: "0",
+              borderTop: "1px solid #e2e8f0",
+            }}
+          />
+
+          {/* SECTION 3: รูปภาพบรรยากาศ (Gallery) */}
+          {galleryList.length > 0 && (
+            <div className="gallery-section">
+              <h3>รูปภาพบรรยากาศ</h3>
+              <div
+                className="gallery-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                  gap: "12px",
+                  marginTop: "12px",
+                }}
+              >
+                {galleryList.map((img, index) => (
+                  <div
+                    key={index}
                     style={{
                       width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
+                      height: "140px",
+                      borderRadius: "4px",
+                      overflow: "hidden",
+                      border: "1px solid #e2e8f0",
+                      backgroundColor: "#f8fafc",
                     }}
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                    }}
-                  />
-                </div>
+                  >
+                    <img
+                      src={getImageUrl(img)}
+                      alt={`gallery-${index}`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  </div>
+                ))}
               </div>
-            )}
+              <hr
+                style={{
+                  margin: "24px 0",
+                  border: "0",
+                  borderTop: "1px solid #e2e8f0",
+                }}
+              />
+            </div>
+          )}
+
+          {/* SECTION 4: ตำแหน่งที่ตั้ง */}
+          <h3>ตำแหน่งที่ตั้ง</h3>
+          <div className="detail-grid" style={{ marginBottom: "12px" }}>
+            <div>
+              <label>อำเภอ / เขต</label>
+              <p>{request.district?.districtName || "-"}</p>
+            </div>
 
             <div>
               <label>แผนที่สถานที่ตั้ง</label>
@@ -418,12 +462,11 @@ function ApproveAccountRequest() {
                       padding: "8px 16px",
                       backgroundColor: "#2563eb",
                       color: "#ffffff",
-                      borderRadius: "3px",
+                      borderRadius: "4px",
                       textDecoration: "none",
                       fontWeight: "bold",
                       fontSize: "13px",
                       boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                      transition: "background-color 0.2s",
                     }}
                   >
                     <FontAwesomeIcon icon={faMapMarkerAlt} /> เปิดดูแผนที่บน
@@ -434,11 +477,6 @@ function ApproveAccountRequest() {
                 )}
               </div>
             </div>
-
-            <div>
-              <label>อำเภอ / เขต</label>
-              <p>{request.district?.districtName || "-"}</p>
-            </div>
           </div>
 
           <div className="full-width-detail">
@@ -446,11 +484,52 @@ function ApproveAccountRequest() {
             <p className="address-text">{request.address || "-"}</p>
           </div>
 
-          <h3 style={{ marginTop: "20px" }}>รายละเอียดเพิ่มเติม</h3>
-          <p className="description-text">
-            {request.wellnessHubDescription || "ไม่มีรายละเอียดเพิ่มเติม"}
-          </p>
+          <hr
+            style={{
+              margin: "24px 0",
+              border: "0",
+              borderTop: "1px solid #e2e8f0",
+            }}
+          />
 
+          {/* SECTION 5: ข้อมูลผู้ยื่นคำขอ */}
+          <h3>ข้อมูลผู้ยื่นคำขอ</h3>
+          <div className="detail-grid">
+            <div>
+              <label>ชื่อผู้ยื่นคำขอ</label>
+              <p>{request.requesterName || "-"}</p>
+            </div>
+
+            <div>
+              <label>Email ผู้ยื่นคำขอ</label>
+              <p>{request.userEmail || "-"}</p>
+            </div>
+
+            <div>
+              <label>Username</label>
+              <p>{request.username || "-"}</p>
+            </div>
+
+            <div>
+              <label>เบอร์โทรศัพท์</label>
+              <p>{request.tellInformation || "-"}</p>
+            </div>
+
+            <div>
+              <label>ช่องทางติดต่อเพิ่มเติม</label>
+              <p>{request.contactInformation || "-"}</p>
+            </div>
+          </div>
+
+          <hr
+            style={{
+              margin: "24px 0",
+              border: "0",
+              borderTop: "1px solid #e2e8f0",
+            }}
+          />
+
+          {/* SECTION 6: เอกสารประกอบ */}
           <h3>เอกสารประกอบ</h3>
           <div
             className="pdf-box"
@@ -498,7 +577,8 @@ function ApproveAccountRequest() {
             </button>
           </div>
 
-          <div className="action-area" style={{ marginTop: "25px" }}>
+          {/* Action Buttons */}
+          <div className="action-area" style={{ marginTop: "30px" }}>
             <button
               className="approve-btn"
               onClick={() => setShowApprove(true)}
@@ -523,8 +603,11 @@ function ApproveAccountRequest() {
         <div className="popup-bg">
           <div className="popup">
             <h3>ยืนยันการอนุมัติสิทธิ์?</h3>
-            <p>ระบบจะสร้างบัญชีผู้ใช้งานให้อัตโนมัติ</p>
-            <p>Username และ Password จะถูกส่งไปยัง Email ของสถานประกอบการ</p>
+            <p>
+              ระบบจะอนุมัติคำร้องและสร้างบัญชีผู้ใช้งาน  <p>สำหรับสถานประกอบการนี้</p>
+            </p>
+
+            <p>กรุณาตรวจสอบข้อมูลก่อนดำเนินการ</p>
 
             <div className="popup-buttons">
               <button

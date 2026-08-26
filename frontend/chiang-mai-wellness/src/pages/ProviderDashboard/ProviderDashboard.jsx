@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
-
+import LoadingState from "../../Components/LoadingState/LoadingState";
 import "./ProviderDashboard.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
@@ -173,27 +173,96 @@ function parseOperatingHours(value) {
   return defaultHours;
 }
 
+function checkIs24Hours(hours) {
+  if (!hours || typeof hours !== "object") return false;
+  return DAYS.every((day) => {
+    const d = hours[day.key];
+    return (
+      d &&
+      Boolean(d.active) &&
+      d.open === "00:00" &&
+      (d.close === "23:59" || d.close === "24:00" || d.close === "00:00")
+    );
+  });
+}
+
 function normalizeImageSource(value) {
   if (!hasValue(value)) {
     return "";
   }
 
-  const normalizedValue = String(value).trim();
+  let normalizedValue = value;
+
+  if (typeof normalizedValue === "string") {
+    const trimmedValue = normalizedValue.trim();
+
+    try {
+      const parsedValue = JSON.parse(trimmedValue);
+
+      normalizedValue = Array.isArray(parsedValue)
+        ? parsedValue[0] || ""
+        : trimmedValue;
+    } catch (error) {
+      normalizedValue = trimmedValue;
+    }
+  }
+
+  if (Array.isArray(normalizedValue)) {
+    normalizedValue = normalizedValue[0] || "";
+  }
+
+  if (!hasValue(normalizedValue)) return "";
+
+  const imageSource = String(normalizedValue).trim();
 
   if (
-    normalizedValue.startsWith("data:image/") ||
-    normalizedValue.startsWith("http://") ||
-    normalizedValue.startsWith("https://") ||
-    normalizedValue.startsWith("blob:")
+    imageSource.startsWith("data:image/") ||
+    imageSource.startsWith("http://") ||
+    imageSource.startsWith("https://") ||
+    imageSource.startsWith("blob:")
   ) {
-    return normalizedValue;
+    return imageSource;
   }
 
-  if (/^[A-Za-z0-9+/=\s]+$/.test(normalizedValue)) {
-    return `data:image/jpeg;base64,${normalizedValue}`;
+  if (/^[A-Za-z0-9+/=\s]+$/.test(imageSource) && imageSource.length > 100) {
+    return `data:image/jpeg;base64,${imageSource}`;
   }
 
-  return `${API_BASE_URL.replace("/api", "")}/uploads/${normalizedValue}`;
+  if (!imageSource.includes("/") && !imageSource.includes("\\")) {
+    return `${API_BASE_URL.replace("/api", "")}/uploads/${imageSource}`;
+  }
+
+  return imageSource;
+}
+
+function normalizeGalleryImages(galleryValue) {
+  if (!hasValue(galleryValue)) return [];
+
+  let parsed = galleryValue;
+
+  if (typeof galleryValue === "string") {
+    const trimmed = galleryValue.trim();
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (e) {
+      if (trimmed.includes(",")) {
+        parsed = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+      } else {
+        parsed = [trimmed];
+      }
+    }
+  }
+
+  if (!Array.isArray(parsed)) {
+    parsed = [parsed];
+  }
+
+  return parsed
+    .map((item) => {
+      if (!item) return "";
+      return normalizeImageSource(item);
+    })
+    .filter((src) => hasValue(src));
 }
 
 function readFileAsDataUrl(file) {
@@ -278,6 +347,7 @@ export default function ProviderDashboard() {
     wellnessHubGallery: [],
   });
 
+  const [is24Hours, setIs24Hours] = useState(false);
   const [operatingHours, setOperatingHours] = useState(
     createEmptyOperatingHours(),
   );
@@ -395,19 +465,8 @@ export default function ProviderDashboard() {
   }, [clearProviderSession, navigate]);
 
   const mapHubToForm = useCallback((hubData) => {
-    let gallery = [];
-    try {
-      if (hubData.wellnessHubGallery) {
-        if (Array.isArray(hubData.wellnessHubGallery)) {
-          gallery = hubData.wellnessHubGallery;
-        } else {
-          const parsed = JSON.parse(String(hubData.wellnessHubGallery));
-          if (Array.isArray(parsed)) gallery = parsed;
-        }
-      }
-    } catch (err) {
-      gallery = [];
-    }
+    const gallery = normalizeGalleryImages(hubData.wellnessHubGallery);
+    const mainImg = normalizeImageSource(hubData.wellnessHubImg);
 
     setFormData({
       wellnessHubName: hubData.wellnessHubName || "",
@@ -434,13 +493,15 @@ export default function ProviderDashboard() {
       wellnessHubLongitude:
         hubData.wellnessHubLongitude ?? hubData.longitude ?? "",
 
-      wellnessHubImg: hubData.wellnessHubImg || "",
+      wellnessHubImg: mainImg,
       wellnessHubGallery: gallery,
     });
 
-    setOperatingHours(parseOperatingHours(hubData.operatingHours));
+    const parsedHours = parseOperatingHours(hubData.operatingHours);
+    setOperatingHours(parsedHours);
+    setIs24Hours(checkIs24Hours(parsedHours));
 
-    setImagePreview(normalizeImageSource(hubData.wellnessHubImg));
+    setImagePreview(mainImg);
 
     setImageFileName("");
   }, []);
@@ -507,6 +568,27 @@ export default function ProviderDashboard() {
     setFormErrors((previousErrors) => ({
       ...previousErrors,
       [name]: "",
+    }));
+  };
+
+  const handle24HoursToggle = (enabled) => {
+    setIs24Hours(enabled);
+    if (enabled) {
+      const all24Hours = DAYS.reduce((result, day) => {
+        result[day.key] = {
+          active: true,
+          open: "00:00",
+          close: "23:59",
+        };
+        return result;
+      }, {});
+      setOperatingHours(all24Hours);
+    } else {
+      setOperatingHours(createEmptyOperatingHours());
+    }
+    setFormErrors((previousErrors) => ({
+      ...previousErrors,
+      operatingHours: "",
     }));
   };
 
@@ -767,23 +849,25 @@ export default function ProviderDashboard() {
       errors.wellnessHubLongitude = "ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180";
     }
 
-    DAYS.forEach((day) => {
-      const detail = operatingHours[day.key];
+    if (!is24Hours) {
+      DAYS.forEach((day) => {
+        const detail = operatingHours[day.key];
 
-      if (!detail.active) {
-        return;
-      }
+        if (!detail.active) {
+          return;
+        }
 
-      if (!detail.open || !detail.close) {
-        errors.operatingHours = `กรุณาระบุเวลาเปิดและเวลาปิดของ${day.label}`;
+        if (!detail.open || !detail.close) {
+          errors.operatingHours = `กรุณาระบุเวลาเปิดและเวลาปิดของ${day.label}`;
 
-        return;
-      }
+          return;
+        }
 
-      if (detail.open >= detail.close) {
-        errors.operatingHours = `เวลาเปิดของ${day.label}ต้องน้อยกว่าเวลาปิด`;
-      }
-    });
+        if (detail.open >= detail.close) {
+          errors.operatingHours = `เวลาเปิดของ${day.label}ต้องน้อยกว่าเวลาปิด`;
+        }
+      });
+    }
 
     setFormErrors(errors);
 
@@ -916,15 +1000,11 @@ export default function ProviderDashboard() {
 
   if (loading) {
     return (
-      <main className="provider-dashboard">
-        <section className="provider-dashboard-state">
-          <LoaderCircle className="provider-dashboard-spinner" />
-
-          <h1>กำลังโหลดข้อมูล</h1>
-
-          <p>ระบบกำลังเตรียมข้อมูลสถานประกอบการของคุณ</p>
-        </section>
-      </main>
+      <LoadingState
+        fullPage
+        title="กำลังโหลดข้อมูลสถานประกอบการ"
+        message="ระบบกำลังเตรียมข้อมูลสถานประกอบการของคุณ กรุณารอสักครู่"
+      />
     );
   }
 
@@ -1546,71 +1626,106 @@ export default function ProviderDashboard() {
 
                     <div>
                       <h3>วันและเวลาให้บริการ</h3>
-                      <p>เปิดใช้งานเฉพาะวันที่สถานประกอบการเปิดจริง</p>
+                      <p>
+                        กำหนดเวลาเปิดให้บริการของสถานประกอบการ หรือเปิดบริการ 24
+                        ชั่วโมง
+                      </p>
                     </div>
                   </div>
 
-                  <div className="provider-dashboard-hours">
-                    <div className="provider-dashboard-hours__header">
-                      <span>วัน</span>
-                      <span>เปิดบริการ</span>
-                      <span>เวลาเปิด</span>
-                      <span>เวลาปิด</span>
+                  {/* 24 Hours Toggle Banner */}
+                  <div className="provider-dashboard-24hours-toggle">
+                    <div className="provider-dashboard-24hours-info">
+                      <span className="provider-dashboard-24hours-title">
+                        <Clock3 size={18} /> เปิดให้บริการตลอด 24 ชั่วโมง (ทุกวัน)
+                      </span>
+                      <p className="provider-dashboard-24hours-desc">
+                        สำหรับสถานพยาบาล โรงพยาบาล หรือหน่วยบริการกู้ภัยฉุกเฉิน
+                      </p>
                     </div>
+                    <label
+                      className="provider-dashboard-switch"
+                      htmlFor="provider-toggle-24hours"
+                    >
+                      <input
+                        id="provider-toggle-24hours"
+                        type="checkbox"
+                        checked={is24Hours}
+                        onChange={(e) => handle24HoursToggle(e.target.checked)}
+                      />
+                      <span />
+                    </label>
+                  </div>
 
-                    {DAYS.map((day) => {
-                      const detail = operatingHours[day.key];
+                  {!is24Hours ? (
+                    <div className="provider-dashboard-hours">
+                      <div className="provider-dashboard-hours__header">
+                        <span>วัน</span>
+                        <span>เปิดบริการ</span>
+                        <span>เวลาเปิด</span>
+                        <span>เวลาปิด</span>
+                      </div>
 
-                      return (
-                        <div
-                          key={day.key}
-                          className={
-                            detail.active
-                              ? "provider-dashboard-hours__row provider-dashboard-hours__row--active"
-                              : "provider-dashboard-hours__row"
-                          }
-                        >
-                          <strong>{day.label}</strong>
+                      {DAYS.map((day) => {
+                        const detail = operatingHours[day.key];
 
-                          <label className="provider-dashboard-switch">
+                        return (
+                          <div
+                            key={day.key}
+                            className={
+                              detail.active
+                                ? "provider-dashboard-hours__row provider-dashboard-hours__row--active"
+                                : "provider-dashboard-hours__row"
+                            }
+                          >
+                            <strong>{day.label}</strong>
+
+                            <label className="provider-dashboard-switch">
+                              <input
+                                type="checkbox"
+                                checked={detail.active}
+                                onChange={() => handleDayToggle(day.key)}
+                              />
+
+                              <span />
+                            </label>
+
                             <input
-                              type="checkbox"
-                              checked={detail.active}
-                              onChange={() => handleDayToggle(day.key)}
+                              type="time"
+                              value={detail.open}
+                              disabled={!detail.active}
+                              onChange={(event) =>
+                                handleTimeChange(
+                                  day.key,
+                                  "open",
+                                  event.target.value,
+                                )
+                              }
                             />
 
-                            <span />
-                          </label>
-
-                          <input
-                            type="time"
-                            value={detail.open}
-                            disabled={!detail.active}
-                            onChange={(event) =>
-                              handleTimeChange(
-                                day.key,
-                                "open",
-                                event.target.value,
-                              )
-                            }
-                          />
-
-                          <input
-                            type="time"
-                            value={detail.close}
-                            disabled={!detail.active}
-                            onChange={(event) =>
-                              handleTimeChange(
-                                day.key,
-                                "close",
-                                event.target.value,
-                              )
-                            }
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
+                            <input
+                              type="time"
+                              value={detail.close}
+                              disabled={!detail.active}
+                              onChange={(event) =>
+                                handleTimeChange(
+                                  day.key,
+                                  "close",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="provider-dashboard-24hours-badge">
+                      <span>
+                        ✓ เปิดให้บริการตลอด 24 ชั่วโมงทุกวัน (จันทร์ - อาทิตย์)
+                      </span>
+                    </div>
+                  )}
 
                   {formErrors.operatingHours && (
                     <small className="provider-dashboard-error">
@@ -1880,7 +1995,11 @@ export default function ProviderDashboard() {
                     </div>
                   </div>
 
-                  {activeOperatingDays.length > 0 ? (
+                  {checkIs24Hours(operatingHours) ? (
+                    <div className="provider-dashboard-24hours-badge">
+                      <span>✓ เปิดให้บริการตลอด 24 ชั่วโมงทุกวัน</span>
+                    </div>
+                  ) : activeOperatingDays.length > 0 ? (
                     <div className="provider-dashboard-hours-display">
                       {activeOperatingDays.map((day) => {
                         const detail = operatingHours[day.key];
@@ -1920,15 +2039,53 @@ export default function ProviderDashboard() {
                     {imagePreview ? (
                       <img
                         src={imagePreview}
-                        alt={hub.wellnessHubName || "สถานประกอบการ"}
+                        alt={hub?.wellnessHubName || "สถานประกอบการ"}
                       />
                     ) : (
                       <div className="provider-dashboard-image-empty">
                         <ImageIcon />
-                        <strong>ยังไม่มีรูปภาพ</strong>
+                        <strong>ยังไม่มีรูปภาพหลัก</strong>
                       </div>
                     )}
                   </div>
+                </section>
+
+                <section className="provider-dashboard-view-section">
+                  <div className="provider-dashboard-view-section__heading">
+                    <ImageIcon />
+
+                    <div>
+                      <h3>ภาพบรรยากาศ / ภาพภายใน</h3>
+                      <p>
+                        รูปภาพบรรยากาศที่กำลังเผยแพร่ (
+                        {Array.isArray(formData.wellnessHubGallery)
+                          ? formData.wellnessHubGallery.length
+                          : 0}{" "}
+                        รูป)
+                      </p>
+                    </div>
+                  </div>
+
+                  {Array.isArray(formData.wellnessHubGallery) &&
+                  formData.wellnessHubGallery.length > 0 ? (
+                    <div className="provider-dashboard-gallery-grid">
+                      {formData.wellnessHubGallery.map((src, idx) => (
+                        <div
+                          className="provider-dashboard-gallery-item"
+                          key={idx}
+                        >
+                          <img
+                            src={normalizeImageSource(src)}
+                            alt={`Gallery ${idx + 1}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="provider-dashboard-empty-value">
+                      ยังไม่มีรูปภาพบรรยากาศเพิ่มเติม
+                    </div>
+                  )}
                 </section>
               </div>
             )}

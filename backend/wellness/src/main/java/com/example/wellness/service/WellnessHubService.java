@@ -19,27 +19,35 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
 public class WellnessHubService {
 
-    @Autowired
-    private WellnessHubRepository wellnessHubRepository;
+    private final WellnessHubRepository wellnessHubRepository;
+    private final EmergencyServiceRepository emergencyServiceRepository;
+    private final AccountRequestRepository accountRequestRepository;
+    private final CategoryRepository categoryRepository;
+    private final DistrictRepository districtRepository;
 
-    @Autowired
-    private EmergencyServiceRepository emergencyServiceRepository;
-
-    @Autowired
-    private AccountRequestRepository accountRequestRepository;
-
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
-    private DistrictRepository districtRepository;
+    public WellnessHubService(
+            WellnessHubRepository wellnessHubRepository,
+            EmergencyServiceRepository emergencyServiceRepository,
+            AccountRequestRepository accountRequestRepository,
+            CategoryRepository categoryRepository,
+            DistrictRepository districtRepository) {
+        this.wellnessHubRepository = wellnessHubRepository;
+        this.emergencyServiceRepository = emergencyServiceRepository;
+        this.accountRequestRepository = accountRequestRepository;
+        this.categoryRepository = categoryRepository;
+        this.districtRepository = districtRepository;
+    }
 
     private static final Set<String> EMERGENCY_CATEGORY_IDS = Set.of("EM01", "EM02");
 
@@ -50,7 +58,33 @@ public class WellnessHubService {
                         category.getCategoryId().toUpperCase());
     }
 
-    public List<WellnessHub> getAllHubs() {
+    private List<WellnessHub> sortWellnessHubList(List<WellnessHub> list) {
+        if (list == null) {
+            return new ArrayList<>();
+        }
+
+        return list.stream().sorted((a, b) -> {
+            LocalDateTime timeA = a.getUpdatedAt() != null ? a.getUpdatedAt() : a.getCreatedAt();
+            LocalDateTime timeB = b.getUpdatedAt() != null ? b.getUpdatedAt() : b.getCreatedAt();
+
+            if (timeA != null && timeB != null) {
+                int cmp = timeB.compareTo(timeA);
+                if (cmp != 0) {
+                    return cmp;
+                }
+            } else if (timeA == null && timeB != null) {
+                return 1;
+            } else if (timeA != null && timeB == null) {
+                return -1;
+            }
+
+            int idA = a.getLicenseId() != null ? a.getLicenseId() : 0;
+            int idB = b.getLicenseId() != null ? b.getLicenseId() : 0;
+            return Integer.compare(idB, idA);
+        }).toList();
+    }
+
+    public List<WellnessHub> listWellnessHub() {
         List<WellnessHub> results = new ArrayList<>(wellnessHubRepository.findAll());
 
         List<WellnessHub> emergencyResults = emergencyServiceRepository.findAll()
@@ -60,12 +94,12 @@ public class WellnessHubService {
 
         results.addAll(emergencyResults);
 
-        return results;
+        return sortWellnessHubList(results);
     }
 
-    public List<WellnessHub> searchWellnessHubs(Map<String, Object> payload) {
+    public List<WellnessHub> listWellnessHub(Map<String, Object> payload) {
         if (payload == null) {
-            return getAllHubs();
+            return listWellnessHub();
         }
 
         String keyword = payload.get("search") != null
@@ -80,7 +114,7 @@ public class WellnessHubService {
                 ? payload.get("districtId").toString().trim()
                 : null;
 
-        return getAllHubs()
+        List<WellnessHub> filtered = listWellnessHub()
                 .stream()
                 .filter(hub -> keyword == null ||
                         keyword.isEmpty() ||
@@ -100,9 +134,11 @@ public class WellnessHubService {
                                         String.valueOf(
                                                 hub.getDistrict().getDistrictId()))))
                 .toList();
+
+        return sortWellnessHubList(filtered);
     }
 
-    public WellnessHub getHubById(Integer id) {
+    public WellnessHub viewWellnessHubDetail(Integer id) {
         if (id == null || id <= 0) {
             return null;
         }
@@ -153,8 +189,14 @@ public class WellnessHubService {
                 .orElseThrow(() -> new RuntimeException("ไม่พบอำเภอรหัส " + districtId));
         wellnessHub.setDistrict(managedDistrict);
 
-        if (wellnessHub.getStatus() == null) {
-            wellnessHub.setStatus("active");
+        if (wellnessHub.getCreatedAt() == null) {
+            wellnessHub.setCreatedAt(LocalDateTime.now());
+        }
+        if (wellnessHub.getUpdatedAt() == null) {
+            wellnessHub.setUpdatedAt(LocalDateTime.now());
+        }
+        if (wellnessHub.getStatus() == null || wellnessHub.getStatus().trim().isEmpty()) {
+            wellnessHub.setStatus("ACTIVE");
         }
 
         if (wellnessHub.getGoogleMapsLink() != null && !wellnessHub.getGoogleMapsLink().trim().isEmpty()) {
@@ -298,7 +340,7 @@ public class WellnessHubService {
     }
 
     @Transactional
-    public WellnessHub updateWellnessHub(
+    public WellnessHub editWellnessHub(
             Integer id,
             WellnessHub updatedData) {
         if (id == null || updatedData == null) {
@@ -397,7 +439,7 @@ public class WellnessHubService {
             emergency.setCategory(targetCategory);
             emergency.setDistrict(targetDistrict);
 
-            accountRequestRepository.deleteByWellnessHub_LicenseId(id);
+            accountRequestRepository.deleteByLicenseId(id);
 
             wellnessHubRepository.delete(oldHub);
 
@@ -460,6 +502,8 @@ public class WellnessHubService {
         if (updatedData.getOperatingHours() != null) {
             target.setOperatingHours(updatedData.getOperatingHours());
         }
+
+        target.setUpdatedAt(LocalDateTime.now());
     }
 
     private void updateEmergencyFields(EmergencyService target, WellnessHub source) {
@@ -492,6 +536,8 @@ public class WellnessHubService {
         if (source.getWellnessHubLongitude() != null) {
             target.setWellnessHubLongitude(source.getWellnessHubLongitude());
         }
+
+        target.setUpdatedAt(LocalDateTime.now());
     }
 
     @Transactional
@@ -504,7 +550,7 @@ public class WellnessHubService {
         WellnessHub hub = wellnessHubRepository.findById(id).orElse(null);
 
         if (hub != null) {
-            accountRequestRepository.deleteByWellnessHub_LicenseId(id);
+            accountRequestRepository.deleteByLicenseId(id);
             wellnessHubRepository.delete(hub);
             return true;
         }
@@ -529,7 +575,9 @@ public class WellnessHubService {
         emergency.setOperatingHours(hub.getOperatingHours());
         emergency.setCategory(hub.getCategory());
         emergency.setDistrict(hub.getDistrict());
-        emergency.setStatus(hub.getStatus() != null ? hub.getStatus() : "active");
+        emergency.setCreatedAt(hub.getCreatedAt() != null ? hub.getCreatedAt() : LocalDateTime.now());
+        emergency.setUpdatedAt(hub.getUpdatedAt() != null ? hub.getUpdatedAt() : LocalDateTime.now());
+        emergency.setStatus(hub.getStatus() != null && !hub.getStatus().trim().isEmpty() ? hub.getStatus() : "ACTIVE");
 
         return emergency;
     }
@@ -552,7 +600,10 @@ public class WellnessHubService {
         hub.setOperatingHours(emergency.getOperatingHours());
         hub.setCategory(emergency.getCategory());
         hub.setDistrict(emergency.getDistrict());
-        hub.setStatus(emergency.getStatus());
+        hub.setCreatedAt(emergency.getCreatedAt() != null ? emergency.getCreatedAt() : LocalDateTime.now());
+        hub.setUpdatedAt(emergency.getUpdatedAt() != null ? emergency.getUpdatedAt() : LocalDateTime.now());
+        hub.setStatus(emergency.getStatus() != null && !emergency.getStatus().trim().isEmpty() ? emergency.getStatus()
+                : "ACTIVE");
 
         return hub;
     }

@@ -42,88 +42,40 @@ public class DashboardService {
 
         @Transactional(readOnly = true)
         public Map<String, Object> getDashboardSummary() {
-
                 long totalWellnessHubs = wellnessHubRepository.count()
                                 + emergencyServiceRepository.count();
 
                 long totalMainRoutes = mainRouteRepository.count();
-
                 long totalAccountRequests = accountRequestRepository.count();
 
                 long pendingAccountRequests = accountRequestRepository
-                                .countByRequestStatusIgnoreCase(
-                                                STATUS_PENDING);
+                                .countByRequestStatusIgnoreCase(STATUS_PENDING);
 
                 long approvedAccountRequests = accountRequestRepository
-                                .countByRequestStatusIgnoreCase(
-                                                STATUS_APPROVED);
+                                .countByRequestStatusIgnoreCase(STATUS_APPROVED);
 
                 long rejectedAccountRequests = accountRequestRepository
-                                .countByRequestStatusIgnoreCase(
-                                                STATUS_REJECTED);
+                                .countByRequestStatusIgnoreCase(STATUS_REJECTED);
 
-                double approvedPercentage = calculatePercentage(
-                                approvedAccountRequests,
-                                totalAccountRequests);
+                double approvedPercentage = calculatePercentage(approvedAccountRequests, totalAccountRequests);
+                double rejectedPercentage = calculatePercentage(rejectedAccountRequests, totalAccountRequests);
+                double pendingPercentage = calculatePercentage(pendingAccountRequests, totalAccountRequests);
 
-                double rejectedPercentage = calculatePercentage(
-                                rejectedAccountRequests,
-                                totalAccountRequests);
-
-                double pendingPercentage = calculatePercentage(
-                                pendingAccountRequests,
-                                totalAccountRequests);
-
-                List<Map<String, Object>> wellnessHubsByCategory = getWellnessHubsByCategory(
-                                totalWellnessHubs);
-
+                List<Map<String, Object>> wellnessHubsByCategory = getWellnessHubsByCategory(totalWellnessHubs);
                 List<Map<String, Object>> wellnessHubsByDistrict = getWellnessHubsByDistrict();
 
                 Map<String, Object> response = new LinkedHashMap<>();
-
-                response.put(
-                                "totalWellnessHubs",
-                                totalWellnessHubs);
-
-                response.put(
-                                "totalMainRoutes",
-                                totalMainRoutes);
-
-                response.put(
-                                "totalAccountRequests",
-                                totalAccountRequests);
-
-                response.put(
-                                "pendingAccountRequests",
-                                pendingAccountRequests);
-
-                response.put(
-                                "approvedAccountRequests",
-                                approvedAccountRequests);
-
-                response.put(
-                                "rejectedAccountRequests",
-                                rejectedAccountRequests);
-
-                response.put(
-                                "pendingPercentage",
-                                pendingPercentage);
-
-                response.put(
-                                "approvedPercentage",
-                                approvedPercentage);
-
-                response.put(
-                                "rejectedPercentage",
-                                rejectedPercentage);
-
-                response.put(
-                                "wellnessHubsByCategory",
-                                wellnessHubsByCategory);
-
-                response.put(
-                                "wellnessHubsByDistrict",
-                                wellnessHubsByDistrict);
+                response.put("totalWellnessHubs", totalWellnessHubs);
+                response.put("totalMainRoutes", totalMainRoutes);
+                response.put("totalAccountRequests", totalAccountRequests);
+                response.put("pendingAccountRequests", pendingAccountRequests);
+                response.put("approvedAccountRequests", approvedAccountRequests);
+                response.put("rejectedAccountRequests", rejectedAccountRequests);
+                response.put("pendingPercentage", pendingPercentage);
+                response.put("approvedPercentage", approvedPercentage);
+                response.put("rejectedPercentage", rejectedPercentage);
+                response.put("wellnessHubsByCategory", wellnessHubsByCategory);
+                response.put("wellnessHubsByDistrict", wellnessHubsByDistrict);
 
                 return response;
         }

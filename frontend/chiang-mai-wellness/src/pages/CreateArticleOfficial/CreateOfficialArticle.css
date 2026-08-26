@@ -3,17 +3,20 @@
 ========================================== */
 
 .admin-layout {
+  display: flex;
   width: 100%;
   min-height: 100vh;
   background: #f4f6f9;
+  box-sizing: border-box;
 }
 
-/* พื้นที่เนื้อหาหลังหักความกว้าง Sidebar 275px */
+/* พื้นที่เนื้อหาหลังหักความกว้าง Sidebar */
 .main-content {
-  width: calc(100% - 275px);
+  flex: 1;
+  min-width: 0;
   min-height: 100vh;
 
-  margin-left: 275px;
+  margin-left: 0;
   padding: 30px;
 
   background: #f4f6f9;

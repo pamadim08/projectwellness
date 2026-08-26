@@ -3,27 +3,33 @@ import axios from "axios";
 import {
   ArrowLeft,
   Building2,
-  CheckCircle2,
+  Check,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   Clock3,
+  Copy,
   ExternalLink,
+  Eye,
   FileBadge2,
-  ImageOff,
+  ImageIcon,
   Info,
   Mail,
   MapPin,
+  Maximize2,
   Navigation,
   Phone,
   RefreshCw,
-  Send,
   ShieldCheck,
-  Tag,
+  Sparkles,
+  X,
 } from "lucide-react";
 
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import LoadingState from "../../Components/LoadingState/LoadingState";
 import "./WellnessHubDetail.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
@@ -34,43 +40,55 @@ const DEFAULT_CATEGORIES = [
     id: "SPA",
     keyMatch: ["C01", "SPA", "MASSAGE", "นวด", "สปา"],
     name: "นวด/สปาเพื่อสุขภาพ",
-    color: "#2E9D62",
+    color: "#168058",
+    accentColor: "#E2FBCE",
     icon: "fa-spa",
+    description: "การดูแลสุขภาพ ผ่อนคลาย และบำบัดด้วยศาสตร์การนวดและสปา",
   },
   {
     id: "RESTAURANT",
     keyMatch: ["C03", "REST", "FOOD", "อาหาร"],
     name: "อาหารและเครื่องดื่ม",
-    color: "#F28C28",
+    color: "#EA580C",
+    accentColor: "#FFEDD5",
     icon: "fa-utensils",
+    description: "โภชนาการเพื่อสุขภาพ อาหารอินทรีย์ และเครื่องดื่มสมุนไพร",
   },
   {
     id: "HOTEL",
     keyMatch: ["C04", "HOTEL", "ACCOM", "ที่พัก"],
     name: "ที่พักฟื้นฟูสุขภาพ",
-    color: "#7C63D9",
+    color: "#6D28D9",
+    accentColor: "#EDE9FE",
     icon: "fa-bed",
+    description: "สถานที่พักผ่อนและฟื้นฟูสุขภาพท่ามกลางธรรมชาติเชียงใหม่",
   },
   {
     id: "CLINIC",
     keyMatch: ["C02", "CLINIC", "คลินิก"],
     name: "คลินิก/สถานพยาบาล",
-    color: "#2563A6",
+    color: "#1D4ED8",
+    accentColor: "#DBEAFE",
     icon: "fa-notes-medical",
+    description: "บริการตรวจรักษา ฟื้นฟูสมรรถภาพ และการแพทย์บูรณาการ",
   },
   {
     id: "HOSPITAL",
     keyMatch: ["EM02", "HOSPITAL", "โรงพยาบาล", "ALS"],
     name: "โรงพยาบาล",
-    color: "#D9434E",
+    color: "#DC2626",
+    accentColor: "#FEE2E2",
     icon: "fa-hospital",
+    description: "โรงพยาบาลและศูนย์การแพทย์พร้อมการดูแลตลอด 24 ชั่วโมง",
   },
   {
     id: "RESCUE",
     keyMatch: ["EM01", "RESCUE", "กู้ภัย", "BLS"],
-    name: "หน่วยกู้ภัย",
-    color: "#E0A000",
+    name: "หน่วยกู้ภัยฉุกเฉิน",
+    color: "#D97706",
+    accentColor: "#FEF3C7",
     icon: "fa-truck-medical",
+    description: "หน่วยบริการฉุกเฉินและกู้ชีพเพื่อความปลอดภัย 24 ชั่วโมง",
   },
 ];
 
@@ -83,6 +101,16 @@ const DAY_LABELS = {
   saturday: "วันเสาร์",
   sunday: "วันอาทิตย์",
 };
+
+const DAY_ORDER = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
 
 function hasValue(value) {
   if (value === null || value === undefined) return false;
@@ -118,9 +146,11 @@ function getCategoryInfo(hub) {
 
   return {
     id: "OTHER",
-    name: hub?.categoryName || "สถานประกอบการ",
-    color: "#64748B",
+    name: hub?.categoryName || "สถานประกอบการเวลเนส",
+    color: "#076653",
+    accentColor: "#E2FBCE",
     icon: "fa-location-dot",
+    description: "สถานประกอบการเพื่อสุขภาพและการท่องเที่ยวเชิงสุขภาพ",
   };
 }
 
@@ -129,16 +159,16 @@ function createWellnessHubMarkerIcon(hub) {
 
   return L.divIcon({
     html: `
-      <div style="background:white; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 12px rgba(0,0,0,0.25); border:2px solid white;">
-        <div style="background:${catInfo.color}; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white;">
-          <i class="fa-solid ${catInfo.icon}" style="font-size:12px;"></i>
+      <div class="hub-custom-pin" style="--pin-color:${catInfo.color};">
+        <div class="hub-custom-pin__inner">
+          <i class="fa-solid ${catInfo.icon}"></i>
         </div>
       </div>
     `,
-    className: "",
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-    popupAnchor: [0, -17],
+    className: "hub-pin-container",
+    iconSize: [40, 40],
+    iconAnchor: [20, 36],
+    popupAnchor: [0, -36],
   });
 }
 
@@ -159,17 +189,18 @@ function normalizeOperatingHours(value) {
 
   if (!parsedValue || Array.isArray(parsedValue)) return [];
 
-  return Object.entries(parsedValue)
-    .filter(([, detail]) => Boolean(detail?.active))
-    .map(([day, detail]) => ({
-      day,
-      label: DAY_LABELS[day] || day,
+  return DAY_ORDER.map((dayKey) => {
+    const detail = parsedValue[dayKey];
+    return {
+      day: dayKey,
+      label: DAY_LABELS[dayKey] || dayKey,
+      active: Boolean(detail?.active),
       open: detail?.open || "",
       close: detail?.close || "",
-    }));
+    };
+  });
 }
 
-// แปลงข้อมูลประเภทใบรับรองให้อยู่ในรูปแบบ Array เสมอ
 function normalizeCertificateTypes(value) {
   if (!hasValue(value)) return [];
 
@@ -229,11 +260,124 @@ function normalizeImageSource(imageValue) {
     return imageSource;
   }
 
-  if (/^[A-Za-z0-9+/=\s]+$/.test(imageSource)) {
+  if (/^[A-Za-z0-9+/=\s]+$/.test(imageSource) && imageSource.length > 100) {
     return `data:image/jpeg;base64,${imageSource}`;
   }
 
+  if (!imageSource.includes("/") && !imageSource.includes("\\")) {
+    return `${API_BASE_URL.replace("/api", "")}/uploads/${imageSource}`;
+  }
+
   return imageSource;
+}
+
+function normalizeGalleryImages(galleryValue) {
+  if (!hasValue(galleryValue)) return [];
+
+  let parsed = galleryValue;
+
+  if (typeof galleryValue === "string") {
+    const trimmed = galleryValue.trim();
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (e) {
+      if (trimmed.includes(",")) {
+        parsed = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+      } else {
+        parsed = [trimmed];
+      }
+    }
+  }
+
+  if (!Array.isArray(parsed)) {
+    parsed = [parsed];
+  }
+
+  return parsed
+    .map((item) => normalizeImageSource(item))
+    .filter((src) => hasValue(src));
+}
+
+function getPlaceOpenStatus(operatingHoursList) {
+  if (!operatingHoursList || operatingHoursList.length === 0) {
+    return { isOpen: null, label: "ไม่ได้ระบุเวลาทำการ" };
+  }
+
+  const activeDays = operatingHoursList.filter((d) => d.active);
+  if (activeDays.length === 0) {
+    return { isOpen: false, label: "ปิดให้บริการชั่วคราว" };
+  }
+
+  // Check 24 hours all days
+  const is24HoursAll =
+    activeDays.length === 7 &&
+    activeDays.every(
+      (d) =>
+        d.open === "00:00" &&
+        (d.close === "23:59" || d.close === "24:00" || d.close === "00:00"),
+    );
+
+  if (is24HoursAll) {
+    return { isOpen: true, label: "เปิดบริการ 24 ชั่วโมง", is24: true };
+  }
+
+  const now = new Date();
+  const dayIndex = now.getDay(); // 0 = Sunday, 1 = Monday
+  const dayMap = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+  const currentDayKey = dayMap[dayIndex];
+
+  const today = operatingHoursList.find((d) => d.day === currentDayKey);
+
+  if (!today || !today.active) {
+    return { isOpen: false, label: "ปิดทำการวันนี้" };
+  }
+
+  if (
+    today.open === "00:00" &&
+    (today.close === "23:59" || today.close === "24:00" || today.close === "00:00")
+  ) {
+    return { isOpen: true, label: "เปิดบริการ 24 ชั่วโมงวันนี้", is24: true };
+  }
+
+  if (!today.open || !today.close) {
+    return { isOpen: false, label: "ปิดทำการวันนี้" };
+  }
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const [openH, openM] = today.open.split(":").map(Number);
+  const [closeH, closeM] = today.close.split(":").map(Number);
+  const openMinutes = openH * 60 + openM;
+  const closeMinutes = closeH * 60 + closeM;
+
+  if (currentMinutes >= openMinutes && currentMinutes < closeMinutes) {
+    return {
+      isOpen: true,
+      label: `เปิดอยู่ตอนนี้ (ปิด ${today.close} น.)`,
+      todayTime: `${today.open} – ${today.close} น.`,
+    };
+  }
+
+  if (currentMinutes < openMinutes) {
+    return {
+      isOpen: false,
+      label: `เปิดเวลา ${today.open} น.`,
+      todayTime: `${today.open} – ${today.close} น.`,
+    };
+  }
+
+  return {
+    isOpen: false,
+    label: "ปิดแล้ววันนี้",
+    todayTime: `${today.open} – ${today.close} น.`,
+  };
 }
 
 function getErrorMessage(error) {
@@ -241,6 +385,41 @@ function getErrorMessage(error) {
     error.response?.data?.message ||
     "ไม่สามารถโหลดข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง"
   );
+}
+
+function getNavigationUrl(hub) {
+  if (!hub) return "#";
+
+  // 1. If coordinates exist, navigate to destination coordinates from user's current location
+  if (hasCoordinates(hub.latitude, hub.longitude)) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${Number(hub.latitude)},${Number(hub.longitude)}`;
+  }
+
+  if (hasCoordinates(hub.wellnessHubLatitude, hub.wellnessHubLongitude)) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${Number(hub.wellnessHubLatitude)},${Number(hub.wellnessHubLongitude)}`;
+  }
+
+  // 2. If googleMapsLink contains hardcoded origin in /maps/dir/Origin/Destination, extract destination only
+  if (hasValue(hub.googleMapsLink)) {
+    const rawLink = String(hub.googleMapsLink).trim();
+
+    const dirMatch = rawLink.match(/\/maps\/dir\/([^/]+)\/([^/?#]+)/);
+    if (dirMatch && dirMatch[2]) {
+      const destination = decodeURIComponent(dirMatch[2]);
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+    }
+
+    if (!rawLink.includes("/maps/dir/")) {
+      return rawLink;
+    }
+  }
+
+  // 3. Fallback: navigate to place name and district in Chiang Mai
+  const query = [hub.wellnessHubName, hub.address, hub.districtName, "เชียงใหม่"]
+    .filter(Boolean)
+    .join(" ");
+
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
 }
 
 export default function WellnessHubDetail() {
@@ -252,9 +431,12 @@ export default function WellnessHubDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [imageError, setImageError] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+
+  // Lightbox
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   const loadWellnessHub = useCallback(async () => {
-    // รีเซ็ตตำแหน่ง scroll ไปที่ด้านบนสุดทันทีที่เริ่มโหลดข้อมูล
     window.scrollTo({
       top: 0,
       left: 0,
@@ -314,15 +496,37 @@ export default function WellnessHubDetail() {
     [hub],
   );
 
+  const galleryImages = useMemo(
+    () => normalizeGalleryImages(hub?.wellnessHubGallery),
+    [hub?.wellnessHubGallery],
+  );
+
+  // Combined all images for gallery/lightbox
+  const allImages = useMemo(() => {
+    const list = [];
+    if (imageSource && !imageError) list.push(imageSource);
+    galleryImages.forEach((img) => {
+      if (img && !list.includes(img)) list.push(img);
+    });
+    return list;
+  }, [imageSource, imageError, galleryImages]);
+
   const operatingHours = useMemo(
     () => normalizeOperatingHours(hub?.operatingHours),
     [hub?.operatingHours],
+  );
+
+  const openStatus = useMemo(
+    () => getPlaceOpenStatus(operatingHours),
+    [operatingHours],
   );
 
   const certificateTypes = useMemo(
     () => normalizeCertificateTypes(hub?.certificateType),
     [hub?.certificateType],
   );
+
+  const navigationUrl = useMemo(() => getNavigationUrl(hub), [hub]);
 
   const markerIcon = useMemo(
     () => (hub ? createWellnessHubMarkerIcon(hub) : null),
@@ -331,45 +535,50 @@ export default function WellnessHubDetail() {
 
   const catInfo = useMemo(() => (hub ? getCategoryInfo(hub) : null), [hub]);
 
-  // สถานประกอบการที่มี Username แล้วถือว่ามีบัญชีผู้ใช้งานแล้ว
-  // จึงไม่ต้องแสดงช่องส่งคำขอเป็นเจ้าของอีก
-  const hasOwnerAccount = useMemo(
-    () => hasValue(hub?.username),
-    [hub?.username],
-  );
-
   const coordinatesAvailable = hasCoordinates(hub?.latitude, hub?.longitude);
 
   const mapPosition = coordinatesAvailable
     ? [Number(hub.latitude), Number(hub.longitude)]
     : DEFAULT_CENTER;
 
-  const handleRequestOwnership = () => {
-    if (!hub?.licenseId || hasOwnerAccount) return;
+  // Lightbox keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (lightboxIndex === null) return;
+      if (e.key === "Escape") setLightboxIndex(null);
+      if (e.key === "ArrowRight") {
+        setLightboxIndex((prev) => (prev + 1) % allImages.length);
+      }
+      if (e.key === "ArrowLeft") {
+        setLightboxIndex(
+          (prev) => (prev - 1 + allImages.length) % allImages.length,
+        );
+      }
+    };
 
-    navigate(`/request-wellness-hub-account/${hub.licenseId}`, {
-      state: {
-        wellnessHub: {
-          licenseId: hub.licenseId,
-          wellnessHubName: hub.wellnessHubName,
-          categoryName: hub.categoryName,
-          districtName: hub.districtName,
-        },
-      },
-    });
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxIndex, allImages.length]);
+
+  const handleCopyAddress = () => {
+    if (!hub?.address) return;
+    navigator.clipboard.writeText(hub.address);
+    setCopiedAddress(true);
+    setTimeout(() => setCopiedAddress(false), 2500);
+  };
+
+  const openLightboxAtImage = (src) => {
+    const idx = allImages.indexOf(src);
+    setLightboxIndex(idx >= 0 ? idx : 0);
   };
 
   if (loading) {
     return (
-      <main className="hub-detail-page">
-        <div className="hub-detail-container">
-          <section className="hub-detail-state">
-            <div className="hub-detail-spinner" />
-            <h1>กำลังโหลดข้อมูลสถานประกอบการ</h1>
-            <p>ระบบกำลังเตรียมรูปภาพ ตำแหน่ง และข้อมูลที่เกี่ยวข้อง</p>
-          </section>
-        </div>
-      </main>
+      <LoadingState
+        fullPage
+        title="กำลังโหลดข้อมูลสถานประกอบการ"
+        message="ระบบกำลังเตรียมรูปภาพ ตำแหน่ง และข้อมูลที่เกี่ยวข้อง"
+      />
     );
   }
 
@@ -379,20 +588,16 @@ export default function WellnessHubDetail() {
         <div className="hub-detail-container">
           <section className="hub-detail-state">
             <CircleAlert />
-
             <h1>ไม่สามารถแสดงข้อมูลได้</h1>
-
             <p>{error || "ไม่พบข้อมูลสถานประกอบการ"}</p>
-
             <div className="hub-detail-state__actions">
               <button type="button" onClick={loadWellnessHub}>
                 <RefreshCw />
-                ลองใหม่
+                ลองใหม่อีกครั้ง
               </button>
-
               <Link to="/">
                 <ArrowLeft />
-                กลับหน้าแรก
+                กลับหน้าหลัก
               </Link>
             </div>
           </section>
@@ -402,153 +607,283 @@ export default function WellnessHubDetail() {
   }
 
   return (
-    <main className="hub-detail-page">
-      {/* 1. Header Hero */}
+    <main
+      className="hub-detail-page"
+      style={{
+        "--hub-theme-color": catInfo?.color || "#076653",
+        "--hub-theme-accent": catInfo?.accentColor || "#E2FBCE",
+      }}
+    >
+      {/* HERO SECTION */}
       <header className="hub-detail-hero">
         <div className="hub-detail-container">
-          <button
-            type="button"
-            className="hub-detail-back"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft />
-            กลับหน้าก่อนหน้า
-          </button>
+          {/* TOP BAR */}
+          <div className="hub-detail-hero__topbar">
+            <button
+              type="button"
+              className="hub-detail-back"
+              onClick={() => navigate(-1)}
+              aria-label="ย้อนกลับ"
+            >
+              <ArrowLeft />
+              <span>ย้อนกลับ</span>
+            </button>
+          </div>
 
-          {hasValue(hub.categoryName) && (
-            <p className="hub-detail-eyebrow">{hub.categoryName}</p>
-          )}
+          {/* MAIN HERO CONTENT */}
+          <div className="hub-detail-hero__main">
+            <div className="hub-detail-hero__tags">
+              {hasValue(hub.categoryName) && (
+                <span className="hub-detail-tag hub-detail-tag--category">
+                  <i className={`fa-solid ${catInfo.icon}`} />
+                  {hub.categoryName}
+                </span>
+              )}
 
-          <h1>{hub.wellnessHubName}</h1>
+              {openStatus.isOpen !== null && (
+                <span
+                  className={`hub-detail-tag hub-detail-tag--status ${
+                    openStatus.isOpen
+                      ? "hub-detail-tag--open"
+                      : "hub-detail-tag--closed"
+                  }`}
+                >
+                  <span className="hub-status-dot" />
+                  {openStatus.label}
+                </span>
+              )}
 
-          <div className="hub-detail-hero__meta">
-            {hasValue(hub.districtName) && (
-              <span>
-                <MapPin />
-                อ. {hub.districtName} จังหวัดเชียงใหม่
-              </span>
-            )}
+              {certificateTypes.length > 0 && (
+                <span className="hub-detail-tag hub-detail-tag--certified">
+                  <ShieldCheck size={14} />
+                  ผ่านการรับรองมาตรฐาน
+                </span>
+              )}
+            </div>
 
-            {certificateTypes.length > 0 && (
-              <span>
-                <ShieldCheck />
-                มีข้อมูลการรับรอง
-              </span>
-            )}
+            <h1 className="hub-detail-title">{hub.wellnessHubName}</h1>
+
+            <div className="hub-detail-hero__meta">
+              {hasValue(hub.districtName) && (
+                <span className="hub-detail-meta-item">
+                  <MapPin size={16} />
+                  <span>อำเภอ{hub.districtName}, เชียงใหม่</span>
+                </span>
+              )}
+
+              {hasValue(hub.licenseId) && (
+                <span className="hub-detail-meta-item">
+                  <FileBadge2 size={16} />
+                  <span>รหัสใบอนุญาต: {hub.licenseId}</span>
+                </span>
+              )}
+
+              {allImages.length > 0 && (
+                <span className="hub-detail-meta-item">
+                  <ImageIcon size={16} />
+                  <span>{allImages.length} รูปภาพ</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      {/* 2. Content Layout */}
-      <div className="hub-detail-container hub-detail-content">
+      {/* MAIN CONTAINER */}
+      <div className="hub-detail-container hub-detail-body">
+        {/* TWO-COLUMN GRID */}
         <div className="hub-detail-layout">
-          {/* ฝั่งซ้าย: รูปภาพหลัก + เกี่ยวกับ + แผนที่ */}
-          <section className="hub-detail-main">
-            {/* รูปภาพหลักของการ์ดฝั่งซ้าย */}
-            <div className="hub-detail-image-box">
-              {imageSource && !imageError ? (
-                <img
-                  src={imageSource}
-                  alt={hub.wellnessHubName}
-                  className="hub-detail-main-image"
-                  onError={() => setImageError(true)}
-                />
-              ) : (
-                <div className="hub-detail-image-placeholder">
-                  {imageError ? <ImageOff /> : <Building2 />}
+          {/* LEFT COLUMN: PRIMARY CONTENT */}
+          <div className="hub-detail-primary">
+            {/* SHOWCASE COVER IMAGE */}
+            <section className="hub-detail-showcase">
+              <div
+                className="hub-detail-showcase__cover"
+                onClick={() => {
+                  if (imageSource && !imageError) {
+                    openLightboxAtImage(imageSource);
+                  }
+                }}
+              >
+                {imageSource && !imageError ? (
+                  <>
+                    <img
+                      src={imageSource}
+                      alt={hub.wellnessHubName}
+                      className="hub-detail-showcase__img"
+                      onError={() => setImageError(true)}
+                    />
+                    <div className="hub-detail-showcase__overlay">
+                      <span className="hub-detail-showcase__zoom">
+                        <Maximize2 size={18} />
+                        คลิกเพื่อดูรูปภาพขนาดใหญ่
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="hub-detail-showcase__placeholder">
+                    <div className="hub-detail-showcase__icon">
+                      <i className={`fa-solid ${catInfo.icon}`} />
+                    </div>
+                    <span>{catInfo.name}</span>
+                    <small>ยังไม่มีรูปภาพหลักของสถานประกอบการ</small>
+                  </div>
+                )}
 
-                  <span>
-                    {imageError
-                      ? "ไม่สามารถแสดงรูปภาพได้"
-                      : "ไม่มีรูปภาพสถานประกอบการ"}
-                  </span>
-                </div>
-              )}
+                {allImages.length > 1 && (
+                  <button
+                    type="button"
+                    className="hub-detail-showcase__gallery-badge"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightboxIndex(0);
+                    }}
+                  >
+                    <ImageIcon size={15} />
+                    <span>ดูรูปภาพทั้งหมด ({allImages.length})</span>
+                  </button>
+                )}
+              </div>
 
-              {hasValue(hub.categoryName) && (
-                <div className="hub-detail-image-badge">
-                  <Tag />
-                  {hub.categoryName}
-                </div>
-              )}
-            </div>
-
-            {/* เกี่ยวกับสถานประกอบการ */}
-            {hasValue(hub.wellnessHubDescription) && (
-              <article className="hub-detail-card">
-                <div className="hub-detail-card__heading">
-                  <Building2 />
-
+              {/* QUICK HIGHLIGHT BAR */}
+              <div className="hub-detail-highlights-bar">
+                <div className="hub-detail-highlight-item">
+                  <div className="hub-detail-highlight-item__icon">
+                    <i className={`fa-solid ${catInfo.icon}`} />
+                  </div>
                   <div>
-                    <p>ABOUT THIS PLACE</p>
+                    <small>ประเภทบริการ</small>
+                    <strong>{catInfo.name}</strong>
+                  </div>
+                </div>
+
+                <div className="hub-detail-highlight-item">
+                  <div className="hub-detail-highlight-item__icon">
+                    <Clock3 />
+                  </div>
+                  <div>
+                    <small>เวลาทำการวันนี้</small>
+                    <strong>
+                      {openStatus.is24
+                        ? "เปิดตลอด 24 ชั่วโมง"
+                        : openStatus.todayTime || openStatus.label}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="hub-detail-highlight-item">
+                  <div className="hub-detail-highlight-item__icon">
+                    <ShieldCheck />
+                  </div>
+                  <div>
+                    <small>มาตรฐานความปลอดภัย</small>
+                    <strong>
+                      {certificateTypes.length > 0
+                        ? `${certificateTypes.length} รายการรับรอง`
+                        : "ตรวจยืนยันแล้ว"}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* ABOUT SECTION */}
+            {hasValue(hub.wellnessHubDescription) && (
+              <section className="hub-detail-card hub-detail-card--about">
+                <div className="hub-detail-card__header">
+                  <div className="hub-detail-card__title-group">
+                    <span className="hub-detail-card__eyebrow">ABOUT THIS VENUE</span>
                     <h2>เกี่ยวกับสถานประกอบการ</h2>
                   </div>
                 </div>
 
-                <p className="hub-detail-description">
-                  {hub.wellnessHubDescription}
-                </p>
-              </article>
+                <div className="hub-detail-about__content">
+                  <p className="hub-detail-description">
+                    {hub.wellnessHubDescription}
+                  </p>
+                </div>
+              </section>
             )}
 
-            {/* แผนที่ตำแหน่งที่ตั้ง */}
-            {coordinatesAvailable && (
-              <article className="hub-detail-card">
-                <div className="hub-detail-card__heading">
-                  <Navigation />
-
-                  <div>
-                    <p>LOCATION</p>
-                    <h2>ตำแหน่งที่ตั้ง</h2>
+            {/* ATMOSPHERE / PHOTO GALLERY */}
+            {galleryImages.length > 0 && (
+              <section className="hub-detail-card hub-detail-card--gallery">
+                <div className="hub-detail-card__header">
+                  <div className="hub-detail-card__title-group">
+                    <span className="hub-detail-card__eyebrow">PHOTO GALLERY</span>
+                    <h2>รูปภาพบรรยากาศ ({galleryImages.length} รูป)</h2>
                   </div>
+                  <span className="hub-detail-card__hint">
+                    คลิกที่รูปภาพเพื่อเปิดดูขนาดเต็ม
+                  </span>
                 </div>
 
-                <div className="hub-detail-map-wrapper">
+                <div className="hub-detail-gallery-grid">
+                  {galleryImages.map((src, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="hub-detail-gallery-thumb"
+                      onClick={() => openLightboxAtImage(src)}
+                      aria-label={`ดูรูปบรรยากาศที่ ${idx + 1}`}
+                    >
+                      <img
+                        src={src}
+                        alt={`ภาพบรรยากาศ ${idx + 1} - ${hub.wellnessHubName}`}
+                        loading="lazy"
+                      />
+                      <div className="hub-detail-gallery-thumb__hover">
+                        <Eye size={20} />
+                        <span>ขยายรูป</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* LOCATION & INTERACTIVE MAP */}
+            {coordinatesAvailable && (
+              <section className="hub-detail-card hub-detail-card--map">
+                <div className="hub-detail-card__header">
+                  <div className="hub-detail-card__title-group">
+                    <span className="hub-detail-card__eyebrow">LOCATION & MAP</span>
+                    <h2>ตำแหน่งที่ตั้งและการเดินทาง</h2>
+                  </div>
+
+                  {Boolean(navigationUrl && navigationUrl !== "#") && (
+                    <a
+                      href={navigationUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hub-detail-map-btn"
+                      title="เปิดนำทางใน Google Maps จากตำแหน่งของคุณ"
+                    >
+                      <Navigation size={15} />
+                      เปิดใน Google Maps
+                      <ExternalLink size={14} />
+                    </a>
+                  )}
+                </div>
+
+                <div className="hub-detail-map-box">
                   <MapContainer
                     center={mapPosition}
                     zoom={15}
-                    scrollWheelZoom
-                    className="hub-detail-map"
+                    scrollWheelZoom={false}
+                    className="hub-detail-leaflet-map"
                   >
                     <TileLayer
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                      url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                     />
-
                     <Marker position={mapPosition} icon={markerIcon}>
                       <Popup>
-                        <div className="hub-detail-map-popup">
-                          <strong
-                            style={{
-                              fontSize: "13px",
-                              color: "#111",
-                            }}
-                          >
-                            🏢 {hub.wellnessHubName}
-                          </strong>
-
-                          {hasValue(hub.districtName) && (
-                            <span
-                              style={{
-                                fontSize: "11px",
-                                color: "#666",
-                              }}
-                            >
-                              อ.{hub.districtName}
-                            </span>
-                          )}
-
-                          {catInfo && (
-                            <span
-                              style={{
-                                fontSize: "12px",
-                                color: catInfo.color,
-                                fontWeight: "bold",
-                                marginTop: "2px",
-                              }}
-                            >
-                              ✨ {catInfo.name}
-                            </span>
+                        <div className="hub-map-popup">
+                          <strong>{hub.wellnessHubName}</strong>
+                          <span>อ. {hub.districtName || "เชียงใหม่"}</span>
+                          {hasValue(hub.telInformation) && (
+                            <small>โทร: {hub.telInformation}</small>
                           )}
                         </div>
                       </Popup>
@@ -556,192 +891,296 @@ export default function WellnessHubDetail() {
                   </MapContainer>
                 </div>
 
-                {hasValue(hub.googleMapsLink) && (
-                  <a
-                    href={hub.googleMapsLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hub-detail-google-map"
-                  >
-                    <Navigation />
-                    เปิดเส้นทางใน Google Maps
-                    <ExternalLink />
-                  </a>
-                )}
-              </article>
-            )}
-          </section>
+                <div className="hub-detail-location-bar">
+                  <div className="hub-detail-location-bar__info">
+                    <MapPin size={18} />
+                    <p>{hub.address || `อำเภอ${hub.districtName} จังหวัดเชียงใหม่`}</p>
+                  </div>
 
-          {/* ฝั่งขวา */}
+                  {hasValue(hub.address) && (
+                    <button
+                      type="button"
+                      className="hub-detail-copy-address"
+                      onClick={handleCopyAddress}
+                      title="คัดลอกที่อยู่"
+                    >
+                      {copiedAddress ? <Check size={14} /> : <Copy size={14} />}
+                      <span>{copiedAddress ? "คัดลอกแล้ว" : "คัดลอกที่อยู่"}</span>
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* RIGHT COLUMN: STICKY SIDEBAR */}
           <aside className="hub-detail-sidebar">
-            {/* Request Ownership
-                แสดงเฉพาะสถานประกอบการที่ยังไม่มีบัญชี */}
-            {!hasOwnerAccount && (
-              <article className="hub-detail-ownership-card">
-                <div className="hub-detail-ownership-card__icon">
-                  <CheckCircle2 />
+            {/* QUICK CONTACT CARD */}
+            {(hasValue(hub.telInformation) ||
+              hasValue(hub.contactInformation) ||
+              hasValue(hub.address)) && (
+              <div className="hub-detail-sidecard hub-detail-sidecard--contact">
+                <div className="hub-detail-sidecard__header">
+                  <h3>ข้อมูลติดต่อ</h3>
+                  <p>ช่องทางติดต่อสถานประกอบการ</p>
                 </div>
 
-                <h2>คุณเป็นเจ้าของสถานประกอบการนี้หรือไม่?</h2>
-
-                <p>
-                  ส่งคำขอเพื่อยืนยันสิทธิ์ในการจัดการข้อมูลสถานประกอบการ
-                  หลังจากผู้ดูแลระบบตรวจสอบและอนุมัติ
-                </p>
-
-                <button type="button" onClick={handleRequestOwnership}>
-                  <Send />
-                  ส่งคำขอเป็นเจ้าของสถานประกอบการ
-                </button>
-
-                <span>คำขอจะเข้าสู่กระบวนการตรวจสอบโดยผู้ดูแลระบบ</span>
-              </article>
-            )}
-
-            {/* กลุ่มที่ 1: ข้อมูลพื้นฐาน (Basic Information) */}
-            <article className="hub-detail-info-card">
-              <div className="hub-detail-info-card__heading">
-                <h2>ข้อมูลพื้นฐาน</h2>
-                <span>การติดต่อและเวลาเปิด-ปิด</span>
-              </div>
-
-              {hasValue(hub.address) && (
-                <div className="hub-detail-info-row">
-                  <div className="hub-detail-info-row__icon">
-                    <MapPin />
-                  </div>
-
-                  <div>
-                    <span>ที่อยู่</span>
-                    <p>{hub.address}</p>
-                  </div>
-                </div>
-              )}
-
-              {hasValue(hub.telInformation) && (
-                <div className="hub-detail-info-row">
-                  <div className="hub-detail-info-row__icon">
-                    <Phone />
-                  </div>
-
-                  <div>
-                    <span>โทรศัพท์</span>
-
-                    <a href={`tel:${hub.telInformation}`}>
-                      {hub.telInformation}
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {hasValue(hub.contactInformation) && (
-                <div className="hub-detail-info-row">
-                  <div className="hub-detail-info-row__icon">
-                    <Mail />
-                  </div>
-
-                  <div>
-                    <span>ช่องทางติดต่อ</span>
-                    <p>{hub.contactInformation}</p>
-                  </div>
-                </div>
-              )}
-
-              {operatingHours.length > 0 && (
-                <div className="hub-detail-info-row">
-                  <div className="hub-detail-info-row__icon">
-                    <Clock3 />
-                  </div>
-
-                  <div>
-                    <span>เวลาให้บริการ</span>
-
-                    <div className="hub-detail-hours">
-                      {operatingHours.map((item) => (
-                        <div key={item.day} className="hub-detail-hours__row">
-                          <strong>{item.label}</strong>
-
-                          <span className="hub-detail-hours__status hub-detail-hours__status--open">
-                            {item.open} – {item.close} น.
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </article>
-
-            {/* กลุ่มที่ 2: ข้อมูลเพิ่มเติม (Additional Information) */}
-            {(certificateTypes.length > 0 || hasValue(hub.categoryName)) && (
-              <article className="hub-detail-info-card">
-                <div className="hub-detail-info-card__heading">
-                  <h2>ข้อมูลเพิ่มเติม</h2>
-                  <span>หมวดหมู่และใบรับรอง</span>
-                </div>
-
-                {hasValue(hub.categoryName) && (
-                  <div className="hub-detail-info-row">
-                    <div className="hub-detail-info-row__icon">
-                      <Tag />
-                    </div>
-
-                    <div>
-                      <span>หมวดหมู่</span>
-                      <p>{hub.categoryName}</p>
-                    </div>
-                  </div>
-                )}
-
-                {certificateTypes.length > 0 && (
-                  <div className="hub-detail-info-row">
-                    <div className="hub-detail-info-row__icon">
-                      <FileBadge2 />
-                    </div>
-
-                    <div>
-                      <span>ประเภทใบรับรอง</span>
-
-                      <div className="hub-detail-certificates">
-                        {certificateTypes.map((certificate, index) => (
-                          <div
-                            key={`${certificate}-${index}`}
-                            className="hub-detail-certificate-item"
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              marginTop: index === 0 ? "4px" : "8px",
-                            }}
-                          >
-                            <ShieldCheck
-                              style={{
-                                width: "16px",
-                                height: "16px",
-                                color: "#28a745",
-                                flexShrink: 0,
-                              }}
-                            />
-
-                            <span
-                              style={{
-                                fontSize: "14px",
-                                color: "#334155",
-                              }}
-                            >
-                              {certificate}
-                            </span>
-                          </div>
-                        ))}
+                <div className="hub-detail-contact-list">
+                  {/* TELEPHONE */}
+                  {hasValue(hub.telInformation) && (
+                    <div className="hub-detail-contact-row">
+                      <div className="hub-detail-contact-row__icon">
+                        <Phone size={18} />
+                      </div>
+                      <div className="hub-detail-contact-row__body">
+                        <small>เบอร์โทรศัพท์ติดต่อ</small>
+                        <p>{hub.telInformation}</p>
                       </div>
                     </div>
-                  </div>
-                )}
-              </article>
+                  )}
+
+                  {/* CONTACT INFO / EMAIL */}
+                  {hasValue(hub.contactInformation) && (
+                    <div className="hub-detail-contact-row">
+                      <div className="hub-detail-contact-row__icon">
+                        <Mail size={18} />
+                      </div>
+                      <div className="hub-detail-contact-row__body">
+                        <small>ช่องทางติดต่อเพิ่มเติม / อีเมล</small>
+                        <p>{hub.contactInformation}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ADDRESS */}
+                  {hasValue(hub.address) && (
+                    <div className="hub-detail-contact-row">
+                      <div className="hub-detail-contact-row__icon">
+                        <MapPin size={18} />
+                      </div>
+                      <div className="hub-detail-contact-row__body">
+                        <small>ที่อยู่</small>
+                        <p>{hub.address}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
+
+            {/* OPERATING HOURS CARD */}
+            {operatingHours.length > 0 && (
+              <div className="hub-detail-sidecard hub-detail-sidecard--hours">
+                <div className="hub-detail-sidecard__header">
+                  <div className="hub-detail-sidecard__title-flex">
+                    <Clock3 size={18} />
+                    <h3>เวลาเปิดให้บริการ</h3>
+                  </div>
+                  <span
+                    className={`hub-detail-badge ${
+                      openStatus.isOpen ? "hub-detail-badge--open" : "hub-detail-badge--closed"
+                    }`}
+                  >
+                    {openStatus.label}
+                  </span>
+                </div>
+
+                <div className="hub-detail-schedule">
+                  {operatingHours.map((item) => {
+                    const isToday =
+                      item.day ===
+                      [
+                        "sunday",
+                        "monday",
+                        "tuesday",
+                        "wednesday",
+                        "thursday",
+                        "friday",
+                        "saturday",
+                      ][new Date().getDay()];
+
+                    const is24Hours =
+                      item.active &&
+                      item.open === "00:00" &&
+                      (item.close === "23:59" ||
+                        item.close === "24:00" ||
+                        item.close === "00:00");
+
+                    return (
+                      <div
+                        key={item.day}
+                        className={`hub-detail-schedule__row ${
+                          isToday ? "hub-detail-schedule__row--today" : ""
+                        } ${!item.active ? "hub-detail-schedule__row--inactive" : ""}`}
+                      >
+                        <div className="hub-detail-schedule__day">
+                          <span>{item.label}</span>
+                          {isToday && <span className="hub-today-pill">วันนี้</span>}
+                        </div>
+
+                        <div className="hub-detail-schedule__time">
+                          {!item.active ? (
+                            <span className="hub-text-closed">ปิดบริการ</span>
+                          ) : is24Hours ? (
+                            <span className="hub-text-24h">เปิด 24 ชั่วโมง</span>
+                          ) : (
+                            <span>
+                              {item.open} – {item.close} น.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* CERTIFICATE & STANDARD CARD */}
+            {certificateTypes.length > 0 && (
+              <div className="hub-detail-sidecard hub-detail-sidecard--certs">
+                <div className="hub-detail-sidecard__header">
+                  <div className="hub-detail-sidecard__title-flex">
+                    <ShieldCheck size={18} />
+                    <h3>ใบรับรองมาตรฐานเวลเนส</h3>
+                  </div>
+                  <p>ผ่านการรับรองคุณภาพมาตรฐาน</p>
+                </div>
+
+                <div className="hub-detail-cert-list">
+                  {certificateTypes.map((cert, index) => (
+                    <div key={`${cert}-${index}`} className="hub-detail-cert-badge">
+                      <div className="hub-detail-cert-badge__icon">
+                        <Sparkles size={14} />
+                      </div>
+                      <span>{cert}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* EXTENSIBLE FUTURE DATA SLOT: CATEGORY INFO */}
+            <div className="hub-detail-sidecard hub-detail-sidecard--info">
+              <div className="hub-detail-sidecard__header">
+                <div className="hub-detail-sidecard__title-flex">
+                  <Info size={18} />
+                  <h3>ข้อมูลการให้บริการ</h3>
+                </div>
+              </div>
+
+              <div className="hub-detail-category-card">
+                <div
+                  className="hub-detail-category-card__icon"
+                  style={{
+                    backgroundColor: catInfo.accentColor,
+                    color: catInfo.color,
+                  }}
+                >
+                  <i className={`fa-solid ${catInfo.icon}`} />
+                </div>
+                <div className="hub-detail-category-card__body">
+                  <strong>{catInfo.name}</strong>
+                  <p>{catInfo.description}</p>
+                </div>
+              </div>
+            </div>
           </aside>
         </div>
       </div>
+
+      {/* FULLSCREEN LIGHTBOX MODAL */}
+      {lightboxIndex !== null && allImages.length > 0 && (
+        <div
+          className="hub-lightbox"
+          onClick={() => setLightboxIndex(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="รูปภาพขนาดเต็ม"
+        >
+          {/* CLOSE BUTTON */}
+          <button
+            type="button"
+            className="hub-lightbox__close"
+            onClick={() => setLightboxIndex(null)}
+            aria-label="ปิด"
+          >
+            <X size={24} />
+          </button>
+
+          {/* COUNTER & TITLE */}
+          <div className="hub-lightbox__header" onClick={(e) => e.stopPropagation()}>
+            <span className="hub-lightbox__title">{hub.wellnessHubName}</span>
+            <span className="hub-lightbox__count">
+              {lightboxIndex + 1} / {allImages.length}
+            </span>
+          </div>
+
+          {/* PREV BUTTON */}
+          {allImages.length > 1 && (
+            <button
+              type="button"
+              className="hub-lightbox__nav hub-lightbox__nav--prev"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex(
+                  (prev) => (prev - 1 + allImages.length) % allImages.length,
+                );
+              }}
+              aria-label="รูปก่อนหน้า"
+            >
+              <ChevronLeft size={30} />
+            </button>
+          )}
+
+          {/* MAIN LIGHTBOX IMAGE */}
+          <div
+            className="hub-lightbox__content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={allImages[lightboxIndex]}
+              alt={`${hub.wellnessHubName} ${lightboxIndex + 1}`}
+            />
+          </div>
+
+          {/* NEXT BUTTON */}
+          {allImages.length > 1 && (
+            <button
+              type="button"
+              className="hub-lightbox__nav hub-lightbox__nav--next"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex((prev) => (prev + 1) % allImages.length);
+              }}
+              aria-label="รูปถัดไป"
+            >
+              <ChevronRight size={30} />
+            </button>
+          )}
+
+          {/* THUMBNAIL STRIP */}
+          {allImages.length > 1 && (
+            <div
+              className="hub-lightbox__thumbs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {allImages.map((src, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`hub-lightbox__thumb ${
+                    i === lightboxIndex ? "hub-lightbox__thumb--active" : ""
+                  }`}
+                  onClick={() => setLightboxIndex(i)}
+                >
+                  <img src={src} alt={`Thumbnail ${i + 1}`} />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </main>
   );
 }
