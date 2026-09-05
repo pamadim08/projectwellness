@@ -176,7 +176,7 @@
   backdrop-filter: blur(10px);
 }
 
-.request-account-hero__hub > svg {
+.request-account-hero__hub>svg {
   width: 32px;
   height: 32px;
   color: var(--request-gold);
@@ -184,7 +184,7 @@
   margin-top: 2px;
 }
 
-.request-account-hero__hub > div {
+.request-account-hero__hub>div {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -289,7 +289,7 @@
   padding: 4px 0;
 }
 
-.request-account-progress__item > span {
+.request-account-progress__item>span {
   display: grid;
   width: 30px;
   height: 30px;
@@ -397,7 +397,7 @@
   color: var(--request-danger);
 }
 
-.request-account-form-intro > svg {
+.request-account-form-intro>svg {
   width: 32px;
   height: 32px;
   color: var(--request-green-500);
@@ -422,7 +422,7 @@
   border-bottom: 1px solid #f1f5f3;
 }
 
-.request-account-section__heading > span {
+.request-account-section__heading>span {
   display: grid;
   width: 36px;
   height: 36px;
@@ -835,11 +835,11 @@
   transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.request-account-switch input:checked + span {
+.request-account-switch input:checked+span {
   background-color: #159060;
 }
 
-.request-account-switch input:checked + span::before {
+.request-account-switch input:checked+span::before {
   transform: translateX(22px);
 }
 
@@ -1140,6 +1140,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1165,6 +1166,7 @@
     transform: scale(0.92) translateY(10px);
     opacity: 0;
   }
+
   to {
     transform: scale(1) translateY(0);
     opacity: 1;

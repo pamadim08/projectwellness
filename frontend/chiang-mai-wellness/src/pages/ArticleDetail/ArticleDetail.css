@@ -1,78 +1,89 @@
 /* ==========================================================================
-   ARTICLE DETAIL - MODERN WELLNESS DESIGN SYSTEM
-   Chiang Mai Wellness Route Design System
+   ARTICLE DETAIL - CHIANG MAI WELLNESS DESIGN SYSTEM
+   โทนสีและดีไซน์เอกภาพเดียวกันกับหน้าอื่นในระบบ
    ========================================================================== */
 
 :root {
-  --article-ink-950: #041713;
-  --article-ink-900: #06231d;
-  --article-ink-800: #0c342c;
-  --article-ink-700: #14493e;
+  --route-ink-900: #06231d;
+  --route-ink-800: #0c342c;
+  --route-ink-700: #14493e;
 
-  --article-green-700: #054c3e;
-  --article-green-600: #076653;
-  --article-green-500: #159060;
-  --article-green-400: #2ebb7d;
+  --route-green-600: #076653;
+  --route-green-500: #159060;
+  --route-green-400: #2ebb7d;
 
-  --article-cream: #fffdee;
-  --article-white: #ffffff;
-  --article-soft-bg: #f8faf8;
-  --article-card-bg: #ffffff;
+  --route-cream: #fffdee;
+  --route-white: #ffffff;
+  --route-soft: #f6f4f1;
 
-  --article-lime: #e3ef26;
-  --article-mint: #e2fbce;
-  --article-gold: #f2b635;
-  --article-gold-soft: #d4a340;
-  --article-orange: #ea580c;
+  --route-lime: #e3ef26;
+  --route-mint: #e2fbce;
+  --route-gold: #f2b635;
+  --route-orange: #e45c10;
 
-  --article-text-primary: #1e293b;
-  --article-text-secondary: #475569;
-  --article-text-muted: #64748b;
+  --route-text: #4e594f;
+  --route-muted: #666a59;
 
-  --article-border: rgba(6, 35, 29, 0.08);
-  --article-border-medium: rgba(6, 35, 29, 0.14);
-
-  --article-shadow-sm: 0 2px 8px rgba(6, 35, 29, 0.04);
-  --article-shadow-md: 0 8px 24px rgba(6, 35, 29, 0.07);
-  --article-shadow-lg: 0 16px 36px rgba(6, 35, 29, 0.1);
-  --article-shadow-card: 0 10px 30px rgba(6, 35, 29, 0.05);
+  --route-border: rgba(6, 35, 29, 0.09);
+  --route-shadow-card: 0 8px 24px rgba(6, 35, 29, 0.06);
 }
 
 /* ==========================================================================
    PAGE BASE
    ========================================================================== */
 
-.article-detail-page {
+.gov-article-page {
   min-height: 100vh;
-  color: var(--article-text-primary);
-  background: var(--article-soft-bg);
-  font-family: "Sarabun", "Inter", -apple-system, sans-serif;
-  line-height: 1.6;
+  color: var(--route-ink-800);
+  background: var(--route-soft);
+  font-family: "Sarabun", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.7;
 }
 
-.article-detail-page *,
-.article-detail-page *::before,
-.article-detail-page *::after {
+.gov-article-page *,
+.gov-article-page *::before,
+.gov-article-page *::after {
   box-sizing: border-box;
 }
 
-.article-detail-container {
-  width: min(calc(100% - 48px), 1240px);
+.gov-article-container {
+  width: min(calc(100% - 36px), 1080px);
   margin: 0 auto;
 }
 
 /* ==========================================================================
-   BACK LINK / CAPSULE BUTTON
+   1. HERO MASTHEAD (เหมือนหน้า ArticleList)
    ========================================================================== */
 
-.article-detail-back-pill {
+.gov-article-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 38px 0 48px;
+  color: var(--route-cream);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(228, 92, 16, 0.22), transparent 28%),
+    radial-gradient(circle at 100% 18%, rgba(242, 182, 53, 0.15), transparent 28%),
+    linear-gradient(126deg, #082b24 0%, #075143 60%, #286d57 100%);
+  border-bottom: 3px solid var(--route-gold);
+  box-shadow: 0 4px 14px rgba(6, 35, 29, 0.12);
+}
+
+.gov-article-hero .gov-article-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+/* Back Button */
+.gov-article-back {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-height: 38px;
-  margin-bottom: 24px;
   padding: 0 16px;
-  color: rgba(255, 253, 238, 0.92);
+  color: rgba(255, 253, 238, 0.9);
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 99px;
@@ -82,707 +93,565 @@
   font-size: 13.5px;
   font-weight: 700;
   transition: all 0.2s ease;
-  width: fit-content;
 }
 
-.article-detail-back-pill:hover {
+.gov-article-back:hover {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.22);
   border-color: rgba(255, 255, 255, 0.4);
   transform: translateX(-3px);
 }
 
-/* ==========================================================================
-   HERO HEADER SECTION
-   ========================================================================== */
-
-.article-detail-hero {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  padding: 36px 0 52px;
-  color: var(--article-cream);
-  background:
-    radial-gradient(circle at 10% 20%, rgba(228, 92, 16, 0.22), transparent 30%),
-    radial-gradient(circle at 90% 80%, rgba(242, 182, 53, 0.18), transparent 35%),
-    linear-gradient(135deg, #05241e 0%, #075143 55%, #186854 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.article-detail-hero::after {
-  position: absolute;
-  right: -80px;
-  top: -80px;
-  z-index: -1;
-  width: 380px;
-  height: 380px;
-  content: "";
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(242, 182, 53, 0.85) 0%,
-    rgba(242, 182, 53, 0.35) 40%,
-    transparent 70%
-  );
-  filter: blur(4px);
-  pointer-events: none;
-}
-
-.article-detail-hero__grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 480px);
-  align-items: center;
-  gap: 48px;
-}
-
-.article-detail-hero__main {
-  min-width: 0;
+.gov-article-hero-text {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  align-items: flex-start;
 }
 
-/* Chips / Badges */
-.article-detail-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
+.gov-article-eyebrow {
+  margin: 0 0 8px;
+  color: #cde6d2;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.article-detail-chip {
+.gov-article-hero-title {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: clamp(24px, 3.2vw, 34px);
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.gov-article-hero-desc {
+  margin: 0;
+  color: var(--route-mint);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 740px;
+}
+
+/* ==========================================================================
+   2. ARTICLE DOCUMENT CARD (การ์ดเอกสารเนื้อหาบทความ)
+   ========================================================================== */
+
+.gov-article-body-wrapper {
+  padding: 32px 0 64px;
+}
+
+.gov-article-doc {
+  background: var(--route-white);
+  border-radius: 16px;
+  border: 1px solid var(--route-border);
+  box-shadow: var(--route-shadow-card);
+  padding: 44px 50px;
+  margin: 0 auto;
+}
+
+/* ==========================================================================
+   ARTICLE HEADER (หัวข้อบทความ & วันที่/ผู้เผยแพร่)
+   ========================================================================== */
+
+.gov-article-header {
+  margin-bottom: 28px;
+}
+
+.gov-article-category-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
+  padding: 4px 14px;
+  background: var(--route-mint);
+  color: var(--route-green-600);
+  border: 1px solid rgba(7, 102, 83, 0.2);
   border-radius: 99px;
   font-size: 12.5px;
   font-weight: 700;
-  line-height: 1;
+  margin-bottom: 14px;
 }
 
-.article-detail-chip--category {
-  background: rgba(227, 239, 38, 0.18);
-  color: #fff8bd;
-  border: 1px solid rgba(227, 239, 38, 0.4);
-}
-
-.article-detail-chip--date,
-.article-detail-chip--time {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-}
-
-/* Article Hero Title */
-.article-detail-hero__title {
-  margin: 0;
-  color: #ffffff;
-  font-size: clamp(26px, 3.2vw, 40px);
+.gov-article-title {
+  margin: 0 0 16px;
+  color: var(--route-ink-900);
+  font-size: clamp(24px, 3.2vw, 32px);
   font-weight: 800;
-  line-height: 1.3;
-  letter-spacing: -0.02em;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
 }
 
-/* Author info bar */
-.article-detail-hero__author-bar {
+/* Metadata Bar */
+.gov-article-meta-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-top: 4px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  width: fit-content;
-}
-
-.article-detail-author-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #e2fbce;
-}
-
-.article-detail-author-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.article-detail-author-label {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.article-detail-author-name {
+  gap: 16px 24px;
+  padding: 10px 16px;
+  background: #f8faf8;
+  border: 1px solid rgba(6, 35, 29, 0.06);
+  border-radius: 8px;
   font-size: 13.5px;
+  color: var(--route-text);
+}
+
+.gov-article-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.gov-article-meta-item strong {
+  color: var(--route-ink-800);
   font-weight: 700;
-  color: #ffffff;
 }
 
-/* Cover Image Banner */
-.article-detail-hero__cover-wrap {
-  position: relative;
+.gov-article-meta-item svg {
+  color: var(--route-green-600);
+  flex-shrink: 0;
+}
+
+/* Divider */
+.gov-article-divider {
+  margin-top: 22px;
+  height: 3px;
+  background: linear-gradient(to right, var(--route-green-600) 0%, var(--route-gold) 45%, rgba(6, 35, 29, 0.08) 100%);
+  border-radius: 2px;
+}
+
+/* ==========================================================================
+   3. FEATURED COVER IMAGE (รูปภาพหน้าปกหลักพอดีกับตัวรูป)
+   ========================================================================== */
+
+.gov-article-cover-section {
+  margin: 0 0 32px;
+}
+
+.gov-article-cover-frame {
   width: 100%;
-  height: 320px;
-  margin: 0;
+  border-radius: 12px;
   overflow: hidden;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--route-border);
+  background: transparent;
+  box-shadow: 0 4px 16px rgba(6, 35, 29, 0.06);
+  cursor: pointer;
+  display: block;
 }
 
-.article-detail-hero__cover-img {
+.gov-article-cover-img {
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 520px;
   object-fit: cover;
   display: block;
   transition: transform 0.3s ease;
 }
 
-.article-detail-hero__cover-wrap:hover .article-detail-hero__cover-img {
-  transform: scale(1.03);
+.gov-article-cover-frame:hover .gov-article-cover-img {
+  transform: scale(1.015);
 }
 
-.article-detail-hero__cover-wrap--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, rgba(7, 102, 83, 0.5) 0%, rgba(20, 73, 62, 0.7) 100%);
-}
-
-.article-detail-hero__fallback {
+.gov-article-cover-fallback {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  color: rgba(255, 255, 255, 0.75);
+  padding: 40px 20px;
+  background: #f8faf8;
+  border: 1px dashed var(--route-border);
+  border-radius: 12px;
+  color: var(--route-muted);
   text-align: center;
-  padding: 20px;
-}
-
-.article-detail-hero__fallback span {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
 }
 
 /* ==========================================================================
-   CONTENT & READING LAYOUT
+   4. PROSE CONTENT (เนื้อหาบทความ)
    ========================================================================== */
 
-.article-detail-content-area {
-  padding-top: 48px;
-  padding-bottom: 72px;
+.gov-article-content-section {
+  margin-bottom: 36px;
 }
 
-.article-detail-layout {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 40px;
-  align-items: start;
+.gov-article-prose {
+  color: #2c3e35;
+  font-size: 17.5px;
+  line-height: 1.95;
+  text-align: justify;
+  overflow-wrap: anywhere;
 }
 
-/* Sidebar Meta Column */
-.article-detail-sidebar {
-  position: sticky;
-  top: 100px;
+.gov-article-prose p {
+  margin: 0 0 20px;
+  text-indent: 2.2em;
 }
 
-.article-detail-card-meta {
-  background: #ffffff;
-  border-radius: 20px;
-  padding: 24px;
-  border: 1px solid var(--article-border);
-  box-shadow: var(--article-shadow-sm);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.gov-article-prose strong,
+.gov-article-prose b {
+  color: var(--route-ink-900);
+  font-weight: 750;
 }
 
-.article-detail-card-meta__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--article-green-700);
-  padding-bottom: 14px;
-  border-bottom: 1px solid #f1f5f3;
-}
-
-.article-detail-card-meta__header h3 {
-  margin: 0;
-  font-size: 15px;
+.gov-article-prose h2 {
+  margin: 36px 0 16px;
+  color: var(--route-green-600);
+  font-size: 22px;
   font-weight: 800;
-  color: var(--article-ink-800);
+  line-height: 1.45;
+  border-left: 4px solid var(--route-green-500);
+  padding-left: 12px;
+  text-indent: 0;
 }
 
-.article-detail-card-meta__list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.gov-article-prose h3 {
+  margin: 28px 0 12px;
+  color: var(--route-ink-800);
+  font-size: 19px;
+  font-weight: 750;
+  text-indent: 0;
 }
 
-.article-detail-meta-row {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.article-detail-meta-label {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--article-text-muted);
-}
-
-.article-detail-meta-val {
-  font-size: 14px;
+.gov-article-prose h4 {
+  margin: 22px 0 10px;
+  color: var(--route-ink-700);
+  font-size: 17px;
   font-weight: 700;
-  color: var(--article-ink-900);
-  line-height: 1.4;
+  text-indent: 0;
 }
 
-.article-detail-sidebar-btn {
+.gov-article-prose ul,
+.gov-article-prose ol {
+  margin: 0 0 24px;
+  padding-left: 36px;
+}
+
+.gov-article-prose li {
+  margin-bottom: 8px;
+}
+
+.gov-article-prose blockquote {
+  margin: 24px 0;
+  padding: 16px 20px;
+  background: #fdfbf3;
+  border-left: 4px solid var(--route-gold);
+  border-radius: 0 8px 8px 0;
+  color: #7c5806;
+  font-size: 16.5px;
+}
+
+.gov-article-prose blockquote p {
+  text-indent: 0;
+  margin: 0;
+}
+
+.gov-article-prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--route-border);
+  margin: 20px auto;
+  display: block;
+}
+
+.gov-article-prose a {
+  color: var(--route-green-600);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+}
+
+.gov-article-empty-content {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 11px 16px;
-  border-radius: 12px;
-  background: #f0fdf4;
-  color: var(--article-green-700);
-  border: 1px solid #bbf7d0;
-  text-decoration: none;
+  padding: 40px;
+  color: var(--route-muted);
+  text-align: center;
+}
+
+/* ==========================================================================
+   5. PHOTO GALLERY (รูปภาพประกอบเพิ่มเติม)
+   ========================================================================== */
+
+.gov-article-gallery-section {
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(6, 35, 29, 0.08);
+}
+
+.gov-article-gallery-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: var(--route-ink-800);
+}
+
+.gov-article-gallery-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.gov-article-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.gov-article-gallery-item {
+  margin: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--route-border);
+  background: var(--route-white);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  aspect-ratio: 4 / 3;
+}
+
+.gov-article-gallery-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(6, 35, 29, 0.1);
+}
+
+.gov-article-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ==========================================================================
+   6. OFFICIAL FOOTER / AGENCY ACCREDITATION
+   ========================================================================== */
+
+.gov-article-footer {
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(6, 35, 29, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.gov-article-agency-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  background: #f8faf8;
+  border: 1px solid rgba(6, 35, 29, 0.07);
+  border-radius: 10px;
+}
+
+.gov-article-agency-icon {
+  color: var(--route-green-600);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.gov-article-agency-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.gov-article-agency-info strong {
+  color: var(--route-ink-900);
+  font-weight: 700;
+}
+
+.gov-article-agency-info span {
+  color: var(--route-muted);
+}
+
+.gov-article-footer-nav {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.gov-article-btn-back-bottom {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  background: #f1f4f2;
+  color: var(--route-ink-800);
+  border: 1px solid var(--route-border);
+  border-radius: 99px;
+  text-decoration: none;
+  font-size: 14px;
   font-weight: 700;
   transition: all 0.2s ease;
 }
 
-.article-detail-sidebar-btn:hover {
-  background: #dcfce7;
-  color: #14532d;
-  transform: translateY(-1px);
-}
-
-/* Main Article Body Card */
-.article-detail-main-body {
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 48px;
-  border: 1px solid var(--article-border);
-  box-shadow: var(--article-shadow-card);
-  min-width: 0;
+.gov-article-btn-back-bottom:hover {
+  background: #e2e8e4;
+  color: var(--route-ink-900);
+  transform: translateX(-3px);
 }
 
 /* ==========================================================================
-   PROSE / ARTICLE CONTENT TYPOGRAPHY
+   MODAL LIGHTBOX
    ========================================================================== */
 
-.article-detail-prose {
-  color: #334155;
-  font-size: 16.5px;
-  line-height: 1.85;
-  overflow-wrap: anywhere;
-}
-
-.article-detail-prose > *:first-child {
-  margin-top: 0;
-}
-
-.article-detail-prose > *:last-child {
-  margin-bottom: 0;
-}
-
-/* Paragraph */
-.article-detail-prose p {
-  margin: 0 0 24px;
-  color: #334155;
-  font-size: 16.5px;
-  line-height: 1.85;
-}
-
-/* Bold & Highlights */
-.article-detail-prose strong,
-.article-detail-prose b {
-  color: var(--article-ink-900);
-  font-weight: 750;
-}
-
-/* Headings */
-.article-detail-prose h2 {
-  margin: 40px 0 16px;
-  color: var(--article-ink-900);
-  font-size: 26px;
-  font-weight: 800;
-  line-height: 1.4;
-  position: relative;
-  padding-left: 14px;
-  border-left: 4px solid var(--article-green-500);
-}
-
-.article-detail-prose h3 {
-  margin: 32px 0 14px;
-  color: var(--article-ink-800);
-  font-size: 21px;
-  font-weight: 800;
-  line-height: 1.45;
-}
-
-.article-detail-prose h4 {
-  margin: 26px 0 12px;
-  color: var(--article-green-700);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.5;
-}
-
-/* Blockquote */
-.article-detail-prose blockquote {
-  margin: 28px 0;
-  padding: 20px 26px;
-  background: #f0fdf4;
-  border-left: 4px solid var(--article-green-500);
-  border-radius: 0 16px 16px 0;
-  color: #166534;
-  font-size: 16px;
-  font-style: italic;
-  line-height: 1.7;
-}
-
-/* Lists */
-.article-detail-prose ul,
-.article-detail-prose ol {
-  margin: 12px 0 24px;
-  padding-left: 28px;
-  color: #334155;
-}
-
-.article-detail-prose li {
-  margin-bottom: 10px;
-  line-height: 1.75;
-}
-
-.article-detail-prose ul li::marker {
-  color: var(--article-green-500);
-}
-
-/* Images & Figures in content */
-.article-detail-prose img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 16px;
-  margin: 24px 0;
-  box-shadow: var(--article-shadow-md);
-}
-
-.article-detail-prose figure {
-  margin: 28px 0;
-  text-align: center;
-}
-
-.article-detail-prose figcaption {
-  font-size: 13px;
-  color: var(--article-text-muted);
-  margin-top: 8px;
-}
-
-/* Links inside prose */
-.article-detail-prose a {
-  color: var(--article-green-600);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  font-weight: 600;
-  transition: color 0.2s ease;
-}
-
-.article-detail-prose a:hover {
-  color: var(--article-green-700);
-}
-
-/* HR Divider */
-.article-detail-prose hr {
-  margin: 36px 0;
-  border: 0;
-  height: 1px;
-  background: #e2e8f0;
-}
-
-/* Empty Content State */
-.article-detail-empty-content {
+.gov-article-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.88);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
-  color: var(--article-text-muted);
-  gap: 12px;
+  padding: 20px;
 }
 
-.article-detail-empty-content h2 {
-  margin: 0;
-  font-size: 20px;
-  color: var(--article-ink-800);
+.gov-article-modal__content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
 }
 
-.article-detail-empty-content p {
-  margin: 0;
-  font-size: 14px;
+.gov-article-modal__content img {
+  max-width: 100%;
+  max-height: 85vh;
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  display: block;
+}
+
+.gov-article-modal__close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #0f172a;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.gov-article-modal__close:hover {
+  transform: scale(1.1);
 }
 
 /* ==========================================================================
-   LOADING & ERROR STATES
+   ERROR STATE
    ========================================================================== */
 
-.article-detail-loading {
-  padding: 80px 0;
+.gov-article-error-wrap {
+  padding: 40px 0;
 }
 
-.article-detail-loading__header {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 40px;
-}
-
-.article-detail-spinner {
-  width: 44px;
-  height: 44px;
-  border: 4px solid #e2ebe6;
-  border-top-color: var(--article-green-600);
-  border-radius: 50%;
-  animation: articleDetailSpin 0.8s linear infinite;
-}
-
-@keyframes articleDetailSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.article-detail-loading__header h1 {
-  margin: 0 0 4px;
-  font-size: 24px;
-  color: var(--article-ink-900);
-}
-
-.article-detail-loading__header p {
-  margin: 0;
-  font-size: 14px;
-  color: var(--article-text-muted);
-}
-
-.article-detail-loading__layout {
-  display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 40px;
+.gov-article-state--error {
   background: #ffffff;
-  padding: 40px;
-  border-radius: 24px;
-  border: 1px solid var(--article-border);
-}
-
-.article-detail-loading__info {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.article-detail-loading__line {
-  height: 16px;
-  background: #f1f5f3;
-  border-radius: 8px;
-  animation: articlePulse 1.5s ease-in-out infinite;
-}
-
-.article-detail-loading__line--small {
-  width: 120px;
-}
-
-.article-detail-loading__line--title {
-  height: 32px;
-  width: 80%;
-}
-
-.article-detail-loading__line--medium {
-  width: 60%;
-}
-
-.article-detail-loading__line--short {
-  width: 40%;
-}
-
-.article-detail-loading__image {
-  height: 220px;
-  background: #f1f5f3;
-  border-radius: 16px;
-  animation: articlePulse 1.5s ease-in-out infinite;
-}
-
-@keyframes articlePulse {
-  0%, 100% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.article-detail-error-wrap {
-  padding: 48px 0;
-}
-
-.article-detail-state--error {
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 60px 24px;
+  border-radius: 12px;
+  border: 1px solid #fecaca;
+  padding: 40px 24px;
   text-align: center;
-  border: 1px solid #fee2e2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  max-width: 600px;
-  margin: 20px auto 0;
-  box-shadow: var(--article-shadow-md);
+  max-width: 500px;
+  margin: 0 auto;
+  box-shadow: var(--route-shadow-card);
 }
 
-.article-detail-state__icon {
-  color: #ef4444;
+.gov-article-state__icon {
+  color: #dc2626;
+  margin-bottom: 12px;
 }
 
-.article-detail-state--error h1 {
-  margin: 0;
-  font-size: 24px;
+.gov-article-state--error h1 {
+  margin: 0 0 8px;
+  font-size: 20px;
   color: #991b1b;
 }
 
-.article-detail-state--error p {
-  margin: 0;
-  font-size: 14.5px;
-  color: var(--article-text-secondary);
+.gov-article-state--error p {
+  margin: 0 0 20px;
+  color: var(--route-muted);
+  font-size: 14px;
 }
 
-.article-detail-state__actions {
+.gov-article-state__actions {
   display: flex;
-  align-items: center;
   gap: 12px;
-  margin-top: 8px;
+  justify-content: center;
 }
 
-.article-detail-btn-retry {
+.gov-article-btn-retry,
+.gov-article-btn-back {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: var(--article-green-600);
-  color: #ffffff;
-  border: none;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: 99px;
+  font-size: 13.5px;
   font-weight: 700;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.article-detail-btn-retry:hover {
-  background: var(--article-green-700);
-}
-
-.article-detail-btn-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: #f1f5f9;
-  color: #334155;
   text-decoration: none;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 14px;
-  transition: background 0.2s ease;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.article-detail-btn-back:hover {
+.gov-article-btn-retry {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+.gov-article-btn-retry:hover {
   background: #e2e8f0;
 }
 
+.gov-article-btn-back {
+  background: var(--route-green-600);
+  border: 1px solid var(--route-green-600);
+  color: #ffffff;
+}
+
+.gov-article-btn-back:hover {
+  background: var(--route-ink-900);
+}
+
 /* ==========================================================================
-   RESPONSIVE BREAKPOINTS
+   RESPONSIVE
    ========================================================================== */
 
-@media (max-width: 1024px) {
-  .article-detail-hero__grid {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
-
-  .article-detail-hero__cover-wrap {
-    height: 280px;
-  }
-
-  .article-detail-layout {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
-
-  .article-detail-sidebar {
-    position: static;
-  }
-
-  .article-detail-card-meta__list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 16px;
-  }
-
-  .article-detail-main-body {
-    padding: 32px;
-  }
-}
-
 @media (max-width: 768px) {
-  .article-detail-hero {
-    padding: 24px 0 36px;
-  }
-
-  .article-detail-hero__cover-wrap {
-    height: 220px;
-  }
-
-  .article-detail-main-body {
+  .gov-article-doc {
     padding: 24px 18px;
-    border-radius: 18px;
+    border-radius: 12px;
   }
 
-  .article-detail-prose p {
-    font-size: 15.5px;
-  }
-
-  .article-detail-prose h2 {
-    font-size: 22px;
-  }
-}
-
-@media (max-width: 576px) {
-  .article-detail-container {
-    width: calc(100% - 32px);
-  }
-
-  .article-detail-hero__title {
+  .gov-article-title {
     font-size: 22px;
   }
 
-  .article-detail-chips {
-    gap: 6px;
+  .gov-article-prose {
+    font-size: 16.5px;
   }
 
-  .article-detail-chip {
-    font-size: 11.5px;
-    padding: 4px 10px;
+  .gov-article-prose p {
+    text-indent: 1.5em;
+  }
+
+  .gov-article-meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .gov-article-gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }

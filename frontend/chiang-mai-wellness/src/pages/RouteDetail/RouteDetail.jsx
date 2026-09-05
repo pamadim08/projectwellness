@@ -28,9 +28,18 @@ import {
   EyeOff,
   Maximize2,
   Pencil,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal,
+  Filter,
+  Layers,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import LoadingState from "../../Components/LoadingState/LoadingState";
+import {
+  getCategoryMarkerIcon,
+  getCategoryMarkerImage,
+} from "../../utils/categoryMarkerIcons";
 import "./RouteDetail.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
@@ -52,42 +61,42 @@ const MASTER_CATEGORIES = [
   {
     id: "SPA",
     name: "นวด/สปาเพื่อสุขภาพ",
-    color: "#2E9D62",
+    color: "#E02873",
     icon: "fa-spa",
     lucideIcon: Sparkles,
   },
   {
     id: "RESTAURANT",
     name: "อาหารและเครื่องดื่ม",
-    color: "#F28C28",
+    color: "#0B7D31",
     icon: "fa-utensils",
     lucideIcon: Utensils,
   },
   {
     id: "HOTEL",
     name: "ที่พักฟื้นฟูสุขภาพ",
-    color: "#7C63D9",
+    color: "#5E27AB",
     icon: "fa-bed",
     lucideIcon: Bed,
   },
   {
     id: "CLINIC",
     name: "คลินิก/สถานพยาบาล",
-    color: "#2563A6",
+    color: "#004CB4",
     icon: "fa-notes-medical",
     lucideIcon: HeartPulse,
   },
   {
     id: "ATTRACTION",
     name: "สถานที่ท่องเที่ยว",
-    color: "#28A9D8",
+    color: "#009BB0",
     icon: "fa-map-location-dot",
     lucideIcon: Palmtree,
   },
   {
     id: "HOSPITAL",
     name: "โรงพยาบาล",
-    color: "#D9434E",
+    color: "#BD0915",
     icon: "fa-hospital",
     lucideIcon: Cross,
     alwaysVisible: true,
@@ -95,7 +104,7 @@ const MASTER_CATEGORIES = [
   {
     id: "RESCUE",
     name: "หน่วยกู้ภัย",
-    color: "#E0A000",
+    color: "#C98600",
     icon: "fa-truck-medical",
     lucideIcon: Ambulance,
     alwaysVisible: true,
@@ -114,7 +123,7 @@ export function getCategoryStyle(categoryId = "") {
     normalizedId.includes("นวด") ||
     normalizedId.includes("สปา")
   ) {
-    return { name: "นวด/สปาเพื่อสุขภาพ", color: "#2E9D62" };
+    return { name: "นวด/สปาเพื่อสุขภาพ", color: "#E02873" };
   }
   if (
     normalizedId.includes("C03") ||
@@ -122,7 +131,7 @@ export function getCategoryStyle(categoryId = "") {
     normalizedId.includes("FOOD") ||
     normalizedId.includes("อาหาร")
   ) {
-    return { name: "อาหารและเครื่องดื่ม", color: "#F28C28" };
+    return { name: "อาหารและเครื่องดื่ม", color: "#0B7D31" };
   }
   if (
     normalizedId.includes("C04") ||
@@ -130,58 +139,46 @@ export function getCategoryStyle(categoryId = "") {
     normalizedId.includes("ACCOM") ||
     normalizedId.includes("ที่พัก")
   ) {
-    return { name: "ที่พักฟื้นฟูสุขภาพ", color: "#7C63D9" };
+    return { name: "ที่พักฟื้นฟูสุขภาพ", color: "#5E27AB" };
   }
   if (
     normalizedId.includes("C02") ||
     normalizedId.includes("CLINIC") ||
     normalizedId.includes("คลินิก")
   ) {
-    return { name: "คลินิก/สถานพยาบาล", color: "#2563A6" };
+    return { name: "คลินิก/สถานพยาบาล", color: "#004CB4" };
   }
   if (
     normalizedId.includes("C05") ||
     normalizedId.includes("ATTRACTION") ||
+    normalizedId.includes("TOURIS") ||
+    normalizedId.includes("TOURISM") ||
     normalizedId.includes("TOURIST") ||
     normalizedId.includes("TRAVEL") ||
     normalizedId.includes("ท่องเที่ยว")
   ) {
-    return { name: "สถานที่ท่องเที่ยว", color: "#28A9D8" };
+    return { name: "สถานที่ท่องเที่ยว", color: "#009BB0" };
   }
   if (
     normalizedId.includes("EM02") ||
     normalizedId.includes("HOSPITAL") ||
     normalizedId.includes("โรงพยาบาล") ||
-    normalizedId.includes("ALS")
+    normalizedId.includes("ALS") ||
+    normalizedId.includes("ADVANCED")
   ) {
-    return { name: "โรงพยาบาล", color: "#D9434E" };
+    return { name: "โรงพยาบาล", color: "#BD0915" };
   }
   if (
     normalizedId.includes("EM01") ||
     normalizedId.includes("RESCUE") ||
     normalizedId.includes("กู้ภัย") ||
-    normalizedId.includes("BLS")
+    normalizedId.includes("BLS") ||
+    normalizedId.includes("BASIC")
   ) {
-    return { name: "หน่วยกู้ภัย", color: "#E0A000" };
+    return { name: "หน่วยกู้ภัย", color: "#C98600" };
   }
 
   return { name: "อื่นๆ", color: "#64748B" };
-}
-
-function createCustomDivIcon(pinColor, pinIcon) {
-  return L.divIcon({
-    html: `
-      <div style="background:white; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,0.25); border:2px solid white;">
-        <div style="background:${pinColor}; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white;">
-          <i class="fa-solid ${pinIcon}" style="font-size:11px;"></i>
-        </div>
-      </div>
-    `,
-    className: "",
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -16],
-  });
 }
 
 function extractLatLng(item) {
@@ -288,6 +285,62 @@ function escapeHtml(value = "") {
     .replace(/'/g, "&#039;");
 }
 
+// 🗺️ Cache สำหรับเก็บ GeoJSON ขอบเขตอำเภอจริงจาก OpenStreetMap
+const districtGeoJsonCache = new Map();
+
+async function fetchDistrictPolygon(districtName) {
+  if (!districtName) return null;
+  const cleanName = String(districtName)
+    .replace(/^อำเภอ\s*/i, "")
+    .replace(/^อ\.\s*/i, "")
+    .trim();
+
+  if (!cleanName) return null;
+
+  if (districtGeoJsonCache.has(cleanName)) {
+    return districtGeoJsonCache.get(cleanName);
+  }
+
+  const queries = [
+    `อำเภอ ${cleanName} จังหวัดเชียงใหม่`,
+    `อำเภอ ${cleanName} เชียงใหม่`,
+    `อำเภอ${cleanName}`,
+    `Amphoe ${cleanName} Chiang Mai`,
+    `${cleanName} Chiang Mai`,
+  ];
+
+  for (const queryStr of queries) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+        queryStr,
+      )}&format=geojson&polygon_geojson=1&limit=8`;
+
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      if (data && Array.isArray(data.features) && data.features.length > 0) {
+        // ค้นหา feature ที่มี geometry เป็น Polygon หรือ MultiPolygon
+        const polygonFeature = data.features.find(
+          (f) =>
+            f.geometry &&
+            (f.geometry.type === "Polygon" ||
+              f.geometry.type === "MultiPolygon"),
+        );
+
+        if (polygonFeature) {
+          districtGeoJsonCache.set(cleanName, polygonFeature);
+          return polygonFeature;
+        }
+      }
+    } catch (err) {
+      console.warn("Error fetching query:", queryStr, err);
+    }
+  }
+
+  return null;
+}
+
 export default function RouteDetail() {
   const { routeId } = useParams();
   const navigate = useNavigate();
@@ -307,6 +360,18 @@ export default function RouteDetail() {
   const [activeFilters, setActiveFilters] = useState({});
   const [isEditingDistricts, setIsEditingDistricts] = useState(false);
   const [visibleDistrictIds, setVisibleDistrictIds] = useState([]);
+  const [isControlCollapsed, setIsControlCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (mapRef.current) {
+      const timer = setTimeout(() => {
+        try {
+          mapRef.current.invalidateSize();
+        } catch {}
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isControlCollapsed]);
 
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -318,11 +383,22 @@ export default function RouteDetail() {
   const hubHighlightRef = useRef(null);
 
   const getCategoryInfo = useCallback((hub) => {
+    if (!hub) {
+      return {
+        id: "OTHER",
+        name: "อื่นๆ",
+        color: "#64748B",
+        icon: "fa-location-dot",
+      };
+    }
+
     const catKey = (
       hub.categoryKey ||
       hub.categoryName ||
       hub.categoryId ||
+      hub.id ||
       hub.category?.categoryId ||
+      hub.category?.categoryName ||
       ""
     )
       .toString()
@@ -332,7 +408,8 @@ export default function RouteDetail() {
       catKey.includes("EM02") ||
       catKey.includes("HOSPITAL") ||
       catKey.includes("โรงพยาบาล") ||
-      catKey.includes("ALS")
+      catKey.includes("ALS") ||
+      catKey.includes("ADVANCED")
     ) {
       return MASTER_CATEGORIES.find((c) => c.id === "HOSPITAL");
     }
@@ -340,7 +417,8 @@ export default function RouteDetail() {
       catKey.includes("EM01") ||
       catKey.includes("RESCUE") ||
       catKey.includes("กู้ภัย") ||
-      catKey.includes("BLS")
+      catKey.includes("BLS") ||
+      catKey.includes("BASIC")
     ) {
       return MASTER_CATEGORIES.find((c) => c.id === "RESCUE");
     }
@@ -379,6 +457,8 @@ export default function RouteDetail() {
     if (
       catKey.includes("C05") ||
       catKey.includes("ATTRACTION") ||
+      catKey.includes("TOURIS") ||
+      catKey.includes("TOURISM") ||
       catKey.includes("TOURIST") ||
       catKey.includes("TRAVEL") ||
       catKey.includes("ท่องเที่ยว")
@@ -399,12 +479,28 @@ export default function RouteDetail() {
   }, [routeData]);
 
   const availableCategories = useMemo(() => {
-    if (!wellnessHubs.length) return [];
-    const foundCategoryIds = new Set(
-      wellnessHubs.map((hub) => getCategoryInfo(hub)?.id).filter(Boolean),
-    );
+    const foundCategoryIds = new Set();
+
+    // 1. ดึงหมวดหมู่ที่ถูกบันทึกไว้กับเส้นทางในฐานข้อมูล (routeData.categories)
+    if (Array.isArray(routeData?.categories)) {
+      routeData.categories.forEach((cat) => {
+        const info = getCategoryInfo(cat);
+        if (info?.id && info.id !== "OTHER") {
+          foundCategoryIds.add(info.id);
+        }
+      });
+    }
+
+    // 2. รวมหมวดหมู่ที่มีสถานประกอบการอยู่จริงใน wellnessHubs
+    wellnessHubs.forEach((hub) => {
+      const info = getCategoryInfo(hub);
+      if (info?.id && info.id !== "OTHER") {
+        foundCategoryIds.add(info.id);
+      }
+    });
+
     return MASTER_CATEGORIES.filter((cat) => foundCategoryIds.has(cat.id));
-  }, [wellnessHubs, getCategoryInfo]);
+  }, [routeData, wellnessHubs, getCategoryInfo]);
 
   const loadRouteDetail = useCallback(
     async (forceRefresh = false) => {
@@ -540,28 +636,59 @@ export default function RouteDetail() {
 
     const visibleDistrictIdSet = new Set(
       visibleDistricts
-        .map((d) => d.districtId)
+        .map((d) => d.districtId ?? d.district?.districtId)
         .filter((id) => id != null && String(id).trim() !== "")
         .map(String),
     );
 
-    const visibleDistrictNames = new Set(
+    const cleanDistrictName = (name) => {
+      if (!name) return "";
+      return String(name)
+        .replace(/^อำเภอ\s*/i, "")
+        .replace(/^อ\.\s*/i, "")
+        .trim()
+        .toLowerCase();
+    };
+
+    const visibleDistrictCleanNames = new Set(
       visibleDistricts
         .map((d) => d.districtName || d.district?.districtName || "")
-        .map((n) => String(n).trim())
+        .map(cleanDistrictName)
         .filter(Boolean),
     );
 
     return wellnessHubs.filter((hub) => {
       const hubDistrictId = hub.districtId ?? hub.district?.districtId ?? null;
-      const hubDistrictName = String(
-        hub.districtName || hub.district?.districtName || "",
-      ).trim();
+      const hubDistrictName =
+        hub.districtName || hub.district?.districtName || "";
+      const cleanedHubDistrictName = cleanDistrictName(hubDistrictName);
 
+      // 1. ตรวจสอบตาม District ID (ถ้ามี)
       if (hubDistrictId != null && String(hubDistrictId).trim() !== "") {
-        return visibleDistrictIdSet.has(String(hubDistrictId));
+        if (visibleDistrictIdSet.has(String(hubDistrictId))) {
+          return true;
+        }
       }
-      return visibleDistrictNames.has(hubDistrictName);
+
+      // 2. ตรวจสอบตาม District Name (เปรียบเทียบหลังตัดคำว่า อำเภอ/อ.)
+      if (
+        cleanedHubDistrictName &&
+        visibleDistrictCleanNames.has(cleanedHubDistrictName)
+      ) {
+        return true;
+      }
+
+      // 3. Fallback: ถ้าไม่มี ID/Name ชัดเจน ให้ตรวจสอบว่าที่อยู่ (address) มีชื่ออำเภอที่เปิดอยู่อยู่หรือไม่
+      if (!hubDistrictId && !cleanedHubDistrictName && hub.address) {
+        const addressText = String(hub.address).toLowerCase();
+        for (const cleanName of visibleDistrictCleanNames) {
+          if (cleanName && addressText.includes(cleanName)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
     });
   }, [wellnessHubs, visibleDistricts]);
 
@@ -599,11 +726,12 @@ export default function RouteDetail() {
     });
 
     mapRef.current = map;
-    map.setView(DEFAULT_CENTER, 10);
+    map.setView(DEFAULT_CENTER, 11);
 
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
+        opacity: 0.78,
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       },
@@ -659,6 +787,7 @@ export default function RouteDetail() {
       const coords = extractLatLng(district);
       if (!coords) return;
 
+      // 🌟 ปักหมุดลำดับตัวเลขอำเภอ
       L.circleMarker([coords.lat, coords.lng], {
         radius: 10,
         color: "#ffffff",
@@ -773,7 +902,7 @@ export default function RouteDetail() {
       const catInfo = getCategoryInfo(hub);
       if (!catInfo || !activeFilters[catInfo.id]) return;
 
-      const customIcon = createCustomDivIcon(catInfo.color, catInfo.icon);
+      const customIcon = getCategoryMarkerIcon(catInfo?.id || hub, [32, 44]);
       const imageSource = normalizeImageSource(hub.wellnessHubImg);
       const licenseId = hub.licenseId || hub.wellnessHubId || "";
       const districtName = hub.districtName || hub.district?.districtName || "";
@@ -980,10 +1109,10 @@ export default function RouteDetail() {
 
     const highlight = L.circleMarker([coords.lat, coords.lng], {
       radius: 25,
-      color: catInfo?.color || "#F28C28",
+      color: catInfo?.color || "#795548",
       weight: 4,
       opacity: 0.95,
-      fillColor: catInfo?.color || "#F28C28",
+      fillColor: catInfo?.color || "#795548",
       fillOpacity: 0.1,
       interactive: false,
       className: "route-detail-hub-highlight",
@@ -1114,56 +1243,6 @@ export default function RouteDetail() {
                   })}
               </div>
             )}
-
-          <div className="route-detail-summary">
-            {routeData.startDistrict && (
-              <article className="route-detail-summary__card">
-                <div className="route-detail-summary__icon">
-                  <Flag />
-                </div>
-                <div>
-                  <span>อำเภอเริ่มต้น</span>
-                  <strong>อ. {routeData.startDistrict}</strong>
-                </div>
-              </article>
-            )}
-
-            {routeData.endDistrict && (
-              <article className="route-detail-summary__card">
-                <div className="route-detail-summary__icon">
-                  <MapPin />
-                </div>
-                <div>
-                  <span>อำเภอปลายทาง</span>
-                  <strong>อ. {routeData.endDistrict}</strong>
-                </div>
-              </article>
-            )}
-
-            <article className="route-detail-summary__card">
-              <div className="route-detail-summary__icon">
-                <Route />
-              </div>
-              <div>
-                <span>จำนวนอำเภอ</span>
-                <strong>
-                  {routeData.districtCount || districts.length} อำเภอ
-                </strong>
-              </div>
-            </article>
-
-            <article className="route-detail-summary__card">
-              <div className="route-detail-summary__icon">
-                <Store />
-              </div>
-              <div>
-                <span>สถานประกอบการ</span>
-                <strong>
-                  {routeData.wellnessHubCount || wellnessHubs.length} แห่ง
-                </strong>
-              </div>
-            </article>
-          </div>
         </div>
       </header>
 
@@ -1173,9 +1252,6 @@ export default function RouteDetail() {
             <div>
               <p>ROUTE MAP</p>
               <h2>แผนที่เส้นทาง</h2>
-              <span>
-                หมุดหมายเลขแสดงลำดับอำเภอ และหมุดสีแสดงสถานประกอบการตามหมวดหมู่
-              </span>
             </div>
           </div>
 
@@ -1183,165 +1259,247 @@ export default function RouteDetail() {
             <div className="route-detail-explorer__map">
               <div className="route-detail-map-workspace">
                 {availableCategories.length > 0 && (
-                  <div className="route-detail-map-toolbar">
-                    <div className="route-detail-map-toolbar__top">
+                  <div
+                    className={`route-detail-map-toolbar ${
+                      isControlCollapsed ? "route-detail-map-toolbar--collapsed" : ""
+                    }`}
+                  >
+                    {/* 🌟 1. UNIFIED TOOLBAR HEADER */}
+                    <div className="route-detail-map-toolbar__header">
+                      <div className="route-detail-map-toolbar__title-area">
+                        <div className="route-detail-map-toolbar__icon">
+                          <SlidersHorizontal size={17} />
+                        </div>
+                        <div>
+                          <h3 className="route-detail-map-toolbar__title">
+                            ตัวกรอง & แผนที่เส้นทาง
+                          </h3>
+                          <span className="route-detail-map-toolbar__subtitle">
+                            แสดง{" "}
+                            {
+                              Object.values(activeFilters).filter(Boolean)
+                                .length
+                            }
+                            /{availableCategories.length} หมวดหมู่
+                          </span>
+                        </div>
+                      </div>
+
                       <div className="route-detail-map-actions">
-                        <button
-                          type="button"
-                          className="route-detail-map-action"
-                          onClick={handleShowAllCategories}
-                        >
-                          <Eye /> แสดงทั้งหมด
-                        </button>
-                        <button
-                          type="button"
-                          className="route-detail-map-action"
-                          onClick={handleHideAllCategories}
-                        >
-                          <EyeOff /> ซ่อนทั้งหมด
-                        </button>
                         <button
                           type="button"
                           className="route-detail-map-action route-detail-map-action--primary"
                           onClick={handleResetRouteView}
+                          title="รีเซ็ตและซูมแสดงเส้นทางทั้งหมด"
                         >
-                          <Maximize2 /> ดูเส้นทางทั้งหมด
+                          <Maximize2 size={15} />
+                          <span>ดูเส้นทางทั้งหมด</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`route-detail-map-action route-detail-map-action--toggle ${
+                            isControlCollapsed ? "active" : ""
+                          }`}
+                          onClick={() => setIsControlCollapsed((c) => !c)}
+                          title={
+                            isControlCollapsed
+                              ? "ขยายแถบตัวกรอง"
+                              : "ยุบแถบตัวกรอง"
+                          }
+                        >
+                          {isControlCollapsed ? (
+                            <>
+                              <ChevronDown size={16} />
+                              <span>แสดงตัวกรอง</span>
+                            </>
+                          ) : (
+                            <>
+                              <ChevronUp size={16} />
+                              <span>ยุบตัวกรอง</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
 
-                    <div className="route-detail-filter-list">
-                      {availableCategories.map((cat) => {
-                        const isChecked = !!activeFilters[cat.id];
-                        return (
-                          <label
-                            key={cat.id}
-                            className={`route-detail-filter-chip ${isChecked ? "active" : ""}`}
-                            style={{
-                              "--route-category-color": cat.color,
-                              "--route-category-background": `${cat.color}15`,
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleToggleFilter(cat.id)}
-                              style={{ accentColor: cat.color }}
-                            />
-                            <span>{cat.name}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-
-                    {districts.length > 0 && (
-                      <div className="route-detail-districts-row">
-                        <div className="route-detail-districts-header">
-                          <div className="route-detail-districts-heading">
-                            <span className="route-detail-districts-title">
-                              ลำดับอำเภอ
+                    {/* 🌟 2. COLLAPSIBLE TOOLBAR BODY */}
+                    {!isControlCollapsed && (
+                      <div className="route-detail-map-toolbar__body">
+                        {/* Section A: หมวดหมู่สถานประกอบการ */}
+                        <div className="route-detail-filter-section">
+                          <div className="route-detail-filter-header">
+                            <span className="route-detail-filter-label">
+                              <Filter size={13} /> หมวดหมู่สถานประกอบการ
                             </span>
-                            <span className="route-detail-districts-count">
-                              {visibleDistricts.length}/{districts.length} อำเภอ
-                            </span>
+                            <div className="route-detail-filter-quick-btns">
+                              <button
+                                type="button"
+                                className="route-detail-btn-subtle"
+                                onClick={handleShowAllCategories}
+                              >
+                                <Eye size={13} /> แสดงทั้งหมด
+                              </button>
+                              <button
+                                type="button"
+                                className="route-detail-btn-subtle"
+                                onClick={handleHideAllCategories}
+                              >
+                                <EyeOff size={13} /> ซ่อนทั้งหมด
+                              </button>
+                            </div>
                           </div>
 
-                          <button
-                            type="button"
-                            className={`route-detail-district-edit ${isEditingDistricts ? "active" : ""}`}
-                            onClick={() => setIsEditingDistricts((c) => !c)}
-                          >
-                            <Pencil aria-hidden="true" />
-                            <span>
-                              {isEditingDistricts
-                                ? "เสร็จสิ้น"
-                                : "แก้ไขเส้นทาง"}
-                            </span>
-                          </button>
-                        </div>
-
-                        {isEditingDistricts && (
-                          <p className="route-detail-districts-help">
-                            เลือกอำเภอที่ต้องการแสดงบนแผนที่
-                            หมุดและเส้นทางจะปรับตามรายการที่เลือก
-                          </p>
-                        )}
-
-                        <div
-                          className="route-detail-districts-scroll"
-                          role="list"
-                        >
-                          {districts.map((district, idx) => {
-                            const order = district.orderNumber || idx + 1;
-                            const name =
-                              district.districtName ||
-                              district.district?.districtName ||
-                              "";
-                            const districtKey = String(
-                              district.districtId ?? `district-${idx}`,
-                            );
-                            const isDistrictVisible =
-                              visibleDistrictIds.includes(districtKey);
-
-                            return (
-                              <div
-                                className={`route-detail-district-item ${!isDistrictVisible ? "route-detail-district-item--hidden" : ""}`}
-                                key={`${district.districtId || idx}-${order}`}
-                                role="listitem"
-                              >
-                                <div
-                                  className={`route-detail-district-chip-wrapper ${isEditingDistricts ? "route-detail-district-chip-wrapper--editing" : ""}`}
+                          <div className="route-detail-filter-list">
+                            {availableCategories.map((cat) => {
+                              const isChecked = !!activeFilters[cat.id];
+                              return (
+                                <label
+                                  key={cat.id}
+                                  className={`route-detail-filter-chip ${
+                                    isChecked ? "active" : ""
+                                  }`}
+                                  style={{
+                                    "--route-category-color": cat.color,
+                                    "--route-category-background": `${cat.color}15`,
+                                  }}
                                 >
-                                  {isEditingDistricts && (
-                                    <label
-                                      className="route-detail-district-toggle"
-                                      title={`${isDistrictVisible ? "ซ่อน" : "แสดง"} อ. ${name}`}
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={isDistrictVisible}
-                                        onChange={() =>
-                                          handleToggleDistrictVisibility(
-                                            district,
-                                            idx,
-                                          )
-                                        }
-                                      />
-                                      <span
-                                        className="route-detail-district-checkbox"
-                                        aria-hidden="true"
-                                      />
-                                    </label>
-                                  )}
-
-                                  <button
-                                    type="button"
-                                    className="route-detail-district-chip"
-                                    onClick={() =>
-                                      handleFocusDistrict(district)
-                                    }
-                                  >
-                                    <span className="route-detail-district-number">
-                                      {order}
-                                    </span>
-                                    <span className="route-detail-district-name">
-                                      อ. {name}
-                                    </span>
-                                  </button>
-                                </div>
-
-                                {idx < districts.length - 1 && (
-                                  <span
-                                    className="route-detail-district-arrow"
-                                    aria-hidden="true"
-                                  >
-                                    →
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => handleToggleFilter(cat.id)}
+                                    style={{ accentColor: cat.color }}
+                                  />
+                                  <span>{cat.name}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
                         </div>
+
+                        {/* Section B: ลำดับอำเภอในเส้นทาง */}
+                        {districts.length > 0 && (
+                          <div className="route-detail-districts-row">
+                            <div className="route-detail-districts-header">
+                              <div className="route-detail-districts-heading">
+                                <Layers size={13} />
+                                <span className="route-detail-districts-title">
+                                  ลำดับอำเภอในเส้นทาง
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                className={`route-detail-district-edit ${
+                                  isEditingDistricts ? "active" : ""
+                                }`}
+                                onClick={() => setIsEditingDistricts((c) => !c)}
+                              >
+                                <Pencil size={13} aria-hidden="true" />
+                                <span>
+                                  {isEditingDistricts
+                                    ? "เสร็จสิ้น"
+                                    : "แก้ไขเส้นทาง"}
+                                </span>
+                              </button>
+                            </div>
+
+                            {isEditingDistricts && (
+                              <p className="route-detail-districts-help">
+                                เลือกอำเภอที่ต้องการแสดงบนแผนที่
+                                หมุดและเส้นทางจะปรับตามรายการที่เลือก
+                              </p>
+                            )}
+
+                            <div
+                              className="route-detail-districts-scroll"
+                              role="list"
+                            >
+                              {districts.map((district, idx) => {
+                                const order = district.orderNumber || idx + 1;
+                                const name =
+                                  district.districtName ||
+                                  district.district?.districtName ||
+                                  "";
+                                const districtKey = String(
+                                  district.districtId ?? `district-${idx}`,
+                                );
+                                const isDistrictVisible =
+                                  visibleDistrictIds.includes(districtKey);
+
+                                return (
+                                  <div
+                                    className={`route-detail-district-item ${
+                                      !isDistrictVisible
+                                        ? "route-detail-district-item--hidden"
+                                        : ""
+                                    }`}
+                                    key={`${
+                                      district.districtId || idx
+                                    }-${order}`}
+                                    role="listitem"
+                                  >
+                                    <div
+                                      className={`route-detail-district-chip-wrapper ${
+                                        isEditingDistricts
+                                          ? "route-detail-district-chip-wrapper--editing"
+                                          : ""
+                                      }`}
+                                    >
+                                      {isEditingDistricts && (
+                                        <label
+                                          className="route-detail-district-toggle"
+                                          title={`${
+                                            isDistrictVisible ? "ซ่อน" : "แสดง"
+                                          } อ. ${name}`}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={isDistrictVisible}
+                                            onChange={() =>
+                                              handleToggleDistrictVisibility(
+                                                district,
+                                                idx,
+                                              )
+                                            }
+                                          />
+                                          <span
+                                            className="route-detail-district-checkbox"
+                                            aria-hidden="true"
+                                          />
+                                        </label>
+                                      )}
+
+                                      <button
+                                        type="button"
+                                        className="route-detail-district-chip"
+                                        onClick={() =>
+                                          handleFocusDistrict(district)
+                                        }
+                                      >
+                                        <span className="route-detail-district-number">
+                                          {order}
+                                        </span>
+                                        <span className="route-detail-district-name">
+                                          อ. {name}
+                                        </span>
+                                      </button>
+                                    </div>
+
+                                    {idx < districts.length - 1 && (
+                                      <span
+                                        className="route-detail-district-arrow"
+                                        aria-hidden="true"
+                                      >
+                                        →
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1352,20 +1510,12 @@ export default function RouteDetail() {
                 </div>
 
                 <aside className="route-detail-legend">
-                  <h3>คำอธิบายสัญลักษณ์</h3>
+                  <div className="route-detail-legend__header">
+                    <h3>คำอธิบายสัญลักษณ์</h3>
+                  </div>
                   <div className="route-detail-legend__list">
                     <div className="route-detail-legend__item">
-                      <span
-                        style={{
-                          width: "18px",
-                          height: "18px",
-                          borderRadius: "50%",
-                          background: "#1a2332",
-                          border: "2px solid #fff",
-                          boxShadow: "0 0 4px rgba(0,0,0,0.3)",
-                          display: "inline-block",
-                        }}
-                      />
+                      <span className="route-detail-legend__marker-district" />
                       <p>อำเภอตามลำดับเส้นทาง</p>
                     </div>
 
@@ -1400,15 +1550,7 @@ export default function RouteDetail() {
                 </span>
               </div>
 
-              {visibleWellnessHubs.length > 0 && (
-                <div
-                  className="route-detail-explorer__scroll-hint"
-                  aria-hidden="true"
-                >
-                  <span>เลื่อนดูรายการ</span>
-                  <strong>↓</strong>
-                </div>
-              )}
+
 
               <div className="route-detail-explorer__places-scroll">
                 {visibleWellnessHubs.length > 0 ? (
@@ -1430,20 +1572,13 @@ export default function RouteDetail() {
                           }}
                         >
                           <div className="route-detail-hub-card__category">
-                            <span
-                              style={{
-                                width: "8px",
-                                height: "8px",
-                                borderRadius: "50%",
-                                background: catInfo.color,
-                                display: "inline-block",
-                              }}
+                            <img
+                              src={getCategoryMarkerImage(hub)}
+                              alt={hub.categoryName || catInfo.name}
+                              className="route-detail-hub-card__category-pin"
+                              loading="lazy"
                             />
                             <p>{hub.categoryName || catInfo.name}</p>
-                          </div>
-
-                          <div className="route-detail-hub-card__icon">
-                            <Building2 />
                           </div>
 
                           <h3>{hub.wellnessHubName}</h3>

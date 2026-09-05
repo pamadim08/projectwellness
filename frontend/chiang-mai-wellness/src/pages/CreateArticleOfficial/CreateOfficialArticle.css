@@ -519,3 +519,11 @@
     flex-wrap: wrap;
   }
 }
+
+.char-counter {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 5px;
+}

@@ -156,14 +156,14 @@ function ListOfficialArticle() {
       setShowDeletePopup(false);
       setSelectedArticle(null);
 
-      showToast("success", "ลบบทความออกจากระบบเรียบร้อยแล้ว");
+      showToast("success", "ลบบทความสำเร็จ");
     } catch (error) {
       console.error("ไม่สามารถลบบทความได้", error);
 
       setShowDeletePopup(false);
       setSelectedArticle(null);
 
-      showToast("error", "ไม่สามารถลบบทความได้ กรุณาลองใหม่อีกครั้ง");
+      showToast("error", "ไม่สามารถลบบทความได้กรุณาลองอีกครั้ง");
     } finally {
       setDeletingId(null);
     }

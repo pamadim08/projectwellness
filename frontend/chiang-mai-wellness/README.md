@@ -1,70 +1,61 @@
-# Getting Started with Create React App
+# 💻 Chiang Mai Wellness Route - Frontend Application
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+ส่วนประสานงานผู้ใช้ (Frontend Web Application) สำหรับระบบ **Chiang Mai Wellness Route** พัฒนาด้วย **React 19**, **Tailwind CSS v4**, **React Router v7** และ **Leaflet Map**
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## 🛠️ เทคโนโลยีและเทคโนโลยีหลัก (Tech Stack & Dependencies)
+
+- **React 19**: Framework สำหรับสร้าง User Interface
+- **React Router DOM v7**: จัดการ Routing และ Navigation
+- **Leaflet & React Leaflet**: แสดงผลแผนที่แบบ Interactive
+- **Leaflet Routing Machine**: คำนวณและแสดงเส้นทางการเดินทางบนแผนที่
+- **Lucide React & FontAwesome**: ชุดไอคอนแสดงผล UI
+- **Axios**: ส่ง HTTP Request ไปยัง Spring Boot Backend REST APIs
+- **Tailwind CSS v4**: จัดสไตล์การแสดงผล UI ด้วย Utility-First CSS
+
+---
+
+## 🚀 คำสั่งสำหรับพัฒนาและสร้างโปรเจกต์ (Available Scripts)
+
+ในไดเรกทอรี `frontend/chiang-mai-wellness` สามารถใช้คำสั่งดังต่อไปนี้:
 
 ### `npm start`
-
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+เริ่มทำงานในโหมดพัฒนา (Development mode)\
+เปิดดูได้ที่ [http://localhost:3000](http://localhost:3000) บนบราวเซอร์
 
 ### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+รันคำสั่งทดสอบระบบ (Test runner)
 
 ### `npm run build`
+คอมไพล์และ Build โปรเจกต์สำหรับสภาพแวดล้อมการใช้งานจริง (Production Build) ไปยังโฟลเดอร์ `build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 📁 โครงสร้างโฟลเดอร์ Source Code (`src/`)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```text
+src/
+├── Components/         # คอมโพเนนต์ที่ใช้ร่วมกัน เช่น Navbar, Footer, MapComponent
+├── pages/              # หน้าเว็บแอปพลิเคชันแบ่งตามฟังก์ชัน
+│   ├── HomePage/       # หน้าแรกและแนะนำเส้นทาง
+│   ├── RouteList/      # รายการเส้นทางท่องเที่ยว
+│   ├── RouteDetail/    # รายละเอียดเส้นทางและแผนที่นำทาง
+│   ├── SearchResults/  # ค้นหาสถานประกอบการตามอำเภอ/หมวดหมู่
+│   ├── ArticleList/    # รายการบทความสุขภาพ
+│   ├── LoginAdmin/     # หน้าเข้าสู่ระบบ Admin
+│   ├── Dashboard/      # หน้าแดชบอร์ดผู้ดูแลระบบ
+│   └── ProviderDashboard/ # หน้าแดชบอร์ดผู้ให้บริการ
+├── utils/              # ตัวแปรระบบ ค่ากำหนด API URL และ Helper Functions
+├── App.js              # กำหนด Route สิทธิ์การเข้าถึง และการวาง Layout
+└── index.js            # จุดเริ่มต้นของ React Application
+```
 
-### `npm run eject`
+---
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## ⚙️ การเชื่อมต่อกับ Backend API
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+โดยค่าเริ่มต้น Frontend จะเชื่อมต่อ API ไปยัง Spring Boot Server ที่:
+`http://localhost:8080/api`
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+หากต้องการเปลี่ยน URL สามารถปรับเปลี่ยนได้ในไฟล์ตั้งค่าคอนฟิกที่ `src/utils/` หรือในไฟล์ Configuration ของโปรเจกต์

@@ -39,43 +39,41 @@
 }
 
 .route-list-container {
-  width: min(1320px, calc(100% - 96px));
-  margin: auto;
+  width: min(1280px, calc(100% - 48px));
+  margin: 0 auto;
 }
 
 /* ===============================
-   HERO (UPDATED DARK GLOW STYLE)
+   HERO (UNIFIED MODERN STYLE)
 ================================ */
 
-/* 3. Hero Container */
 .route-list-hero {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
-  padding: 120px 0 180px;
-  background: linear-gradient(
-    135deg,
-    var(--hero-deep-green) 0%,
-    var(--hero-green) 52%,
-    var(--hero-green-soft) 100%
-  );
+  padding: 105px 0 165px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(228, 92, 16, 0.2), transparent 30%),
+    radial-gradient(circle at 100% 20%, rgba(242, 182, 53, 0.15), transparent 30%),
+    linear-gradient(126deg, #082b24 0%, #075143 60%, #286d57 100%);
 }
 
-/* 4. Hero Background Glows */
 .route-list-hero::before {
   content: "";
   position: absolute;
   top: -110px;
   left: -120px;
-  width: 340px;
-  height: 340px;
+  z-index: -1;
+  width: 360px;
+  height: 360px;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(233, 109, 43, 0.95) 0%,
-    rgba(233, 109, 43, 0.55) 38%,
-    rgba(233, 109, 43, 0) 74%
+    rgba(233, 109, 43, 0.85) 0%,
+    rgba(233, 109, 43, 0.4) 40%,
+    transparent 72%
   );
-  filter: blur(18px);
+  filter: blur(20px);
   pointer-events: none;
 }
 
@@ -83,51 +81,52 @@
   content: "";
   position: absolute;
   right: -120px;
-  bottom: -140px;
+  bottom: -150px;
+  z-index: -1;
   width: 420px;
   height: 420px;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(232, 186, 75, 0.9) 0%,
-    rgba(232, 186, 75, 0.45) 42%,
-    rgba(232, 186, 75, 0) 76%
+    rgba(242, 182, 53, 0.8) 0%,
+    rgba(242, 182, 53, 0.35) 45%,
+    transparent 75%
   );
-  filter: blur(26px);
+  filter: blur(24px);
   pointer-events: none;
 }
 
-/* 5. Hero Typography */
 .route-list-eyebrow {
   position: relative;
   z-index: 1;
+  margin: 0 0 14px;
+  color: #cde6d2;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.16em;
-  color: #cfe8cf;
-  margin-bottom: 20px;
 }
 
 .route-list-hero h1 {
   position: relative;
   z-index: 1;
-  max-width: 900px;
-  font-size: clamp(44px, 5vw, 64px);
-  line-height: 1.15;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  color: var(--hero-cream-text);
+  max-width: 860px;
   margin: 0;
+  color: #fffdee;
+  font-family: "Pridi", serif;
+  font-size: clamp(38px, 4.5vw, 54px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 .route-list-hero__description {
   position: relative;
   z-index: 1;
-  max-width: 760px;
-  margin-top: 26px;
-  font-size: 18px;
-  line-height: 1.85;
-  color: rgba(246, 241, 231, 0.86);
+  max-width: 720px;
+  margin-top: 20px;
+  color: rgba(255, 253, 238, 0.86);
+  font-size: 17px;
+  line-height: 1.75;
 }
 
 /* ===============================

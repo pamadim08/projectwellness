@@ -1,6 +1,5 @@
-// src/App.js
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React, { useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
@@ -33,6 +32,20 @@ import LoginWellnessHub from "./pages/LoginWellnessHub/LoginWellnessHub";
 import ProviderDashboard from "./pages/ProviderDashboard/ProviderDashboard";
 import ArticleDetail from "./pages/ArticleDetail/ArticleDetail";
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "instant",
+    });
+  }, [pathname]);
+
+  return null;
+}
+
 function PublicLayout({ children }) {
   return (
     <>
@@ -46,6 +59,7 @@ function PublicLayout({ children }) {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <div className="App">
         <Routes>
           {/* ฝั่งผู้ใช้ทั่วไป */}

@@ -47,28 +47,28 @@ const SEARCH_TYPES = [
 const ROUTE_CATEGORY_DISPLAY = {
   C01: {
     name: "นวด/สปาเพื่อสุขภาพ",
-    color: "#519B67",
-    background: "#EAF5ED",
+    color: "#E02873",
+    background: "#FDEBF2",
   },
   C02: {
     name: "คลินิก/สถานพยาบาล",
-    color: "#3662A1",
-    background: "#EAF0F8",
+    color: "#004CB4",
+    background: "#E7EFF9",
   },
   C03: {
     name: "อาหารและเครื่องดื่ม",
-    color: "#E49141",
-    background: "#FFF0E3",
+    color: "#0B7D31",
+    background: "#EAF5ED",
   },
   C04: {
     name: "ที่พักฟื้นฟูสุขภาพ",
-    color: "#7864D2",
-    background: "#F0EDFB",
+    color: "#5E27AB",
+    background: "#F2ECFB",
   },
   C05: {
     name: "สถานที่ท่องเที่ยว",
-    color: "#54A6D3",
-    background: "#EAF6FC",
+    color: "#009BB0",
+    background: "#E6F8FA",
   },
 };
 
@@ -114,6 +114,55 @@ function formatDate(value) {
     month: "short",
     year: "numeric",
   }).format(date);
+}
+
+function normalizeImageSource(value) {
+  if (!value) {
+    return "";
+  }
+
+  let imageValue = value;
+
+  if (typeof imageValue === "string") {
+    const trimmedValue = imageValue.trim();
+
+    try {
+      const parsedValue = JSON.parse(trimmedValue);
+
+      if (Array.isArray(parsedValue)) {
+        imageValue = parsedValue[0] || "";
+      } else {
+        imageValue = trimmedValue;
+      }
+    } catch {
+      imageValue = trimmedValue;
+    }
+  }
+
+  if (Array.isArray(imageValue)) {
+    imageValue = imageValue[0] || "";
+  }
+
+  if (!imageValue) {
+    return "";
+  }
+
+  const normalizedValue = String(imageValue).trim();
+
+  if (
+    normalizedValue.startsWith("data:image/") ||
+    normalizedValue.startsWith("http://") ||
+    normalizedValue.startsWith("https://") ||
+    normalizedValue.startsWith("blob:")
+  ) {
+    return normalizedValue;
+  }
+
+  if (/^[A-Za-z0-9+/=\s]+$/.test(normalizedValue)) {
+    return `data:image/jpeg;base64,${normalizedValue}`;
+  }
+
+  return normalizedValue;
 }
 
 function removeHtml(value = "") {
@@ -733,14 +782,13 @@ export default function HomePage() {
               </p>
             </div>
 
-            <a
-              href="#latest-articles"
+            <Link
+              to="/articles"
               className="homepage-section__link"
-              onClick={(event) => event.preventDefault()}
             >
               <span>ดูบทความทั้งหมด</span>
               <ArrowRight aria-hidden="true" />
-            </a>
+            </Link>
           </div>
 
           {articlesLoading && (
@@ -793,12 +841,15 @@ export default function HomePage() {
                 const articleDescription = removeHtml(
                   article.articleDetail || ""
                 );
-                const articleImage = article.img || "";
+                const articleImage = normalizeImageSource(article.img);
                 const publishedDate = article.publishDate;
 
                 return (
                   <article key={articleId} className="homepage-article-card">
-                    <div className="homepage-article-card__image">
+                    <Link
+                      to={`/articles/${articleId}`}
+                      className="homepage-article-card__image"
+                    >
                       {articleImage ? (
                         <img
                           src={articleImage}
@@ -812,7 +863,7 @@ export default function HomePage() {
                       ) : (
                         <Newspaper aria-hidden="true" />
                       )}
-                    </div>
+                    </Link>
 
                     <div className="homepage-article-card__body">
                       <div className="homepage-article-card__meta-row">
@@ -826,21 +877,27 @@ export default function HomePage() {
                         </p>
                       </div>
 
-                      <h3>{articleTitle}</h3>
+                      <h3>
+                        <Link
+                          to={`/articles/${articleId}`}
+                          style={{ color: "inherit", textDecoration: "none" }}
+                        >
+                          {articleTitle}
+                        </Link>
+                      </h3>
 
                       <p className="homepage-article-card__description">
                         {articleDescription ||
                           "อ่านเรื่องราวและข้อมูลเพื่อการดูแลสุขภาพที่ดี"}
                       </p>
 
-                      <a
-                        href="#article-detail"
+                      <Link
+                        to={`/articles/${articleId}`}
                         className="homepage-article-card__link"
-                        onClick={(event) => event.preventDefault()}
                       >
                         <span>อ่านบทความ</span>
                         <ArrowRight />
-                      </a>
+                      </Link>
                     </div>
                   </article>
                 );

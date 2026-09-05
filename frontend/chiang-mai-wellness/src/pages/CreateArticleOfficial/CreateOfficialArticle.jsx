@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -14,8 +14,8 @@ import {
 import "./CreateOfficialArticle.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 
-// กำหนดขนาดไฟล์สูงสุดเป็น 5MB ป้องกัน Base64 บวมจน Request พัง
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+// กำหนดขนาดไฟล์สูงสุดเป็น 20MB
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
 
 function CreateOfficialArticle() {
   const navigate = useNavigate();
@@ -29,6 +29,13 @@ function CreateOfficialArticle() {
   const [coverImage, setCoverImage] = useState(null);
   const [articleImages, setArticleImages] = useState([]);
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const editorRef = useRef(null);
+
+  // State สำหรับควบคุม Popup เตือน Error
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
@@ -50,9 +57,13 @@ function CreateOfficialArticle() {
       const res = await axios.get(`http://localhost:8080/api/articles/${id}`);
       const data = res.data;
 
-      setArticleTitle(data.articleTitle);
-      setArticleCategory(data.articleCategory);
-      setArticleDetail(data.articleDetail);
+      setArticleTitle(data.articleTitle || "");
+      setArticleCategory(data.articleCategory || "ข่าวประชาสัมพันธ์");
+      setArticleDetail(data.articleDetail || "");
+
+      if (editorRef.current) {
+        editorRef.current.innerHTML = data.articleDetail || "";
+      }
 
       if (data.img) {
         setCoverImage(data.img);
@@ -79,14 +90,17 @@ function CreateOfficialArticle() {
     navigate("/login");
   };
 
-  // ปรับการ Validate ขนาดรูปภาพเหลือ 5MB ตามที่แนะนำ
+  // ตรวจสอบชนิดไฟล์ (.png, .jpg, .jpeg) และขนาดไฟล์ไม่เกิน 20MB
   const validateImage = (file) => {
-    const allow = ["image/png", "image/jpeg", "image/jpg"];
-    if (!allow.includes(file.type)) {
-      return "รองรับเฉพาะ png jpg jpeg";
+    const allowTypes = ["image/png", "image/jpeg", "image/jpg"];
+    const isExtValid =
+      allowTypes.includes(file.type) || /\.(png|jpe?g)$/i.test(file.name);
+
+    if (!isExtValid) {
+      return "รองรับเฉพาะไฟล์ .png, .jpg, .jpeg เท่านั้น";
     }
     if (file.size > MAX_IMAGE_SIZE) {
-      return "ขนาดไฟล์ต้องไม่เกิน 5MB";
+      return "ขนาดไฟล์ต้องไม่เกิน 20 MB";
     }
     return null;
   };
@@ -97,12 +111,13 @@ function CreateOfficialArticle() {
 
     const error = validateImage(file);
     if (error) {
-      setErrors({
-        ...errors,
-        cover: error,
-      });
+      setErrors((prev) => ({ ...prev, cover: error }));
+      setErrorMessage(error);
+      setShowErrorPopup(true);
+      e.target.value = "";
       return;
     }
+    setErrors((prev) => ({ ...prev, cover: "" }));
     setCoverImage(file);
   };
 
@@ -110,12 +125,13 @@ function CreateOfficialArticle() {
     const selectedFiles = Array.from(e.target.files || []);
     if (selectedFiles.length === 0) return;
 
+    // รวมรูปภาพประกอบสูงสุด 4 รูป
     const remainingSlots = 4 - articleImages.length;
     if (remainingSlots <= 0) {
-      setErrors((prev) => ({
-        ...prev,
-        images: "เพิ่มรูปภาพประกอบได้สูงสุด 4 รูป",
-      }));
+      const msg = "เพิ่มรูปภาพประกอบได้สูงสุด 4 รูป (เมื่อรวมรูปปกจะเป็นสูงสุด 5 รูป)";
+      setErrors((prev) => ({ ...prev, images: msg }));
+      setErrorMessage(msg);
+      setShowErrorPopup(true);
       e.target.value = "";
       return;
     }
@@ -132,21 +148,15 @@ function CreateOfficialArticle() {
       }
     });
 
+    if (invalidMessages.length > 0) {
+      const msg = invalidMessages.join(" | ");
+      setErrors((prev) => ({ ...prev, images: msg }));
+      setErrorMessage(msg);
+      setShowErrorPopup(true);
+    }
+
     const filesToAdd = validFiles.slice(0, remainingSlots);
     setArticleImages((prev) => [...prev, ...filesToAdd]);
-
-    let errorMessage = "";
-    if (validFiles.length > remainingSlots) {
-      errorMessage = `เพิ่มได้อีกเพียง ${remainingSlots} รูป ระบบเลือกเฉพาะรูปตามจำนวนช่องที่เหลือ`;
-    }
-    if (invalidMessages.length > 0) {
-      errorMessage = invalidMessages.join(" | ");
-    }
-
-    setErrors((prev) => ({
-      ...prev,
-      images: errorMessage,
-    }));
     e.target.value = "";
   };
 
@@ -159,45 +169,70 @@ function CreateOfficialArticle() {
 
   const formatText = (command) => {
     document.execCommand(command, false, null);
+    if (editorRef.current) {
+      setArticleDetail(editorRef.current.innerHTML);
+    }
+  };
+
+  const handleEditorInput = (e) => {
+    setArticleDetail(e.currentTarget.innerHTML);
   };
 
   const validateForm = () => {
     let err = {};
-    if (!articleTitle.trim()) {
-      err.title = "กรุณากรอกชื่อบทความ";
-    } else if (articleTitle.length < 10) {
-      err.title = "ชื่อบทความต้องมีอย่างน้อย 10 ตัวอักษร";
+    const titleTrimmed = articleTitle.trim();
+    // 1. ชื่อบทความ: ห้ามว่าง, ภาษาไทย ภาษาอังกฤษ ตัวเลข, 10–100 ตัวอักษร
+    const titleRegex = /^[a-zA-Z0-9\u0E00-\u0E7F\s]{10,100}$/;
+
+    if (!titleTrimmed || !titleRegex.test(titleTrimmed)) {
+      err.title = "กรุณากรอกข้อมูลให้ครบถ้วน";
     }
 
-    if (!articleDetail.trim() || articleDetail === "<br>") {
-      err.detail = "กรุณากรอกรายละเอียด";
-    } else if (articleDetail.replace(/<[^>]*>/g, "").length < 50) {
-      err.detail = "รายละเอียดต้องมีอย่างน้อย 50 ตัวอักษร";
+    // 2. รายละเอียดบทความ: ห้ามว่าง, 50–2,500 ตัวอักษร
+    const rawDetailText = articleDetail.replace(/<[^>]*>/g, "").trim();
+    if (!rawDetailText || rawDetailText.length < 50 || rawDetailText.length > 2500) {
+      err.detail = "กรุณากรอกข้อมูลให้ครบถ้วน";
     }
 
-    setErrors(err);
-    return Object.keys(err).length === 0;
+    // 3. หมวดหมู่บทความ: Dropdown ห้ามว่าง
+    if (!articleCategory) {
+      err.category = "กรุณากรอกข้อมูลให้ครบถ้วน";
+    }
+
+    if (Object.keys(err).length > 0) {
+      setErrors(err);
+      setErrorMessage("กรุณากรอกข้อมูลให้ครบถ้วน");
+      setShowErrorPopup(true);
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     if (!validateForm()) return;
+
+    setIsSubmitting(true);
 
     try {
       let coverBase64 = "";
       if (coverImage) {
-        coverBase64 = coverImage instanceof File ? await fileToBase64(coverImage) : coverImage;
+        coverBase64 =
+          coverImage instanceof File
+            ? await fileToBase64(coverImage)
+            : coverImage;
       }
 
       const galleryBase64 = await Promise.all(
         articleImages.map(async (file) => {
           return file instanceof File ? await fileToBase64(file) : file;
-        })
+        }),
       );
 
       const payload = {
         articleTitle: articleTitle.trim(),
-        articleCategory,
-        articleDetail,
+        articleCategory: articleCategory || "ข่าวประชาสัมพันธ์",
+        articleDetail: articleDetail,
         author: adminName,
         img: coverBase64,
         articleImages: JSON.stringify(galleryBase64),
@@ -214,18 +249,16 @@ function CreateOfficialArticle() {
         state: {
           showToast: true,
           toastType: "success",
-          toastMessage: id ? "บันทึกการแก้ไขบทความสำเร็จ" : "เผยแพร่บทความสำเร็จ",
+          toastMessage: id
+            ? "บันทึกการแก้ไขบทความสำเร็จ"
+            : "เผยแพร่บทความสำเร็จ",
         },
       });
     } catch (error) {
       console.error("ไม่สามารถบันทึกบทความได้", error);
-      setErrors((prev) => ({
-        ...prev,
-        submit:
-          error.response?.data?.message ||
-          error.response?.data ||
-          "ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง",
-      }));
+      setIsSubmitting(false);
+      setErrorMessage("สร้างบทความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      setShowErrorPopup(true);
     }
   };
 
@@ -253,46 +286,46 @@ function CreateOfficialArticle() {
 
         <div className="article-card">
           {/* Cover */}
-          <label>รูปภาพหน้าปกบทความ</label>
+          <label>รูปภาพหน้าปกบทความ (ว่างได้ ไม่เกิน 20MB)</label>
           <label className="cover-box">
             {coverImage ? (
               <img src={renderImageSrc(coverImage)} alt="Cover Preview" />
             ) : (
               <>
                 <span>คลิกเพื่ออัปโหลดรูปหน้าปก</span>
-                <small>png jpg jpeg ไม่เกิน 5MB</small>
+                <small>.png .jpg .jpeg ไม่เกิน 20MB</small>
               </>
             )}
             <input
               type="file"
               hidden
-              accept="image/*"
+              accept=".png,.jpg,.jpeg,image/png,image/jpeg"
               onChange={handleCoverUpload}
             />
           </label>
-          {errors.cover && <p className="error-message">{errors.cover}</p>}
 
-          <label>หัวข้อบทความ *</label>
+          <label>หัวข้อบทความ (10-100 ตัวอักษร) *</label>
           <input
             className="gov-input-field"
+            maxLength={100}
             value={articleTitle}
             onChange={(e) => setArticleTitle(e.target.value)}
-            placeholder="ระบุหัวข้อบทความ"
+            placeholder="ระบุหัวข้อบทความ..."
           />
-          {errors.title && <p className="error-message">{errors.title}</p>}
+          <div className="char-counter">{articleTitle.length}/100</div>
 
-          <label>หมวดหมู่</label>
+          <label>หมวดหมู่บทความ *</label>
           <select
             className="gov-input-field"
             value={articleCategory}
             onChange={(e) => setArticleCategory(e.target.value)}
           >
-            <option>ข่าวประชาสัมพันธ์</option>
-            <option>กิจกรรมสุขภาพ</option>
-            <option>โปรโมชั่น</option>
+            <option value="ข่าวประชาสัมพันธ์">ข่าวประชาสัมพันธ์</option>
+            <option value="กิจกรรมสุขภาพ">กิจกรรมสุขภาพ</option>
+            <option value="โปรโมชั่น">โปรโมชั่น</option>
           </select>
 
-          <label>รูปภาพประกอบ (สูงสุด 4 รูป)</label>
+          <label>รูปภาพประกอบ (ว่างได้ สูงสุด 4 รูป / รวมปกเป็น 5 รูป)</label>
           <div className="gallery">
             {[0, 1, 2, 3].map((index) => {
               const imageFile = articleImages[index];
@@ -330,11 +363,9 @@ function CreateOfficialArticle() {
               );
             })}
           </div>
-          {errors.images && <p className="error-message">{errors.images}</p>}
 
-          <label>รายละเอียดบทความ *</label>
-          
-          {/* (1) อัปเดตใส่ type="button" ให้ปุ่มใน Toolbar ป้องกันปัญหาเมื่อใช้ tag <form> ครอบทีหลัง */}
+          <label>รายละเอียดบทความ (50-2,500 ตัวอักษร) *</label>
+
           <div className="toolbar">
             <button type="button" onClick={() => formatText("bold")}>
               <FontAwesomeIcon icon={faBold} />
@@ -348,27 +379,54 @@ function CreateOfficialArticle() {
           </div>
 
           <div
-            key={id || "create"}
+            ref={editorRef}
             className="article-editor"
             contentEditable
             suppressContentEditableWarning
-            onInput={(e) => setArticleDetail(e.currentTarget.innerHTML)}
-            dangerouslySetInnerHTML={{ __html: articleDetail }}
+            onInput={handleEditorInput}
           ></div>
-          {errors.detail && <p className="error-message">{errors.detail}</p>}
-          {errors.submit && <p className="error-message">{errors.submit}</p>}
+          <div className="char-counter">
+            {articleDetail.replace(/<[^>]*>/g, "").length}/2500
+          </div>
 
           <div className="form-actions">
-            <button type="button" className="btn-cancel" onClick={() => navigate(-1)}>
+            <button
+              type="button"
+              className="btn-cancel"
+              onClick={() => navigate(-1)}
+            >
               ยกเลิก
             </button>
 
-            <button type="button" className="btn-save" onClick={handleSubmit}>
-              {id ? "บันทึกการแก้ไข" : "เผยแพร่บทความ"}
+            <button
+              type="button"
+              className="btn-save"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              style={isSubmitting ? { opacity: 0.7, cursor: "not-allowed" } : {}}
+            >
+              {isSubmitting ? "กำลังบันทึก..." : (id ? "บันทึกการแก้ไข" : "เผยแพร่บทความ")}
             </button>
           </div>
         </div>
       </div>
+
+      {/* 🔴 Popup แจ้งเตือนข้อผิดพลาด (Error Modal) */}
+      {showErrorPopup && (
+        <div className="popup-bg">
+          <div className="popup">
+            <div className="popup-icon error">!</div>
+            <h3>เกิดข้อผิดพลาด</h3>
+            <p>{errorMessage}</p>
+            <button
+              className="confirm-btn"
+              onClick={() => setShowErrorPopup(false)}
+            >
+              ปิด
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

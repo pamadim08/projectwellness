@@ -140,20 +140,36 @@ const ListWellnessHub = () => {
       const getTime = (item) => {
         const dateVal = item.updatedAt || item.createdAt;
         if (!dateVal) return 0;
-        const time = new Date(dateVal).getTime();
-        return Number.isNaN(time) ? 0 : time;
+        if (Array.isArray(dateVal)) {
+          const [y, m, d, h = 0, min = 0, s = 0] = dateVal;
+          return new Date(y, m - 1, d, h, min, s).getTime();
+        }
+        if (typeof dateVal === "string") {
+          const time = new Date(dateVal).getTime();
+          if (!Number.isNaN(time)) return time;
+        }
+        if (typeof dateVal === "number") return dateVal;
+        return 0;
       };
 
       const timeA = getTime(a);
       const timeB = getTime(b);
 
+      // 1. เรียงตามวันเวลาที่เพิ่มหรือแก้ไขล่าสุด (มากไปน้อย)
       if (timeB !== timeA) {
         return timeB - timeA;
       }
 
-      const idA = a.licenseId ? parseInt(a.licenseId, 10) : 0;
-      const idB = b.licenseId ? parseInt(b.licenseId, 10) : 0;
-      return idB - idA;
+      // 2. หากเป็นวันเวลาเดียวกัน เรียงตามรหัสสถานประกอบการ (licenseId)
+      const idA = a.licenseId != null ? String(a.licenseId).trim() : "";
+      const idB = b.licenseId != null ? String(b.licenseId).trim() : "";
+
+      const numA = Number(idA);
+      const numB = Number(idB);
+      if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
+        return numB - numA;
+      }
+      return idB.localeCompare(idA, undefined, { numeric: true });
     });
   }, [listwellnesshub]);
 

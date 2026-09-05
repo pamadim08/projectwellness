@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import axiosInstance from "axios";
 import L from "leaflet";
 import "leaflet-routing-machine";
+import { getCategoryMarkerIcon } from "../../utils/categoryMarkerIcons";
 import "./CreateMainRoute.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 
@@ -97,10 +98,11 @@ const CreateMainRoute = () => {
       key.includes("EM02") ||
       key.includes("ALS") ||
       name.includes("ADVANCED") ||
-      name.includes("HOSPITAL")
+      name.includes("HOSPITAL") ||
+      name.includes("โรงพยาบาล")
     ) {
       return {
-        color: "#D9434E",
+        color: "#BD0915",
         icon: "fa-hospital",
         isEmergency: true,
         label: "ALS (โรงพยาบาล)",
@@ -111,10 +113,11 @@ const CreateMainRoute = () => {
       key.includes("EM01") ||
       key.includes("BLS") ||
       name.includes("BASIC") ||
-      name.includes("RESCUE")
+      name.includes("RESCUE") ||
+      name.includes("กู้ภัย")
     ) {
       return {
-        color: "#E0A000",
+        color: "#C98600",
         icon: "fa-truck-medical",
         isEmergency: true,
         label: "BLS (หน่วยกู้ภัย)",
@@ -124,19 +127,26 @@ const CreateMainRoute = () => {
     if (
       key.includes("C01") ||
       name.includes("SPA") ||
-      name.includes("MASSAGE")
+      name.includes("MASSAGE") ||
+      name.includes("นวด") ||
+      name.includes("สปา")
     ) {
       return {
-        color: "#2E9D62",
+        color: "#E02873",
         icon: "fa-spa",
         isEmergency: false,
         label: "นวด/สปาเพื่อสุขภาพ",
       };
     }
 
-    if (key.includes("C03") || name.includes("REST") || name.includes("FOOD")) {
+    if (
+      key.includes("C03") ||
+      name.includes("REST") ||
+      name.includes("FOOD") ||
+      name.includes("อาหาร")
+    ) {
       return {
-        color: "#F28C28",
+        color: "#0B7D31",
         icon: "fa-utensils",
         isEmergency: false,
         label: "อาหารและเครื่องดื่ม",
@@ -146,19 +156,24 @@ const CreateMainRoute = () => {
     if (
       key.includes("C04") ||
       name.includes("HOTEL") ||
-      name.includes("ACCOM")
+      name.includes("ACCOM") ||
+      name.includes("ที่พัก")
     ) {
       return {
-        color: "#7C63D9",
+        color: "#5E27AB",
         icon: "fa-bed",
         isEmergency: false,
         label: "ที่พักฟื้นฟูสุขภาพ",
       };
     }
 
-    if (key.includes("C02") || name.includes("CLINIC")) {
+    if (
+      key.includes("C02") ||
+      name.includes("CLINIC") ||
+      name.includes("คลินิก")
+    ) {
       return {
-        color: "#2563A6",
+        color: "#004CB4",
         icon: "fa-notes-medical",
         isEmergency: false,
         label: "คลินิก/สถานพยาบาล",
@@ -168,12 +183,14 @@ const CreateMainRoute = () => {
     if (
       key.includes("C05") ||
       name.includes("ATTRACTION") ||
+      name.includes("TOURIS") ||
+      name.includes("TOURISM") ||
       name.includes("TOURIST") ||
       name.includes("TRAVEL") ||
       name.includes("ท่องเที่ยว")
     ) {
       return {
-        color: "#28A9D8",
+        color: "#009BB0",
         icon: "fa-map-location-dot",
         isEmergency: false,
         label: "สถานที่ท่องเที่ยว",
@@ -181,7 +198,7 @@ const CreateMainRoute = () => {
     }
 
     return {
-      color: "#28A9D8",
+      color: "#009BB0",
       icon: "fa-location-dot",
       isEmergency: false,
       label: categoryName || "อื่นๆ",
@@ -366,15 +383,24 @@ const CreateMainRoute = () => {
     };
   }, [id, districts]);
 
-  // Initial Leaflet Map
+  // Initial Leaflet Map (ใช้การตั้งค่าและ Tile Layer เดียวกับหน้า RouteDetail)
   useEffect(() => {
     if (!mapRef.current && mapContainerRef.current) {
       mapRef.current = L.map(mapContainerRef.current, {
         zoomControl: true,
-      }).setView([18.7883, 98.9853], 10);
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        dragging: true,
+        keyboard: true,
+      }).setView([18.7883, 98.9853], 11);
 
       L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          opacity: 0.78,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        },
       ).addTo(mapRef.current);
 
       setTimeout(() => {
@@ -586,19 +612,7 @@ const CreateMainRoute = () => {
         const catName = hub.category?.categoryName || "";
         const styleInfo = getCategoryStyle(catId, catName);
 
-        const customIcon = L.divIcon({
-          html: `
-                <div style="background:white; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,0.25); border:2px solid white;">
-                  <div style="background:${styleInfo.color}; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white;">
-                    <i class="fa-solid ${styleInfo.icon}" style="font-size:11px;"></i>
-                  </div>
-                </div>
-              `,
-          className: "",
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
-          popupAnchor: [0, -16],
-        });
+        const customIcon = getCategoryMarkerIcon(catId || catName, [32, 44]);
 
         const popupHtml = `
             <div style="font-family:'Sarabun',sans-serif; padding:2px; min-width:140px;">
@@ -798,18 +812,20 @@ const CreateMainRoute = () => {
   const handleSubmitFinalForm = async (event) => {
     event.preventDefault();
 
-    const newErrors = {};
+    if (isSubmitting) return;
 
-    if (!routeName.trim()) {
-      newErrors.routeName = "❌ จำเป็นต้องระบุชื่อเส้นทางสุขภาพหลัก";
-    } else if (routeName.trim().length < 10 || routeName.trim().length > 50) {
-      newErrors.routeName =
-        "❌ ชื่อเส้นทางสุขภาพต้องมีความยาวอย่างน้อย 10 ตัวอักษร และไม่เกิน 50 ตัวอักษร";
+    const newErrors = {};
+    const trimmedRouteName = routeName.trim();
+    const routeNameRegex = /^[a-zA-Z0-9\u0E00-\u0E7F\s]{10,50}$/;
+
+    // 1. ตรวจสอบชื่อเส้นทาง (ห้ามว่าง, ภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น, 10–50 ตัวอักษร)
+    if (!trimmedRouteName || !routeNameRegex.test(trimmedRouteName)) {
+      newErrors.routeName = "กรุณากรอกข้อมูลให้ครบถ้วน";
     }
 
+    // 2. ตรวจสอบจำนวนอำเภอ (อย่างน้อย 2 อำเภอ)
     if (orderedRouteDetails.length < 2) {
-      newErrors.orderedDistricts =
-        "❌ ต้องดำเนินการเลือกจัดลำดับอำเภอวิ่งผ่านอย่างน้อย 2 อำเภอขึ้นไป";
+      newErrors.orderedDistricts = "กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -846,7 +862,7 @@ const CreateMainRoute = () => {
       const categoryIdsForSave = mergeRequiredCategories(selectedCategoryIds);
 
       const finalPayload = {
-        routeName: routeName.trim(),
+        routeName: trimmedRouteName,
         routeDescription: routeDescription.trim(),
         routeImage: finalRouteImage,
         categoryIds: categoryIdsForSave,
@@ -950,7 +966,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{ background: "#2E9D62" }}
+                  style={{ background: "#E02873" }}
                 ></div>
                 นวด/สปาเพื่อสุขภาพ (C01)
               </div>
@@ -958,7 +974,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{ background: "#F28C28" }}
+                  style={{ background: "#0B7D31" }}
                 ></div>
                 อาหารและเครื่องดื่ม (C03)
               </div>
@@ -966,7 +982,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{ background: "#7C63D9" }}
+                  style={{ background: "#5E27AB" }}
                 ></div>
                 ที่พักฟื้นฟูสุขภาพ (C04)
               </div>
@@ -974,7 +990,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{ background: "#2563A6" }}
+                  style={{ background: "#004CB4" }}
                 ></div>
                 คลินิก/สถานพยาบาล (C02)
               </div>
@@ -982,7 +998,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{ background: "#28A9D8" }}
+                  style={{ background: "#009BB0" }}
                 ></div>
                 สถานที่ท่องเที่ยว (C05)
               </div>
@@ -990,7 +1006,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{ background: "#D9434E" }}
+                  style={{ background: "#BD0915" }}
                 ></div>
                 ALS (Advanced Hospital)
               </div>
@@ -998,7 +1014,7 @@ const CreateMainRoute = () => {
               <div className="gov-legend-item">
                 <div
                   className="gov-legend-color"
-                  style={{ background: "#E0A000" }}
+                  style={{ background: "#C98600" }}
                 ></div>
                 BLS (Basic Life Support)
               </div>
@@ -1112,6 +1128,7 @@ const CreateMainRoute = () => {
                 <label className="gov-label-bold">ชื่อเส้นทางสุขภาพ*</label>
                 <input
                   type="text"
+                  maxLength={50}
                   className={`gov-input-text ${errors.routeName ? "gov-input-border-error" : ""
                     }`}
                   value={routeName}
@@ -1119,7 +1136,7 @@ const CreateMainRoute = () => {
                   placeholder="ระบุชื่อเส้นทาง เช่น กินนวดสบาย พร้าว - แม่ริม - เมือง"
                 />
                 <span className="gov-char-counter">
-                  {routeName.length}/50 ตัวอักษร
+                  {routeName.length}/50
                 </span>
                 {errors.routeName && (
                   <span className="gov-error-label">{errors.routeName}</span>
@@ -1129,6 +1146,7 @@ const CreateMainRoute = () => {
               <div className="gov-form-group">
                 <label className="gov-label-bold">รายละเอียดเส้นทาง</label>
                 <textarea
+                  maxLength={255}
                   className="gov-input-text"
                   style={{
                     minHeight: "80px",
@@ -1139,6 +1157,9 @@ const CreateMainRoute = () => {
                   onChange={(event) => setRouteDescription(event.target.value)}
                   placeholder="ระบุรายละเอียดเพิ่มเติม หรือคำแนะนำของเส้นทางสุขภาพหลักนี้..."
                 />
+                <span className="gov-char-counter">
+                  {routeDescription.length}/255
+                </span>
               </div>
 
               {/* SECTION 1: ประเภทสถานที่ */}
@@ -1462,8 +1483,13 @@ const CreateMainRoute = () => {
               </div>
 
               <div className="gov-submit-bar">
-                <button type="submit" className="gov-btn-save">
-                  บันทึกข้อมูลและอัปเดต
+                <button
+                  type="submit"
+                  className="gov-btn-save"
+                  disabled={isSubmitting}
+                  style={isSubmitting ? { opacity: 0.7, cursor: "not-allowed" } : {}}
+                >
+                  {isSubmitting ? "กำลังบันทึก..." : "บันทึกข้อมูลและอัปเดต"}
                 </button>
 
                 <Link to="/listMainRoute" className="gov-btn-cancel">

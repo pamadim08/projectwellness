@@ -9,8 +9,9 @@ import {
   MapPin,
   Newspaper,
   RefreshCw,
-  Route,
+  Route as RouteIcon,
   Search,
+  X,
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import LoadingState from "../../Components/LoadingState/LoadingState";
@@ -19,22 +20,10 @@ import "./SearchResults.css";
 const API_BASE_URL = "http://localhost:8080/api";
 
 const SEARCH_TYPES = [
-  {
-    value: "ALL",
-    label: "ทั้งหมด",
-  },
-  {
-    value: "WELLNESS_HUB",
-    label: "สถานประกอบการ",
-  },
-  {
-    value: "ROUTE",
-    label: "เส้นทางท่องเที่ยว",
-  },
-  {
-    value: "ARTICLE",
-    label: "บทความสุขภาพ",
-  },
+  { value: "ALL", label: "ทั้งหมด" },
+  { value: "WELLNESS_HUB", label: "สถานประกอบการ" },
+  { value: "ROUTE", label: "เส้นทางท่องเที่ยว" },
+  { value: "ARTICLE", label: "บทความสุขภาพ" },
 ];
 
 const ALLOWED_TYPES = SEARCH_TYPES.map((type) => type.value);
@@ -56,15 +45,9 @@ function removeHtml(value = "") {
 }
 
 function formatDate(value) {
-  if (!value) {
-    return "";
-  }
-
+  if (!value) return "";
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
+  if (Number.isNaN(date.getTime())) return "";
 
   return new Intl.DateTimeFormat("th-TH", {
     day: "numeric",
@@ -78,6 +61,55 @@ function getErrorMessage(error) {
     error.response?.data?.message ||
     "ไม่สามารถค้นหาข้อมูลได้ กรุณาลองใหม่อีกครั้ง"
   );
+}
+
+// 🖼️ ฟังก์ชันแปลงและดึง URL รูปภาพให้สมบูรณ์ (รองรับ Base64, URL ตรง, JSON array, และชื่อไฟล์ uploads)
+function normalizeImageSource(imageValue, defaultFolder = "hubs") {
+  if (!imageValue) return "";
+
+  let normalized = imageValue;
+
+  if (typeof normalized === "string") {
+    const trimmed = normalized.trim();
+    try {
+      const parsed = JSON.parse(trimmed);
+      normalized = Array.isArray(parsed) ? parsed[0] || "" : trimmed;
+    } catch {
+      normalized = trimmed;
+    }
+  }
+
+  if (Array.isArray(normalized)) {
+    normalized = normalized[0] || "";
+  }
+
+  if (!normalized || typeof normalized !== "string") return "";
+
+  const src = normalized.trim();
+  if (!src) return "";
+
+  if (
+    src.startsWith("data:image/") ||
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("blob:")
+  ) {
+    return src;
+  }
+
+  if (/^[A-Za-z0-9+/=\s]+$/.test(src) && src.length > 100) {
+    return `data:image/jpeg;base64,${src}`;
+  }
+
+  if (src.startsWith("/uploads/")) {
+    return `http://localhost:8080${src}`;
+  }
+
+  if (!src.includes("/") && !src.includes("\\")) {
+    return `http://localhost:8080/uploads/${defaultFolder}/${src}`;
+  }
+
+  return src;
 }
 
 export default function SearchResults() {
@@ -96,15 +128,13 @@ export default function SearchResults() {
   const [keyword, setKeyword] = useState(queryKeyword);
   const [searchType, setSearchType] = useState(normalizedType);
 
-  // ดึงค่าจาก Cache ทันทีหากมีอยู่เดิม เพื่อป้องกัน UI/Spinner กระพริบ
   const [searchData, setSearchData] = useState(() => {
     return searchResultsCache.get(searchCacheKey) ?? null;
   });
 
   const [loading, setLoading] = useState(() => {
     return (
-      Boolean(queryKeyword.trim()) &&
-      !searchResultsCache.has(searchCacheKey)
+      Boolean(queryKeyword.trim()) && !searchResultsCache.has(searchCacheKey)
     );
   });
 
@@ -131,7 +161,6 @@ export default function SearchResults() {
 
       const cacheKey = getSearchCacheKey(normalizedKeyword, normalizedType);
 
-      // มี Cache แล้ว และไม่ได้สั่ง Force Refresh → นำ Cache มาใช้ทันทีโดยไม่ยิง API
       if (searchResultsCache.has(cacheKey) && !forceRefresh) {
         setSearchData(searchResultsCache.get(cacheKey));
         setError("");
@@ -153,7 +182,6 @@ export default function SearchResults() {
 
         const result = response.data || null;
 
-        // บันทึกลง Cache
         searchResultsCache.set(cacheKey, result);
         setSearchData(result);
       } catch (requestError) {
@@ -163,7 +191,7 @@ export default function SearchResults() {
         setLoading(false);
       }
     },
-    [queryKeyword, normalizedType]
+    [queryKeyword, normalizedType],
   );
 
   useEffect(() => {
@@ -175,18 +203,18 @@ export default function SearchResults() {
 
   const routes = useMemo(
     () => (Array.isArray(searchData?.routes) ? searchData.routes : []),
-    [searchData]
+    [searchData],
   );
 
   const wellnessHubs = useMemo(
     () =>
       Array.isArray(searchData?.wellnessHubs) ? searchData.wellnessHubs : [],
-    [searchData]
+    [searchData],
   );
 
   const articles = useMemo(
     () => (Array.isArray(searchData?.articles) ? searchData.articles : []),
-    [searchData]
+    [searchData],
   );
 
   const handleSubmit = (event) => {
@@ -208,8 +236,8 @@ export default function SearchResults() {
 
     navigate(
       `/search?q=${encodeURIComponent(
-        normalizedKeyword
-      )}&type=${encodeURIComponent(searchType)}`
+        normalizedKeyword,
+      )}&type=${encodeURIComponent(searchType)}`,
     );
   };
 
@@ -225,42 +253,47 @@ export default function SearchResults() {
 
   return (
     <main className="search-results-page">
+      {/* 🟢 HERO SECTION */}
       <header className="search-results-hero">
         <div className="search-results-container">
           <Link to="/" className="search-results-back">
-            <ArrowLeft />
-            กลับหน้าแรก
+            <ArrowLeft className="search-back-icon" />
+            <span>กลับหน้าแรก</span>
           </Link>
 
-          <p className="search-results-eyebrow">SEARCH WELLNESS</p>
+          <p className="search-results-eyebrow">CHIANG MAI WELLNESS DIRECTORY</p>
 
           <h1>ผลการค้นหา</h1>
 
           {queryKeyword && (
             <p className="search-results-hero__description">
-              ผลลัพธ์ที่เกี่ยวข้องกับ <strong>“{queryKeyword}”</strong>
+              ผลลัพธ์การค้นหาสำหรับ <strong>“{queryKeyword}”</strong>
             </p>
           )}
 
+          {/* 🔍 FLOATING SEARCH FORM */}
           <form
             className="search-results-form"
             onSubmit={handleSubmit}
             noValidate
           >
-            <select
-              value={searchType}
-              onChange={(event) => setSearchType(event.target.value)}
-              aria-label="ประเภทการค้นหา"
-            >
-              {SEARCH_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+            <div className="search-select-wrapper">
+              <select
+                value={searchType}
+                onChange={(event) => setSearchType(event.target.value)}
+                aria-label="ประเภทการค้นหา"
+                className="search-results-select"
+              >
+                {SEARCH_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="search-results-form__input">
-              <Search />
+              <Search className="search-input-icon" />
               <input
                 type="text"
                 value={keyword}
@@ -274,11 +307,21 @@ export default function SearchResults() {
                 }}
                 aria-invalid={Boolean(validationError)}
               />
+              {keyword && (
+                <button
+                  type="button"
+                  className="search-input-clear"
+                  onClick={() => setKeyword("")}
+                  title="ล้างคำค้นหา"
+                >
+                  <X />
+                </button>
+              )}
             </div>
 
-            <button type="submit">
+            <button type="submit" className="search-results-btn">
               <Search />
-              ค้นหา
+              <span>ค้นหา</span>
             </button>
           </form>
 
@@ -290,188 +333,261 @@ export default function SearchResults() {
         </div>
       </header>
 
+      {/* 🔵 CONTENT SECTION */}
       <div className="search-results-container search-results-content">
         {error && (
           <section className="search-results-state search-results-state--error">
-            <CircleAlert />
+            <CircleAlert className="state-icon-error" />
             <h2>ไม่สามารถค้นหาข้อมูลได้</h2>
             <p>{error}</p>
             <button type="button" onClick={() => loadSearchResults(true)}>
               <RefreshCw />
-              ลองใหม่
+              <span>ลองใหม่อีกครั้ง</span>
             </button>
           </section>
         )}
 
         {!error && searchData && (
           <>
+            {/* 📊 SUMMARY CARDS */}
             <section className="search-results-summary">
-              <article>
-                <strong>{searchData.totalResults || 0}</strong>
-                <span>ผลลัพธ์ทั้งหมด</span>
-              </article>
-
-              <article>
-                <Route />
-                <div>
-                  <strong>{searchData.routeCount || 0}</strong>
-                  <span>เส้นทาง</span>
+              <article className="summary-card total">
+                <div className="summary-card__icon-badge">
+                  <Search />
+                </div>
+                <div className="summary-card__text">
+                  <strong>{searchData.totalResults || 0}</strong>
+                  <span>ผลลัพธ์ทั้งหมด</span>
                 </div>
               </article>
 
-              <article>
-                <Building2 />
-                <div>
+              <article className="summary-card route">
+                <div className="summary-card__icon-badge">
+                  <RouteIcon />
+                </div>
+                <div className="summary-card__text">
+                  <strong>{searchData.routeCount || 0}</strong>
+                  <span>เส้นทางท่องเที่ยว</span>
+                </div>
+              </article>
+
+              <article className="summary-card place">
+                <div className="summary-card__icon-badge">
+                  <Building2 />
+                </div>
+                <div className="summary-card__text">
                   <strong>{searchData.wellnessHubCount || 0}</strong>
                   <span>สถานประกอบการ</span>
                 </div>
               </article>
 
-              <article>
-                <Newspaper />
-                <div>
+              <article className="summary-card article">
+                <div className="summary-card__icon-badge">
+                  <Newspaper />
+                </div>
+                <div className="summary-card__text">
                   <strong>{searchData.articleCount || 0}</strong>
-                  <span>บทความ</span>
+                  <span>บทความสุขภาพ</span>
                 </div>
               </article>
             </section>
 
             {searchData.totalResults === 0 ? (
-              <section className="search-results-state">
-                <Search />
+              <section className="search-results-state search-results-state--empty">
+                <div className="empty-icon-box">
+                  <Search />
+                </div>
                 <h2>ไม่พบข้อมูลที่ค้นหา</h2>
-                <p>ลองใช้คำค้นที่สั้นลง หรือตรวจสอบการสะกดอีกครั้ง</p>
+                <p>ลองใช้คำค้นหาที่สั้นลง หรือเลือกประเภทหมวดหมู่เพื่อค้นหาใหม่อีกครั้ง</p>
               </section>
             ) : (
               <>
+                {/* 🟢 1. WELLNESS ROUTES SECTION */}
                 {routes.length > 0 && (
                   <section className="search-results-section">
                     <div className="search-results-heading">
-                      <div>
-                        <p>WELLNESS ROUTES</p>
-                        <h2>เส้นทางท่องเที่ยว</h2>
+                      <div className="heading-title-group">
+                        <p className="section-eyebrow">RECOMMENDED ROUTES</p>
+                        <h2>เส้นทางท่องเที่ยว ({routes.length})</h2>
                       </div>
-                      <span>{routes.length} รายการ</span>
                     </div>
 
                     <div className="search-results-grid">
-                      {routes.map((route) => (
-                        <article
-                          key={route.routeId}
-                          className="search-result-card"
-                        >
-                          <div className="search-result-card__cover search-result-card__cover--route">
-                            <Route />
-                            <span>{route.pinCount || 0} จุดแนะนำ</span>
-                          </div>
+                      {routes.map((route) => {
+                        const rawRouteImage =
+                          route.routeImage ||
+                          route.img ||
+                          route.image ||
+                          route.coverImage;
+                        const routeImg = normalizeImageSource(
+                          rawRouteImage,
+                          "routes",
+                        );
 
-                          <div className="search-result-card__body">
-                            <p className="search-result-card__category">
-                              WELLNESS ROUTE
-                            </p>
+                        return (
+                          <article
+                            key={route.routeId}
+                            className="search-result-card"
+                          >
+                            <div className="search-result-card__cover search-result-card__cover--route">
+                              {routeImg ? (
+                                <img
+                                  src={routeImg}
+                                  alt={route.routeName}
+                                  onError={(event) => {
+                                    event.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              ) : (
+                                <div className="card-cover-fallback">
+                                  <RouteIcon />
+                                </div>
+                              )}
+                              <span className="route-pin-badge">
+                                <MapPin /> {route.pinCount || 0} จุดแนะนำ
+                              </span>
+                            </div>
 
-                            <h3>{route.routeName}</h3>
-
-                            {route.routeDescription && (
-                              <p className="search-result-card__description">
-                                {route.routeDescription}
+                            <div className="search-result-card__body">
+                              <p className="search-result-card__category route-tag">
+                                WELLNESS ROUTE
                               </p>
-                            )}
 
-                            {route.districtsPassed && (
-                              <p className="search-result-card__meta">
-                                <MapPin />
-                                {route.districtsPassed}
-                              </p>
-                            )}
+                              <h3>{route.routeName}</h3>
 
-                            <Link
-                              to={`/wellness-routes/${route.routeId}`}
-                              className="search-result-card__link"
-                            >
-                              ดูรายละเอียดเส้นทาง
-                              <ArrowRight />
-                            </Link>
-                          </div>
-                        </article>
-                      ))}
+                              {route.routeDescription && (
+                                <p className="search-result-card__description">
+                                  {route.routeDescription}
+                                </p>
+                              )}
+
+                              {route.districtsPassed && (
+                                <p className="search-result-card__meta">
+                                  <MapPin />
+                                  <span>{route.districtsPassed}</span>
+                                </p>
+                              )}
+
+                              <Link
+                                to={`/wellness-routes/${route.routeId}`}
+                                className="search-result-card__link"
+                              >
+                                <span>ดูรายละเอียดเส้นทาง</span>
+                                <ArrowRight />
+                              </Link>
+                            </div>
+                          </article>
+                        );
+                      })}
                     </div>
                   </section>
                 )}
 
+                {/* 🔵 2. WELLNESS HUBS SECTION (ดึงรูปปกสถานประกอบการจาก DB) */}
                 {wellnessHubs.length > 0 && (
                   <section className="search-results-section">
                     <div className="search-results-heading">
-                      <div>
-                        <p>WELLNESS PLACES</p>
-                        <h2>สถานประกอบการ</h2>
+                      <div className="heading-title-group">
+                        <p className="section-eyebrow">WELLNESS PLACES</p>
+                        <h2>สถานประกอบการ ({wellnessHubs.length})</h2>
                       </div>
-                      <span>{wellnessHubs.length} รายการ</span>
                     </div>
 
                     <div className="search-results-grid">
-                      {wellnessHubs.map((hub) => (
-                        <article
-                          key={hub.licenseId}
-                          className="search-result-card"
-                        >
-                          <div className="search-result-card__cover search-result-card__cover--hub">
-                            <Building2 />
-                          </div>
+                      {wellnessHubs.map((hub) => {
+                        // 🖼️ ดึงรูปปกสถานประกอบการจากฐานข้อมูล (รองรับทุกชื่อฟิลด์: wellnessHubImg, img, wellnessHubImages, wellnessHubGallery)
+                        const rawHubImage =
+                          hub.wellnessHubImg ||
+                          hub.img ||
+                          hub.wellnessHubImages ||
+                          hub.wellnessHubGallery ||
+                          hub.coverImage ||
+                          hub.image;
 
-                          <div className="search-result-card__body">
-                            {hub.categoryName && (
-                              <p className="search-result-card__category">
-                                {hub.categoryName}
+                        const hubImg = normalizeImageSource(rawHubImage, "hubs");
+
+                        return (
+                          <article
+                            key={hub.licenseId || hub.wellnessHubName}
+                            className="search-result-card"
+                          >
+                            <div className="search-result-card__cover search-result-card__cover--hub">
+                              {hubImg ? (
+                                <img
+                                  src={hubImg}
+                                  alt={hub.wellnessHubName}
+                                  onError={(event) => {
+                                    event.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              ) : (
+                                <div className="card-cover-fallback hub-fallback">
+                                  <Building2 />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="search-result-card__body">
+                              <p className="search-result-card__category hub-tag">
+                                {hub.categoryName || "สถานประกอบการ"}
                               </p>
-                            )}
 
-                            <h3>{hub.wellnessHubName}</h3>
+                              <h3>{hub.wellnessHubName}</h3>
 
-                            {hub.wellnessHubDescription && (
-                              <p className="search-result-card__description">
-                                {hub.wellnessHubDescription}
-                              </p>
-                            )}
+                              {hub.wellnessHubDescription && (
+                                <p className="search-result-card__description">
+                                  {hub.wellnessHubDescription}
+                                </p>
+                              )}
 
-                            {hub.districtName && (
-                              <p className="search-result-card__meta">
-                                <MapPin />
-                                อ.
-                                {hub.districtName}
-                              </p>
-                            )}
+                              {hub.districtName && (
+                                <p className="search-result-card__meta">
+                                  <MapPin />
+                                  <span>อ. {hub.districtName}</span>
+                                </p>
+                              )}
 
-                            <Link
-                              to={`/wellness-hubs/${hub.licenseId}`}
-                              className="search-result-card__link"
-                            >
-                              ดูรายละเอียดสถานประกอบการ
-                              <ArrowRight />
-                            </Link>
-                          </div>
-                        </article>
-                      ))}
+                              <Link
+                                to={`/wellness-hubs/${hub.licenseId}`}
+                                className="search-result-card__link"
+                              >
+                                <span>ดูรายละเอียดสถานประกอบการ</span>
+                                <ArrowRight />
+                              </Link>
+                            </div>
+                          </article>
+                        );
+                      })}
                     </div>
                   </section>
                 )}
 
+                {/* 🔴 3. ARTICLES SECTION */}
                 {articles.length > 0 && (
                   <section className="search-results-section">
                     <div className="search-results-heading">
-                      <div>
-                        <p>WELLNESS STORIES</p>
-                        <h2>บทความสุขภาพ</h2>
+                      <div className="heading-title-group">
+                        <p className="section-eyebrow">HEALTH STORIES</p>
+                        <h2>บทความสุขภาพ ({articles.length})</h2>
                       </div>
-                      <span>{articles.length} รายการ</span>
                     </div>
 
                     <div className="search-results-grid">
                       {articles.map((article) => {
                         const articleDescription = removeHtml(
-                          article.articleDetail || ""
+                          article.articleDetail || "",
                         );
                         const publishedDate = formatDate(article.publishDate);
+                        const rawArticleImage =
+                          article.img ||
+                          article.articleImages ||
+                          article.coverImage ||
+                          article.image;
+
+                        const articleImg = normalizeImageSource(
+                          rawArticleImage,
+                          "articles",
+                        );
 
                         return (
                           <article
@@ -479,23 +595,23 @@ export default function SearchResults() {
                             className="search-result-card"
                           >
                             <div className="search-result-card__cover search-result-card__cover--article">
-                              {article.img ? (
+                              {articleImg ? (
                                 <img
-                                  src={article.img}
+                                  src={articleImg}
                                   alt={article.articleTitle}
                                   onError={(event) => {
-                                    event.currentTarget.classList.add(
-                                      "search-result-card__image--hidden"
-                                    );
+                                    event.currentTarget.style.display = "none";
                                   }}
                                 />
                               ) : (
-                                <Newspaper />
+                                <div className="card-cover-fallback article-fallback">
+                                  <Newspaper />
+                                </div>
                               )}
                             </div>
 
                             <div className="search-result-card__body">
-                              <p className="search-result-card__category">
+                              <p className="search-result-card__category article-tag">
                                 {article.articleCategory || "บทความสุขภาพ"}
                               </p>
 
@@ -510,7 +626,7 @@ export default function SearchResults() {
                               {publishedDate && (
                                 <p className="search-result-card__meta">
                                   <CalendarDays />
-                                  {publishedDate}
+                                  <span>{publishedDate}</span>
                                 </p>
                               )}
 
@@ -518,7 +634,7 @@ export default function SearchResults() {
                                 to={`/articles/${article.articleId}`}
                                 className="search-result-card__link"
                               >
-                                อ่านบทความ
+                                <span>อ่านบทความ</span>
                                 <ArrowRight />
                               </Link>
                             </div>

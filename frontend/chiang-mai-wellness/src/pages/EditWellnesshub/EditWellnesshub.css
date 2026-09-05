@@ -622,7 +622,7 @@
   border: 1px solid var(--border-dark);
 }
 
-.gov-checkbox-wrapper input:checked ~ .gov-custom-checkbox {
+.gov-checkbox-wrapper input:checked~.gov-custom-checkbox {
   background: var(--gov-green-light);
 }
 
@@ -642,7 +642,7 @@
   transform: rotate(45deg);
 }
 
-.gov-checkbox-wrapper input:checked ~ .gov-custom-checkbox::after {
+.gov-checkbox-wrapper input:checked~.gov-custom-checkbox::after {
   display: block;
 }
 
@@ -816,17 +816,17 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
-.hub-toggle-switch input:checked + .hub-toggle-slider {
+.hub-toggle-switch input:checked+.hub-toggle-slider {
   background: #28a745;
 
   border-color: #1e7e34;
 }
 
-.hub-toggle-switch input:checked + .hub-toggle-slider::before {
+.hub-toggle-switch input:checked+.hub-toggle-slider::before {
   transform: translateX(26px);
 }
 
-.hub-toggle-switch input:focus + .hub-toggle-slider {
+.hub-toggle-switch input:focus+.hub-toggle-slider {
   outline: 2px solid rgba(40, 167, 69, 0.25);
   outline-offset: 2px;
 }
@@ -1076,6 +1076,7 @@
 }
 
 @media (max-width: 850px) {
+
   .form-grid-3,
   .form-grid-2 {
     grid-template-columns: 1fr;
@@ -1163,4 +1164,225 @@
   .btn-cancel {
     width: 100%;
   }
+}
+
+.char-counter {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   ดรอปดาวน์เลือกหลายตัวเลือก สไตล์ราชการ (เหลี่ยม คม ชัดเจน พอดีกับฟอร์ม)
+   ========================================================================== */
+.gov-multi-select {
+  position: relative;
+  width: 100%;
+  font-family: inherit;
+}
+
+.gov-multi-select * {
+  box-sizing: border-box;
+}
+
+/* กล่องอินพุต ทรงสี่เหลี่ยมคมชัด */
+.gov-multi-select-trigger {
+  min-height: 40px;
+  height: auto !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 4px 10px;
+  border: 1px solid var(--border-dark, #000000);
+  background-color: #ffffff;
+  border-radius: 0 !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gov-multi-select.open .gov-multi-select-trigger,
+.gov-multi-select-trigger:hover {
+  border-color: var(--gov-green-dark, #1c7430);
+}
+
+.gov-multi-select.open .gov-multi-select-trigger {
+  box-shadow: 0 0 0 2px rgba(28, 116, 48, 0.1);
+}
+
+.gov-multi-select-value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.gov-multi-select-placeholder {
+  color: #757575;
+  font-size: 13.5px;
+}
+
+.gov-multi-select-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+}
+
+/* แท็กป้ายแบบสี่เหลี่ยมกะทัดรัด */
+.gov-multi-select-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #e8f5e9;
+  color: #1c7430;
+  border: 1px solid #c8e6c9;
+  border-radius: 0;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.gov-multi-select-tag-del {
+  background: none;
+  border: none;
+  color: #1c7430;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 1px;
+  line-height: 1;
+}
+
+.gov-multi-select-tag-del:hover {
+  color: #c62828;
+}
+
+.gov-multi-select-caret {
+  color: #777777;
+  font-size: 11px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+/* กล่องดรอปดาวน์รายการตัวเลือก ทรงสี่เหลี่ยม */
+.gov-multi-select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background-color: #ffffff;
+  border: 1px solid var(--border-dark, #000000);
+  border-top: none;
+  border-radius: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.gov-multi-select-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 12px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.gov-multi-select-btn-all {
+  background: none;
+  border: none;
+  color: #1c7430;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 1px 4px;
+}
+
+.gov-multi-select-btn-all:hover {
+  text-decoration: underline;
+}
+
+.gov-multi-select-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* แต่ละรายการตัวเลือก ขนาดเล็ก ชิดกัน เรียงแถวสวยงาม */
+.gov-multi-select-item {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 10px !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  border-bottom: 1px solid #f1f1f1 !important;
+  background-color: #ffffff;
+  transition: background-color 0.15s ease;
+}
+
+.gov-multi-select-item:last-child {
+  border-bottom: none !important;
+}
+
+.gov-multi-select-item:hover {
+  background-color: #f8f9fa !important;
+}
+
+.gov-multi-select-item.selected {
+  background-color: #edf7ee !important;
+}
+
+.gov-multi-select-item.selected .gov-multi-select-item-text {
+  color: #1c7430 !important;
+  font-weight: 600 !important;
+}
+
+/* กล่อง Checkbox สี่เหลี่ยมเล็ก ชิดข้อความ */
+.gov-custom-cb {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  max-width: 14px !important;
+  border: 1px solid #8c8c8c !important;
+  background-color: #ffffff !important;
+  border-radius: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 10px !important;
+  font-weight: bold !important;
+  color: transparent !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+}
+
+.gov-custom-cb.checked {
+  background-color: #1c7430 !important;
+  border-color: #1c7430 !important;
+  color: #ffffff !important;
+}
+
+/* ข้อความตัวเลือก */
+.gov-multi-select-item-text {
+  flex: 1 1 auto !important;
+  font-size: 13px !important;
+  color: #333333 !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  text-align: left !important;
+  user-select: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }

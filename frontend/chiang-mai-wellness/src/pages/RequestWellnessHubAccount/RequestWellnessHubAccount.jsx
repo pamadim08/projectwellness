@@ -410,6 +410,49 @@ export default function RequestWellnessHubAccount() {
     return Object.keys(errors).length === 0;
   };
 
+  const parseLatLngFromGoogleMapsLink = (url) => {
+    if (!url || typeof url !== "string") return null;
+    const trimmed = url.trim();
+
+    const atMatch = trimmed.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (atMatch) {
+      const lat = parseFloat(atMatch[1]);
+      const lng = parseFloat(atMatch[2]);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return { lat, lng };
+      }
+    }
+
+    const placeMatch = trimmed.match(/!3d(-?\d+(?:\.\d+)?)(?:.*)!4d(-?\d+(?:\.\d+)?)/);
+    if (placeMatch) {
+      const lat = parseFloat(placeMatch[1]);
+      const lng = parseFloat(placeMatch[2]);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return { lat, lng };
+      }
+    }
+
+    const qMatch = trimmed.match(/[?&](?:q|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (qMatch) {
+      const lat = parseFloat(qMatch[1]);
+      const lng = parseFloat(qMatch[2]);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return { lat, lng };
+      }
+    }
+
+    const dirMatch = trimmed.match(/\/(?:dir|search)\/[^/]*\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) || trimmed.match(/\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (dirMatch) {
+      const lat = parseFloat(dirMatch[1]);
+      const lng = parseFloat(dirMatch[2]);
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return { lat, lng };
+      }
+    }
+
+    return null;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -419,6 +462,56 @@ export default function RequestWellnessHubAccount() {
 
     setSubmitting(true);
 
+    const name = formData.wellnessHubName.trim();
+    const gmapsLink = formData.googleMapsLink.trim();
+    const parsedCoords = parseLatLngFromGoogleMapsLink(gmapsLink);
+
+    try {
+      const existingHubsRes = await axios.get(`${API_BASE_URL}/wellness-hubs`);
+      const existingHubs = Array.isArray(existingHubsRes.data) ? existingHubsRes.data : [];
+
+      // 1) เช็กชื่อซ้ำ
+      const isDuplicateName = existingHubs.some(
+        (hub) => String(hub.wellnessHubName || "").trim().toLowerCase() === name.toLowerCase()
+      );
+      if (isDuplicateName) {
+        setFormErrors((prev) => ({
+          ...prev,
+          wellnessHubName: "ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น",
+        }));
+        setSubmitting(false);
+        return;
+      }
+
+      // 2) เช็กพิกัด / ลิงก์ Google Maps ซ้ำ
+      if (parsedCoords) {
+        const isDuplicateLocation = existingHubs.some((hub) => {
+          const sameLink = hub.googleMapsLink && String(hub.googleMapsLink).trim() === gmapsLink;
+          const hLat = parseFloat(hub.wellnessHubLatitude ?? hub.latitude);
+          const hLng = parseFloat(hub.wellnessHubLongitude ?? hub.longitude);
+
+          const sameCoords =
+            !isNaN(hLat) &&
+            !isNaN(hLng) &&
+            Math.abs(hLat - parsedCoords.lat) < 0.0001 &&
+            Math.abs(hLng - parsedCoords.lng) < 0.0001;
+
+          return sameLink || sameCoords;
+        });
+
+        if (isDuplicateLocation) {
+          setFormErrors((prev) => ({
+            ...prev,
+            googleMapsLink: "พิกัดแผนที่ หรือลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง",
+          }));
+          setSubmitting(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("⚠️ ไม่สามารถเช็กข้อมูลซ้ำล่วงหน้าได้:", err);
+    }
+
     try {
       const coverImage = coverFile ? await readFileAsDataUrl(coverFile) : "";
       const galleryImageValues = galleryImages.map((image) => image.preview);
@@ -426,7 +519,7 @@ export default function RequestWellnessHubAccount() {
 
       const payload = {
         licenseId: formData.licenseId.trim(),
-        wellnessHubName: formData.wellnessHubName.trim(),
+        wellnessHubName: name,
         categoryId: formData.categoryId,
         districtId: formData.districtId,
         requesterName: formData.requesterName.trim(),
@@ -437,13 +530,13 @@ export default function RequestWellnessHubAccount() {
         tellInformation: formData.tellInformation.trim(),
         contactInformation: formData.contactInformation.trim(),
         address: formData.address.trim(),
-        googleMapsLink: formData.googleMapsLink.trim(),
+        googleMapsLink: gmapsLink,
         wellnessHubDescription: formData.wellnessHubDescription.trim(),
 
         operatingHours: JSON.stringify(operatingHours),
 
-        wellnessHubLatitude: null,
-        wellnessHubLongitude: null,
+        wellnessHubLatitude: parsedCoords ? parsedCoords.lat : null,
+        wellnessHubLongitude: parsedCoords ? parsedCoords.lng : null,
 
         wellnessHubImg: coverImage || "",
         wellnessHubGallery: JSON.stringify(galleryImageValues),

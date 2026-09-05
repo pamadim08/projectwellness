@@ -35,91 +35,93 @@
 }
 
 .article-list-container {
-  width: min(calc(100% - 48px), 1184px);
-
+  width: min(1280px, calc(100% - 48px));
   margin: 0 auto;
 }
 
 /* ==========================================================================
-   HERO
+   HERO (UNIFIED MODERN STYLE)
    ========================================================================== */
 
 .article-list-hero {
   position: relative;
-
+  isolation: isolate;
   overflow: hidden;
-
-  padding: 110px 0 170px;
-
-  background: linear-gradient(135deg, #06231d, #076653);
+  padding: 105px 0 165px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(228, 92, 16, 0.2), transparent 30%),
+    radial-gradient(circle at 100% 20%, rgba(242, 182, 53, 0.15), transparent 30%),
+    linear-gradient(126deg, #082b24 0%, #075143 60%, #286d57 100%);
 }
 
 .article-list-hero::before {
-  position: absolute;
-  top: -120px;
-  left: -100px;
-
-  width: 330px;
-  height: 330px;
-
-  border-radius: 50%;
-
-  background: radial-gradient(circle, rgba(233, 109, 43, 0.8), transparent 70%);
-  filter: blur(20px);
-
   content: "";
+  position: absolute;
+  top: -110px;
+  left: -120px;
+  z-index: -1;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(233, 109, 43, 0.85) 0%,
+    rgba(233, 109, 43, 0.4) 40%,
+    transparent 72%
+  );
+  filter: blur(20px);
+  pointer-events: none;
 }
 
 .article-list-hero::after {
+  content: "";
   position: absolute;
   right: -120px;
   bottom: -150px;
-
+  z-index: -1;
   width: 420px;
   height: 420px;
-
   border-radius: 50%;
-
   background: radial-gradient(
     circle,
-    rgba(226, 251, 206, 0.8),
-    transparent 70%
+    rgba(242, 182, 53, 0.8) 0%,
+    rgba(242, 182, 53, 0.35) 45%,
+    transparent 75%
   );
-
-  content: "";
+  filter: blur(24px);
+  pointer-events: none;
 }
 
 .article-list-eyebrow {
-  margin: 0 0 16px;
-
-  color: #d9ead9;
-
+  position: relative;
+  z-index: 1;
+  margin: 0 0 14px;
+  color: #cde6d2;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.16em;
 }
 
 .article-list-hero h1 {
-  max-width: 760px;
-
+  position: relative;
+  z-index: 1;
+  max-width: 860px;
   margin: 0;
-
-  color: white;
-
-  font-size: clamp(42px, 5vw, 64px);
-  font-weight: 900;
-  line-height: 1.15;
-  letter-spacing: -0.04em;
+  color: #fffdee;
+  font-family: "Pridi", serif;
+  font-size: clamp(38px, 4.5vw, 54px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 .article-list-hero__description {
-  max-width: 660px;
-
-  margin: 20px 0 0;
-
-  color: #d9ead9;
-
-  font-size: 16px;
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin-top: 20px;
+  color: rgba(255, 253, 238, 0.86);
+  font-size: 17px;
   line-height: 1.75;
 }
 

@@ -30,6 +30,7 @@ import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import LoadingState from "../../Components/LoadingState/LoadingState";
+import { getCategoryMarkerIcon } from "../../utils/categoryMarkerIcons";
 import "./WellnessHubDetail.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
@@ -38,55 +39,79 @@ const DEFAULT_CENTER = [18.7883, 98.9853];
 const DEFAULT_CATEGORIES = [
   {
     id: "SPA",
+    code: "C01",
     keyMatch: ["C01", "SPA", "MASSAGE", "นวด", "สปา"],
     name: "นวด/สปาเพื่อสุขภาพ",
-    color: "#168058",
-    accentColor: "#E2FBCE",
+    color: "#E02873",
+    accentColor: "#FDEBF2",
     icon: "fa-spa",
     description: "การดูแลสุขภาพ ผ่อนคลาย และบำบัดด้วยศาสตร์การนวดและสปา",
   },
   {
     id: "RESTAURANT",
+    code: "C03",
     keyMatch: ["C03", "REST", "FOOD", "อาหาร"],
     name: "อาหารและเครื่องดื่ม",
-    color: "#EA580C",
-    accentColor: "#FFEDD5",
+    color: "#0B7D31",
+    accentColor: "#EAF5ED",
     icon: "fa-utensils",
     description: "โภชนาการเพื่อสุขภาพ อาหารอินทรีย์ และเครื่องดื่มสมุนไพร",
   },
   {
     id: "HOTEL",
+    code: "C04",
     keyMatch: ["C04", "HOTEL", "ACCOM", "ที่พัก"],
     name: "ที่พักฟื้นฟูสุขภาพ",
-    color: "#6D28D9",
-    accentColor: "#EDE9FE",
+    color: "#5E27AB",
+    accentColor: "#F2ECFB",
     icon: "fa-bed",
     description: "สถานที่พักผ่อนและฟื้นฟูสุขภาพท่ามกลางธรรมชาติเชียงใหม่",
   },
   {
     id: "CLINIC",
+    code: "C02",
     keyMatch: ["C02", "CLINIC", "คลินิก"],
     name: "คลินิก/สถานพยาบาล",
-    color: "#1D4ED8",
-    accentColor: "#DBEAFE",
+    color: "#004CB4",
+    accentColor: "#E7EFF9",
     icon: "fa-notes-medical",
     description: "บริการตรวจรักษา ฟื้นฟูสมรรถภาพ และการแพทย์บูรณาการ",
   },
   {
+    id: "ATTRACTION",
+    code: "C05",
+    keyMatch: [
+      "C05",
+      "ATTRACTION",
+      "TOURIS",
+      "TOURISM",
+      "TOURIST",
+      "TRAVEL",
+      "ท่องเที่ยว",
+    ],
+    name: "สถานที่ท่องเที่ยว",
+    color: "#009BB0",
+    accentColor: "#E6F8FA",
+    icon: "fa-map-location-dot",
+    description: "แหล่งท่องเที่ยวเชิงสุขภาพ วัฒนธรรม และธรรมชาติ",
+  },
+  {
     id: "HOSPITAL",
-    keyMatch: ["EM02", "HOSPITAL", "โรงพยาบาล", "ALS"],
+    code: "EM02",
+    keyMatch: ["EM02", "HOSPITAL", "โรงพยาบาล", "ALS", "ADVANCED"],
     name: "โรงพยาบาล",
-    color: "#DC2626",
-    accentColor: "#FEE2E2",
+    color: "#BD0915",
+    accentColor: "#FEECEE",
     icon: "fa-hospital",
     description: "โรงพยาบาลและศูนย์การแพทย์พร้อมการดูแลตลอด 24 ชั่วโมง",
   },
   {
     id: "RESCUE",
-    keyMatch: ["EM01", "RESCUE", "กู้ภัย", "BLS"],
+    code: "EM01",
+    keyMatch: ["EM01", "RESCUE", "กู้ภัย", "BLS", "BASIC"],
     name: "หน่วยกู้ภัยฉุกเฉิน",
-    color: "#D97706",
-    accentColor: "#FEF3C7",
+    color: "#C98600",
+    accentColor: "#FFF7DC",
     icon: "fa-truck-medical",
     description: "หน่วยบริการฉุกเฉินและกู้ชีพเพื่อความปลอดภัย 24 ชั่วโมง",
   },
@@ -146,30 +171,17 @@ function getCategoryInfo(hub) {
 
   return {
     id: "OTHER",
+    code: "C01",
     name: hub?.categoryName || "สถานประกอบการเวลเนส",
-    color: "#076653",
-    accentColor: "#E2FBCE",
+    color: "#E02873",
+    accentColor: "#FDEBF2",
     icon: "fa-location-dot",
     description: "สถานประกอบการเพื่อสุขภาพและการท่องเที่ยวเชิงสุขภาพ",
   };
 }
 
 function createWellnessHubMarkerIcon(hub) {
-  const catInfo = getCategoryInfo(hub);
-
-  return L.divIcon({
-    html: `
-      <div class="hub-custom-pin" style="--pin-color:${catInfo.color};">
-        <div class="hub-custom-pin__inner">
-          <i class="fa-solid ${catInfo.icon}"></i>
-        </div>
-      </div>
-    `,
-    className: "hub-pin-container",
-    iconSize: [40, 40],
-    iconAnchor: [20, 36],
-    popupAnchor: [0, -36],
-  });
+  return getCategoryMarkerIcon(hub, [32, 44]);
 }
 
 function parseJsonValue(value) {

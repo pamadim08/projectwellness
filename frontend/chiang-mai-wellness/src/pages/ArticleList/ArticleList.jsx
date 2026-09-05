@@ -251,7 +251,7 @@ export default function ArticleList() {
     setCurrentPage(page);
 
     window.scrollTo({
-      top: 250,
+      top: 0,
       behavior: "smooth",
     });
   };

@@ -26,13 +26,13 @@ const DASHBOARD_API = "http://localhost:8080/api/admin/dashboard";
 let dashboardCache = null;
 
 const CATEGORY_COLORS = {
-  C01: "#2E9D62",
-  C02: "#2563A6",
-  C03: "#F28C28",
-  C04: "#7C63D9",
-  C05: "#28A9D8",
-  EM01: "#E0A000",
-  EM02: "#D9434E",
+  C01: "#E02873",
+  C02: "#004CB4",
+  C03: "#0B7D31",
+  C04: "#5E27AB",
+  C05: "#009BB0",
+  EM01: "#C98600",
+  EM02: "#BD0915",
 };
 
 const FALLBACK_CATEGORY_COLORS = [

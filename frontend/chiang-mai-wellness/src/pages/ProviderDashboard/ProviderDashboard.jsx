@@ -823,31 +823,6 @@ export default function ProviderDashboard() {
       errors.googleMapsLink = "กรุณาระบุลิงก์จาก Google Maps ที่ถูกต้อง";
     }
 
-    if (
-      formData.wellnessHubLatitude !== "" &&
-      Number.isNaN(Number(formData.wellnessHubLatitude))
-    ) {
-      errors.wellnessHubLatitude = "ละติจูดต้องเป็นตัวเลข";
-    } else if (
-      formData.wellnessHubLatitude !== "" &&
-      (Number(formData.wellnessHubLatitude) < -90 ||
-        Number(formData.wellnessHubLatitude) > 90)
-    ) {
-      errors.wellnessHubLatitude = "ละติจูดต้องอยู่ระหว่าง -90 ถึง 90";
-    }
-
-    if (
-      formData.wellnessHubLongitude !== "" &&
-      Number.isNaN(Number(formData.wellnessHubLongitude))
-    ) {
-      errors.wellnessHubLongitude = "ลองจิจูดต้องเป็นตัวเลข";
-    } else if (
-      formData.wellnessHubLongitude !== "" &&
-      (Number(formData.wellnessHubLongitude) < -180 ||
-        Number(formData.wellnessHubLongitude) > 180)
-    ) {
-      errors.wellnessHubLongitude = "ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180";
-    }
 
     if (!is24Hours) {
       DAYS.forEach((day) => {
@@ -906,14 +881,10 @@ export default function ProviderDashboard() {
         googleMapsLink: formData.googleMapsLink.trim(),
 
         wellnessHubLatitude:
-          formData.wellnessHubLatitude === ""
-            ? null
-            : Number(formData.wellnessHubLatitude),
+          hub?.wellnessHubLatitude ?? (formData.wellnessHubLatitude !== "" ? Number(formData.wellnessHubLatitude) : null),
 
         wellnessHubLongitude:
-          formData.wellnessHubLongitude === ""
-            ? null
-            : Number(formData.wellnessHubLongitude),
+          hub?.wellnessHubLongitude ?? (formData.wellnessHubLongitude !== "" ? Number(formData.wellnessHubLongitude) : null),
 
         certificateType: formData.certificateType || null,
 
@@ -1568,55 +1539,6 @@ export default function ProviderDashboard() {
                         )}
                     </div>
 
-                    <div className="provider-dashboard-field">
-                      <label htmlFor="wellnessHubLatitude">ละติจูด</label>
-
-                      <input
-                        id="wellnessHubLatitude"
-                        name="wellnessHubLatitude"
-                        type="number"
-                        step="any"
-                        value={formData.wellnessHubLatitude}
-                        onChange={handleInputChange}
-                        placeholder="เช่น 18.7883"
-                        className={
-                          formErrors.wellnessHubLatitude
-                            ? "provider-dashboard-field-error-input"
-                            : ""
-                        }
-                      />
-
-                      {formErrors.wellnessHubLatitude && (
-                        <small className="provider-dashboard-error">
-                          {formErrors.wellnessHubLatitude}
-                        </small>
-                      )}
-                    </div>
-
-                    <div className="provider-dashboard-field">
-                      <label htmlFor="wellnessHubLongitude">ลองจิจูด</label>
-
-                      <input
-                        id="wellnessHubLongitude"
-                        name="wellnessHubLongitude"
-                        type="number"
-                        step="any"
-                        value={formData.wellnessHubLongitude}
-                        onChange={handleInputChange}
-                        placeholder="เช่น 98.9853"
-                        className={
-                          formErrors.wellnessHubLongitude
-                            ? "provider-dashboard-field-error-input"
-                            : ""
-                        }
-                      />
-
-                      {formErrors.wellnessHubLongitude && (
-                        <small className="provider-dashboard-error">
-                          {formErrors.wellnessHubLongitude}
-                        </small>
-                      )}
-                    </div>
                   </div>
                 </section>
 
@@ -1821,7 +1743,7 @@ export default function ProviderDashboard() {
                   <div className="provider-dashboard-gallery-editor">
                     <div className="provider-dashboard-gallery-preview">
                       {Array.isArray(formData.wellnessHubGallery) &&
-                      formData.wellnessHubGallery.length > 0 ? (
+                        formData.wellnessHubGallery.length > 0 ? (
                         <div className="provider-dashboard-gallery-grid">
                           {formData.wellnessHubGallery.map((src, idx) => (
                             <div
@@ -1950,24 +1872,6 @@ export default function ProviderDashboard() {
                         <span>อำเภอ</span>
                         <strong>{displayValue(districtName)}</strong>
                       </div>
-
-                      <div>
-                        <span>ละติจูด</span>
-                        <strong>
-                          {displayValue(
-                            hub.wellnessHubLatitude ?? hub.latitude,
-                          )}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <span>ลองจิจูด</span>
-                        <strong>
-                          {displayValue(
-                            hub.wellnessHubLongitude ?? hub.longitude,
-                          )}
-                        </strong>
-                      </div>
                     </div>
 
                     {hasValue(hub.googleMapsLink) && (
@@ -2067,7 +1971,7 @@ export default function ProviderDashboard() {
                   </div>
 
                   {Array.isArray(formData.wellnessHubGallery) &&
-                  formData.wellnessHubGallery.length > 0 ? (
+                    formData.wellnessHubGallery.length > 0 ? (
                     <div className="provider-dashboard-gallery-grid">
                       {formData.wellnessHubGallery.map((src, idx) => (
                         <div

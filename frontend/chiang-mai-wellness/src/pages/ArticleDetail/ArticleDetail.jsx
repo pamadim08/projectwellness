@@ -2,14 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
   ArrowLeft,
-  ArrowRight,
   CalendarDays,
   CircleAlert,
   Newspaper,
   RefreshCw,
   User,
-  BookOpen,
-  Sparkles,
+  Images,
+  X,
+  Tag,
+  Building2,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import LoadingState from "../../Components/LoadingState/LoadingState";
@@ -254,7 +255,7 @@ function formatArticleContent(rawContent = "") {
 
   let text = String(rawContent);
 
-  // 🌟 แปลงสัญลักษณ์พิเศษและ Newline ต่างๆ (เช่น \r\n, \n, /n, \\n, ↵)
+  // แปลงสัญลักษณ์พิเศษและ Newline ต่างๆ
   text = text
     .replace(/\\r\\n/g, "\n")
     .replace(/\\n/g, "\n")
@@ -269,7 +270,6 @@ function formatArticleContent(rawContent = "") {
   try {
     const hasHtmlTags = /<[a-z][\s\S]*>/i.test(text);
 
-    // หากเป็นข้อความล้วน ให้แปลง \n คู่เป็นย่อหน้า และ \n เดี่ยวเป็น <br />
     if (!hasHtmlTags) {
       const paragraphs = text.split(/\n\s*\n/);
       text = paragraphs
@@ -279,7 +279,6 @@ function formatArticleContent(rawContent = "") {
         })
         .join("");
     } else {
-      // ถ้ามี HTML Tags อยู่แล้ว ให้แปลง \n ที่อยู่นอกแท็กเป็น <br />
       text = text.replace(/\n/g, "<br />");
     }
 
@@ -317,6 +316,7 @@ export default function ArticleDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [imageError, setImageError] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
 
   const loadArticle = useCallback(async () => {
     if (!hasValue(articleId)) {
@@ -351,17 +351,66 @@ export default function ArticleDetail() {
   useEffect(() => {
     window.scrollTo({
       top: 0,
-      behavior: "auto",
+      left: 0,
+      behavior: "instant",
     });
-  }, [articleId]);
+  }, [articleId, loading]);
+
+  // Keyboard shortcut สำหรับปิด Modal (Escape)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setPreviewImage(null);
+      }
+    };
+    if (previewImage) {
+      window.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [previewImage]);
+
+  const galleryImages = useMemo(() => {
+    if (!article || !article.articleImages) {
+      return [];
+    }
+
+    let images = article.articleImages;
+    if (typeof images === "string") {
+      try {
+        const parsed = JSON.parse(images);
+        if (Array.isArray(parsed)) {
+          images = parsed;
+        } else if (typeof parsed === "string") {
+          images = [parsed];
+        }
+      } catch {
+        images = [images];
+      }
+    }
+
+    if (!Array.isArray(images)) {
+      return [];
+    }
+
+    return images
+      .filter((img) => hasValue(img))
+      .map((img) => normalizeImageSource(img))
+      .filter(Boolean);
+  }, [article]);
 
   const imageSource = useMemo(() => {
     if (!article) {
       return "";
     }
 
-    return normalizeImageSource(article.img || article.articleImages);
-  }, [article]);
+    return normalizeImageSource(article.img) || (galleryImages[0] ?? "");
+  }, [article, galleryImages]);
 
   const publishDate = useMemo(() => {
     return formatDate(article?.publishDate);
@@ -375,42 +424,41 @@ export default function ArticleDetail() {
     return (
       <LoadingState
         fullPage
-        title="กำลังโหลดเนื้อหาบทความ"
-        message="ระบบกำลังเตรียมข้อมูลและภาพประกอบ กรุณารอสักครู่"
+        title="กำลังโหลดข้อมูลบทความ"
+        message="ระบบกำลังเรียกดูข้อมูลบทความจากฐานข้อมูล กรุณารอสักครู่"
       />
     );
   }
 
   if (error || !article) {
     return (
-      <main className="article-detail-page">
-        <div className="article-detail-container article-detail-error-wrap">
-          <Link to="/articles" className="article-detail-back-pill">
+      <main className="gov-article-page">
+        <div className="gov-article-container gov-article-error-wrap">
+          <Link to="/articles" className="gov-article-back">
             <ArrowLeft size={16} />
-            <span>กลับไปหน้ารวมบทความ</span>
+            <span>ย้อนกลับ</span>
           </Link>
 
           <section
-            className="article-detail-state article-detail-state--error"
+            className="gov-article-state gov-article-state--error"
             role="alert"
           >
-            <CircleAlert size={48} className="article-detail-state__icon" />
+            <CircleAlert size={48} className="gov-article-state__icon" />
             <h1>ไม่สามารถเปิดบทความได้</h1>
             <p>{error || "ไม่พบข้อมูลบทความที่ต้องการ"}</p>
 
-            <div className="article-detail-state__actions">
+            <div className="gov-article-state__actions">
               <button
                 type="button"
-                className="article-detail-btn-retry"
+                className="gov-article-btn-retry"
                 onClick={loadArticle}
               >
                 <RefreshCw size={16} />
                 <span>ลองใหม่อีกครั้ง</span>
               </button>
 
-              <Link to="/articles" className="article-detail-btn-back">
-                <span>ดูบทความทั้งหมด</span>
-                <ArrowRight size={16} />
+              <Link to="/articles" className="gov-article-btn-back">
+                <span>กลับไปหน้ารวมบทความ</span>
               </Link>
             </div>
           </section>
@@ -420,144 +468,174 @@ export default function ArticleDetail() {
   }
 
   return (
-    <main className="article-detail-page">
-      <article className="article-detail">
-        {/* 🌟 1. HERO HEADER SECTION */}
-        <header className="article-detail-hero">
-          <div className="article-detail-container">
-            <Link to="/articles" className="article-detail-back-pill">
-              <ArrowLeft size={16} />
-              <span>บทความทั้งหมด</span>
-            </Link>
+    <main className="gov-article-page">
+      {/* 🏛️ 1. HERO MASTHEAD & NAVIGATION (เหมือนหน้า ArticleList) */}
+      <header className="gov-article-hero">
+        <div className="gov-article-container">
+          <Link to="/articles" className="gov-article-back">
+            <ArrowLeft size={16} />
+            <span>ย้อนกลับ</span>
+          </Link>
 
-            <div className="article-detail-hero__grid">
-              <div className="article-detail-hero__main">
-                {/* Meta Chips (ไม่มีเวลาอ่าน) */}
-                <div className="article-detail-chips">
-                  <span className="article-detail-chip article-detail-chip--category">
-                    <Sparkles size={13} />
-                    {getArticleCategory(article)}
-                  </span>
+          <div className="gov-article-hero-text">
+            <p className="gov-article-eyebrow">CHIANG MAI WELLNESS</p>
+            <h1 className="gov-article-hero-title">บทความสุขภาพและการท่องเที่ยว</h1>
+            <p className="gov-article-hero-desc">
+              รวมข้อมูลสุขภาพ การดูแลตนเอง การท่องเที่ยวเชิงสุขภาพ
+              และเรื่องราวที่น่าสนใจในจังหวัดเชียงใหม่
+            </p>
+          </div>
+        </div>
+      </header>
 
-                  {publishDate && (
-                    <span className="article-detail-chip article-detail-chip--date">
-                      <CalendarDays size={13} />
-                      {publishDate}
-                    </span>
-                  )}
+      {/* 🏛️ 2. OFFICIAL ARTICLE MAIN DOCUMENT */}
+      <div className="gov-article-container gov-article-body-wrapper">
+        <article className="gov-article-doc">
+          {/* Header Section: Title & Official Metadata */}
+          <header className="gov-article-header">
+            <div className="gov-article-category-badge">
+              <Tag size={13} />
+              <span>{getArticleCategory(article)}</span>
+            </div>
+
+            <h1 className="gov-article-title">
+              {article.articleTitle || "บทความสุขภาพ"}
+            </h1>
+
+            {/* Official Metadata Row */}
+            <div className="gov-article-meta-row">
+              {publishDate && (
+                <div className="gov-article-meta-item">
+                  <CalendarDays size={15} />
+                  <span>วันที่เผยแพร่: <strong>{publishDate}</strong></span>
                 </div>
+              )}
 
-                {/* Article Title */}
-                <h1 className="article-detail-hero__title">
-                  {article.articleTitle || "บทความสุขภาพ"}
-                </h1>
-
-                {/* Subtitle / Author Info */}
-                <div className="article-detail-hero__author-bar">
-                  <div className="article-detail-author-avatar">
-                    <User size={16} />
-                  </div>
-                  <div className="article-detail-author-text">
-                    <span className="article-detail-author-label">ผู้เผยแพร่</span>
-                    <strong className="article-detail-author-name">
-                      {article.author || "ผู้ดูแลระบบ (Admin)"}
-                    </strong>
-                  </div>
-                </div>
+              <div className="gov-article-meta-item">
+                <User size={15} />
+                <span>ผู้เผยแพร่: <strong>{article.author || "ผู้ดูแลระบบ (Admin)"}</strong></span>
               </div>
+            </div>
 
-              {/* Cover Image Banner */}
-              <figure
-                className={`article-detail-hero__cover-wrap ${
-                  !imageSource || imageError
-                    ? "article-detail-hero__cover-wrap--fallback"
-                    : ""
-                }`}
-              >
-                {imageSource && !imageError ? (
+            <div className="gov-article-divider" />
+          </header>
+
+          {/* 🌟 3. FEATURED COVER IMAGE (รูปภาพหน้าปกหลักพอดีกับตัวรูป) */}
+          {(imageSource || !imageError) && (
+            <figure className="gov-article-cover-section">
+              {imageSource && !imageError ? (
+                <div
+                  className="gov-article-cover-frame"
+                  onClick={() => setPreviewImage(imageSource)}
+                  title="คลิกเพื่อดูรูปภาพขนาดใหญ่"
+                  role="button"
+                  tabIndex={0}
+                >
                   <img
                     src={imageSource}
                     alt={article.articleTitle || "ภาพประกอบบทความ"}
-                    className="article-detail-hero__cover-img"
+                    className="gov-article-cover-img"
                     onError={() => setImageError(true)}
                   />
-                ) : (
-                  <div className="article-detail-hero__fallback">
-                    <Newspaper size={44} aria-hidden="true" />
-                    <span>บทความสุขภาพและท่องเที่ยวเชียงใหม่</span>
-                  </div>
-                )}
-              </figure>
-            </div>
-          </div>
-        </header>
-
-        {/* 🌟 2. CONTENT & READING LAYOUT */}
-        <div className="article-detail-container article-detail-content-area">
-          <div className="article-detail-layout">
-            {/* Sidebar Meta Column */}
-            <aside className="article-detail-sidebar">
-              <div className="article-detail-card-meta">
-                <div className="article-detail-card-meta__header">
-                  <BookOpen size={16} />
-                  <h3>เกี่ยวกับบทความนี้</h3>
                 </div>
-
-                <div className="article-detail-card-meta__list">
-                  <div className="article-detail-meta-row">
-                    <span className="article-detail-meta-label">หมวดหมู่</span>
-                    <strong className="article-detail-meta-val">
-                      {getArticleCategory(article)}
-                    </strong>
-                  </div>
-
-                  <div className="article-detail-meta-row">
-                    <span className="article-detail-meta-label">ผู้เขียน/เผยแพร่</span>
-                    <strong className="article-detail-meta-val">
-                      {article.author || "Admin"}
-                    </strong>
-                  </div>
-
-                  {publishDate && (
-                    <div className="article-detail-meta-row">
-                      <span className="article-detail-meta-label">วันที่เผยแพร่</span>
-                      <strong className="article-detail-meta-val">
-                        {publishDate}
-                      </strong>
-                    </div>
-                  )}
-                </div>
-
-                <Link to="/articles" className="article-detail-sidebar-btn">
-                  <span>ค้นหาบทความอื่น</span>
-                  <ArrowRight size={14} />
-                </Link>
-              </div>
-            </aside>
-
-            {/* Main Article Body Card */}
-            <section
-              className="article-detail-main-body"
-              aria-label="เนื้อหาบทความ"
-            >
-              {articleContent ? (
-                <div
-                  className="article-detail-prose"
-                  dangerouslySetInnerHTML={{
-                    __html: articleContent,
-                  }}
-                />
               ) : (
-                <div className="article-detail-empty-content">
-                  <Newspaper size={40} />
-                  <h2>ยังไม่มีเนื้อหาบทความ</h2>
-                  <p>บทความนี้อยู่ระหว่างการปรับปรุงเนื้อหาเพิ่มเติม</p>
+                <div className="gov-article-cover-fallback">
+                  <Newspaper size={44} />
+                  <span>ภาพประกอบบทความและข่าวสารสุขภาพ จังหวัดเชียงใหม่</span>
                 </div>
               )}
+            </figure>
+          )}
+
+          {/* 🌟 4. OFFICIAL ARTICLE PROSE CONTENT */}
+          <section className="gov-article-content-section" aria-label="เนื้อหาบทความ">
+            {articleContent ? (
+              <div
+                className="gov-article-prose"
+                dangerouslySetInnerHTML={{
+                  __html: articleContent,
+                }}
+              />
+            ) : (
+              <div className="gov-article-empty-content">
+                <Newspaper size={40} />
+                <p>อยู่ระหว่างการปรับปรุงข้อมูลเนื้อหา</p>
+              </div>
+            )}
+          </section>
+
+          {/* 🌟 5. PHOTO GALLERY (รูปภาพประกอบเพิ่มเติม / ภาพกิจกรรม) */}
+          {galleryImages.length > 0 && (
+            <section className="gov-article-gallery-section">
+              <div className="gov-article-gallery-header">
+                <Images size={18} />
+                <h2>รูปภาพประกอบเพิ่มเติม ({galleryImages.length} รูป)</h2>
+              </div>
+
+              <div className="gov-article-gallery-grid">
+                {galleryImages.map((imgSrc, index) => (
+                  <figure
+                    key={index}
+                    className="gov-article-gallery-item"
+                    onClick={() => setPreviewImage(imgSrc)}
+                    title="คลิกเพื่อดูรูปขนาดเต็ม"
+                    tabIndex={0}
+                  >
+                    <img
+                      src={imgSrc}
+                      alt={`ภาพประกอบ ${index + 1}`}
+                      loading="lazy"
+                    />
+                  </figure>
+                ))}
+              </div>
             </section>
+          )}
+
+          {/* 🌟 6. OFFICIAL SOURCE & ACCREDITATION FOOTER */}
+          <footer className="gov-article-footer">
+            <div className="gov-article-agency-box">
+              <Building2 size={20} className="gov-article-agency-icon" />
+              <div className="gov-article-agency-info">
+                <strong>โครงการเส้นทางท่องเที่ยวเชิงสุขภาพ จังหวัดเชียงใหม่ (Chiang Mai Wellness Route)</strong>
+                <span>กลุ่มงานส่งเสริมสุขภาพ สำนักงานสาธารณสุขจังหวัดเชียงใหม่ ร่วมกับภาคีเครือข่าย</span>
+              </div>
+            </div>
+
+            <div className="gov-article-footer-nav">
+              <Link to="/articles" className="gov-article-btn-back-bottom">
+                <ArrowLeft size={16} />
+                <span>ย้อนกลับ</span>
+              </Link>
+            </div>
+          </footer>
+        </article>
+      </div>
+
+      {/* 🌟 MODAL FULL-SCREEN LIGHTBOX */}
+      {previewImage && (
+        <div
+          className="gov-article-modal"
+          onClick={() => setPreviewImage(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="gov-article-modal__content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img src={previewImage} alt="ภาพขยายขนาดเต็ม" />
+            <button
+              type="button"
+              className="gov-article-modal__close"
+              onClick={() => setPreviewImage(null)}
+              aria-label="ปิดภาพขยาย"
+            >
+              <X size={20} />
+            </button>
           </div>
         </div>
-      </article>
+      )}
     </main>
   );
 }

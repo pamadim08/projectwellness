@@ -35,34 +35,55 @@
   min-height: calc(70vh - 100px);
 }
 
-/* Spinner Wrap */
+/* Spinner Wrap - บังคับขนาดกว้างยาวเท่ากัน 1:1 ป้องกันการเบี้ยว/รี */
 .unified-loading-spinner-wrap {
   position: relative;
   width: 56px;
   height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  max-width: 56px;
+  max-height: 56px;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 22px;
+  box-sizing: border-box;
 }
 
-/* Spinner Ring Animation */
+/* Spinner Ring Animation - วงกลมสมบูรณ์แบบ 100% หมุนแบบ Linear สม่ำเสมอ */
 .unified-loading-spinner {
-  width: 100%;
-  height: 100%;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  box-sizing: border-box;
   border-radius: 50%;
   border: 4px solid rgba(7, 102, 83, 0.14);
   border-top-color: #076653;
   border-right-color: #159060;
   box-shadow: 0 0 20px rgba(7, 102, 83, 0.12);
-  animation: unifiedSpinnerRotate 0.9s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+  animation: unifiedSpinnerRotate 0.9s linear infinite;
 }
 
-/* Center Pulse Glow */
+/* Center Pulse Glow - จุดตรงกลางกึ่งกลางพอดี */
 .unified-loading-pulse-dot {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -6px;
+  margin-left: -6px;
   width: 12px;
   height: 12px;
+  min-width: 12px;
+  min-height: 12px;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  box-sizing: border-box;
   border-radius: 50%;
   background: linear-gradient(135deg, #076653 0%, #159060 100%);
   box-shadow: 0 0 10px rgba(21, 144, 96, 0.5);
@@ -80,7 +101,7 @@
 
 @keyframes unifiedPulseGlow {
   0%, 100% {
-    transform: scale(0.75);
+    transform: scale(0.8);
     opacity: 0.6;
   }
   50% {

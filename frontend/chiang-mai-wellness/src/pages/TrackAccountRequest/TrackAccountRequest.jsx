@@ -144,7 +144,7 @@ export default function TrackAccountRequest() {
     <main className="track-request-page">
       <header className="track-request-hero">
         <div className="track-request-container">
-          <p className="track-request-eyebrow">REQUEST STATUS</p>
+          <p className="track-request-eyebrow">CHIANG MAI WELLNESS</p>
 
           <h1>ติดตามสถานะคำขอ</h1>
 

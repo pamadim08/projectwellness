@@ -32,28 +32,28 @@ const CATEGORY_OPTIONS = [
 const ROUTE_CATEGORY_DISPLAY = {
   C01: {
     name: "นวด/สปาเพื่อสุขภาพ",
-    color: "#519B67",
-    background: "#EAF5ED",
+    color: "#E02873",
+    background: "#FDEBF2",
   },
   C02: {
     name: "คลินิก/สถานพยาบาล",
-    color: "#3662A1",
-    background: "#EAF0F8",
+    color: "#004CB4",
+    background: "#E7EFF9",
   },
   C03: {
     name: "อาหารและเครื่องดื่ม",
-    color: "#E49141",
-    background: "#FFF0E3",
+    color: "#0B7D31",
+    background: "#EAF5ED",
   },
   C04: {
     name: "ที่พักฟื้นฟูสุขภาพ",
-    color: "#7864D2",
-    background: "#F0EDFB",
+    color: "#5E27AB",
+    background: "#F2ECFB",
   },
   C05: {
     name: "สถานที่ท่องเที่ยว",
-    color: "#54A6D3",
-    background: "#EAF6FC",
+    color: "#009BB0",
+    background: "#E6F8FA",
   },
 };
 
@@ -214,7 +214,7 @@ export default function RouteList() {
 
     setCurrentPage(page);
     window.scrollTo({
-      top: 250,
+      top: 0,
       behavior: "smooth",
     });
   };
