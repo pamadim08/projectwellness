@@ -237,6 +237,16 @@ public class MainRouteService {
     // 🟢 เมธอดสร้างเส้นทางท่องเที่ยวใหม่
     @Transactional
     public MainRoute createMainRoute(Map<String, Object> payload) {
+        // ป้องกันการกดซ้ำหรือสร้างเส้นทางชื่อซ้ำ
+        String routeName = payload.get("routeName") != null ? payload.get("routeName").toString().trim() : "";
+        if (!routeName.isEmpty()) {
+            boolean isDuplicate = mainRouteRepository.findAll().stream()
+                    .anyMatch(r -> r.getRouteName() != null && r.getRouteName().trim().equalsIgnoreCase(routeName));
+            if (isDuplicate) {
+                throw new IllegalArgumentException("เส้นทางชื่อนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น");
+            }
+        }
+
         MainRoute route = convertPayloadToEntity(payload);
 
         route.setCreatedAt(LocalDateTime.now());

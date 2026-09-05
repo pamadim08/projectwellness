@@ -86,6 +86,21 @@ public class WellnessHubController {
 
     /*
      * =====================================================
+     * สร้างรหัสและชื่อผู้ใช้งานอัตโนมัติสำหรับเพิ่มสถานประกอบการ
+     * =====================================================
+     */
+    @GetMapping("/next-license-id")
+    public ResponseEntity<?> getNextLicenseId() {
+        Integer nextId = wellnessHubService.generateNextLicenseId();
+        String username = "WH_" + nextId;
+        return ResponseEntity.ok(Map.of(
+                "licenseId", nextId,
+                "username", username
+        ));
+    }
+
+    /*
+     * =====================================================
      * สร้างสถานประกอบการ
      * =====================================================
      *

@@ -602,6 +602,8 @@ public class HomeService {
 
                 putIfNotBlank(map, "wellnessHubDescription", wellnessHub.getWellnessHubDescription());
                 putIfNotBlank(map, "address", wellnessHub.getAddress());
+                putIfNotBlank(map, "wellnessHubImg", wellnessHub.getWellnessHubImg());
+                putIfNotBlank(map, "img", wellnessHub.getWellnessHubImg());
 
                 if (wellnessHub.getCategory() != null) {
                         map.put("categoryId", wellnessHub.getCategory().getCategoryId());

@@ -35,18 +35,39 @@ public class WellnessHubService {
     private final AccountRequestRepository accountRequestRepository;
     private final CategoryRepository categoryRepository;
     private final DistrictRepository districtRepository;
+    private final AccountGeneratorService accountGeneratorService;
 
     public WellnessHubService(
             WellnessHubRepository wellnessHubRepository,
             EmergencyServiceRepository emergencyServiceRepository,
             AccountRequestRepository accountRequestRepository,
             CategoryRepository categoryRepository,
-            DistrictRepository districtRepository) {
+            DistrictRepository districtRepository,
+            AccountGeneratorService accountGeneratorService) {
         this.wellnessHubRepository = wellnessHubRepository;
         this.emergencyServiceRepository = emergencyServiceRepository;
         this.accountRequestRepository = accountRequestRepository;
         this.categoryRepository = categoryRepository;
         this.districtRepository = districtRepository;
+        this.accountGeneratorService = accountGeneratorService;
+    }
+
+    public Integer generateNextLicenseId() {
+        List<WellnessHub> hubs = wellnessHubRepository.findAll();
+        List<EmergencyService> services = emergencyServiceRepository.findAll();
+
+        int maxId = 10000;
+        for (WellnessHub h : hubs) {
+            if (h.getLicenseId() != null && h.getLicenseId() > maxId) {
+                maxId = h.getLicenseId();
+            }
+        }
+        for (EmergencyService s : services) {
+            if (s.getLicenseId() != null && s.getLicenseId() > maxId) {
+                maxId = s.getLicenseId();
+            }
+        }
+        return maxId + 1;
     }
 
     private static final Set<String> EMERGENCY_CATEGORY_IDS = Set.of("EM01", "EM02");
@@ -165,7 +186,7 @@ public class WellnessHubService {
     @Transactional
     public WellnessHub createWellnessHub(WellnessHub wellnessHub) {
         if (wellnessHub.getLicenseId() == null) {
-            throw new RuntimeException("กรุณาระบุเลขใบอนุญาต");
+            throw new RuntimeException("กรุณาระบุเลขใบอนุญาตประกอบกิจการ");
         }
         Integer licenseId = wellnessHub.getLicenseId();
         if (wellnessHubRepository.existsById(licenseId)
@@ -189,6 +210,25 @@ public class WellnessHubService {
                 .orElseThrow(() -> new RuntimeException("ไม่พบอำเภอรหัส " + districtId));
         wellnessHub.setDistrict(managedDistrict);
 
+        boolean isEmergency = isEmergencyCategory(wellnessHub.getCategory());
+
+        // 🔑 Auto-generate Username if not provided
+        if (wellnessHub.getUsername() == null || wellnessHub.getUsername().trim().isEmpty()) {
+            String prefix = isEmergency ? "ES_" : "WH_";
+            String candidateUsername = prefix + licenseId;
+            int suffix = 1;
+            while (wellnessHubRepository.existsByUsername(candidateUsername)
+                    || emergencyServiceRepository.existsByUsername(candidateUsername)) {
+                candidateUsername = prefix + licenseId + "_" + suffix++;
+            }
+            wellnessHub.setUsername(candidateUsername);
+        }
+
+        // 🔐 Auto-generate Password if not provided
+        if (wellnessHub.getPassword() == null || wellnessHub.getPassword().trim().isEmpty()) {
+            wellnessHub.setPassword(accountGeneratorService.generateRandomPassword());
+        }
+
         if (wellnessHub.getCreatedAt() == null) {
             wellnessHub.setCreatedAt(LocalDateTime.now());
         }
@@ -203,7 +243,36 @@ public class WellnessHubService {
             extractCoordinates(wellnessHub);
         }
 
-        if (isEmergencyCategory(wellnessHub.getCategory())) {
+        // 🛡️ ตรวจสอบชื่อซ้ำ และพิกัดแผนที่ซ้ำในระบบ
+        List<WellnessHub> allHubs = listWellnessHub();
+        String newName = wellnessHub.getWellnessHubName() != null ? wellnessHub.getWellnessHubName().trim() : "";
+
+        for (WellnessHub existing : allHubs) {
+            if (licenseId != null && licenseId.equals(existing.getLicenseId())) {
+                continue;
+            }
+
+            if (!newName.isEmpty() && existing.getWellnessHubName() != null &&
+                existing.getWellnessHubName().trim().equalsIgnoreCase(newName)) {
+                throw new RuntimeException("ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น");
+            }
+
+            if (wellnessHub.getGoogleMapsLink() != null && existing.getGoogleMapsLink() != null &&
+                !wellnessHub.getGoogleMapsLink().trim().isEmpty() &&
+                existing.getGoogleMapsLink().trim().equalsIgnoreCase(wellnessHub.getGoogleMapsLink().trim())) {
+                throw new RuntimeException("ลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาใช้ลิงก์อื่น");
+            }
+
+            if (wellnessHub.getWellnessHubLatitude() != null && wellnessHub.getWellnessHubLongitude() != null &&
+                existing.getWellnessHubLatitude() != null && existing.getWellnessHubLongitude() != null) {
+                if (Math.abs(existing.getWellnessHubLatitude() - wellnessHub.getWellnessHubLatitude()) < 0.0001 &&
+                    Math.abs(existing.getWellnessHubLongitude() - wellnessHub.getWellnessHubLongitude()) < 0.0001) {
+                    throw new RuntimeException("พิกัดละติจูด/ลองจิจูดจาก Google Maps นี้มีอยู่ในระบบแล้ว");
+                }
+            }
+        }
+
+        if (isEmergency) {
             EmergencyService emergency = convertToEmergency(wellnessHub);
             emergencyServiceRepository.save(emergency);
             return wellnessHub;
@@ -317,26 +386,43 @@ public class WellnessHubService {
     }
 
     private String expandShortUrl(String shortenedUrl) {
-        try {
-            if (!shortenedUrl.startsWith("http://") && !shortenedUrl.startsWith("https://")) {
-                return shortenedUrl;
-            }
-            URL url = new URL(shortenedUrl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setInstanceFollowRedirects(false);
-            connection.setRequestMethod("HEAD");
-            connection.setConnectTimeout(3000);
-            connection.setReadTimeout(3000);
-            connection.connect();
-
-            String expandedUrl = connection.getHeaderField("Location");
-            connection.disconnect();
-
-            return (expandedUrl != null) ? expandedUrl : shortenedUrl;
-        } catch (IOException e) {
-            System.err.println("❌ ไม่สามารถเชื่อมต่อเพื่อขยายลิงก์ย่อได้: " + e.getMessage());
+        if (shortenedUrl == null || (!shortenedUrl.startsWith("http://") && !shortenedUrl.startsWith("https://"))) {
             return shortenedUrl;
         }
+
+        String currentUrl = shortenedUrl.trim();
+        int maxRedirects = 5;
+
+        for (int i = 0; i < maxRedirects; i++) {
+            if (!currentUrl.contains("goo.gl") && !currentUrl.contains("maps.app")) {
+                break;
+            }
+
+            try {
+                URL url = new URL(currentUrl);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setInstanceFollowRedirects(false);
+                connection.setRequestMethod("GET");
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                connection.setConnectTimeout(5000);
+                connection.setReadTimeout(5000);
+                connection.connect();
+
+                String location = connection.getHeaderField("Location");
+                connection.disconnect();
+
+                if (location != null && !location.trim().isEmpty()) {
+                    currentUrl = location.trim();
+                } else {
+                    break;
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ ไม่สามารถขยาย Short URL: " + e.getMessage());
+                break;
+            }
+        }
+
+        return currentUrl;
     }
 
     @Transactional
@@ -474,6 +560,35 @@ public class WellnessHubService {
         if (updatedData.getWellnessHubName() != null && !updatedData.getWellnessHubName().trim().isEmpty()) {
             target.setWellnessHubName(updatedData.getWellnessHubName().trim());
         }
+
+        // 🛡️ ตรวจสอบชื่อซ้ำ และพิกัดแผนที่ซ้ำในระบบเมื่อทำการแก้ไข
+        List<WellnessHub> allHubs = listWellnessHub();
+        String newName = target.getWellnessHubName();
+
+        for (WellnessHub existing : allHubs) {
+            if (target.getLicenseId() != null && target.getLicenseId().equals(existing.getLicenseId())) {
+                continue;
+            }
+
+            if (newName != null && !newName.isEmpty() && existing.getWellnessHubName() != null &&
+                existing.getWellnessHubName().trim().equalsIgnoreCase(newName.trim())) {
+                throw new RuntimeException("ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น");
+            }
+
+            if (target.getGoogleMapsLink() != null && existing.getGoogleMapsLink() != null &&
+                !target.getGoogleMapsLink().trim().isEmpty() &&
+                existing.getGoogleMapsLink().trim().equalsIgnoreCase(target.getGoogleMapsLink().trim())) {
+                throw new RuntimeException("ลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาใช้ลิงก์อื่น");
+            }
+
+            if (target.getWellnessHubLatitude() != null && target.getWellnessHubLongitude() != null &&
+                existing.getWellnessHubLatitude() != null && existing.getWellnessHubLongitude() != null) {
+                if (Math.abs(existing.getWellnessHubLatitude() - target.getWellnessHubLatitude()) < 0.0001 &&
+                    Math.abs(existing.getWellnessHubLongitude() - target.getWellnessHubLongitude()) < 0.0001) {
+                    throw new RuntimeException("พิกัดละติจูด/ลองจิจูดจาก Google Maps นี้มีอยู่ในระบบแล้ว");
+                }
+            }
+        }
         if (updatedData.getAddress() != null && !updatedData.getAddress().trim().isEmpty()) {
             target.setAddress(updatedData.getAddress().trim());
         }
@@ -575,8 +690,8 @@ public class WellnessHubService {
         emergency.setOperatingHours(hub.getOperatingHours());
         emergency.setCategory(hub.getCategory());
         emergency.setDistrict(hub.getDistrict());
-        emergency.setCreatedAt(hub.getCreatedAt() != null ? hub.getCreatedAt() : LocalDateTime.now());
-        emergency.setUpdatedAt(hub.getUpdatedAt() != null ? hub.getUpdatedAt() : LocalDateTime.now());
+        emergency.setCreatedAt(hub.getCreatedAt());
+        emergency.setUpdatedAt(hub.getUpdatedAt());
         emergency.setStatus(hub.getStatus() != null && !hub.getStatus().trim().isEmpty() ? hub.getStatus() : "ACTIVE");
 
         return emergency;
@@ -600,8 +715,8 @@ public class WellnessHubService {
         hub.setOperatingHours(emergency.getOperatingHours());
         hub.setCategory(emergency.getCategory());
         hub.setDistrict(emergency.getDistrict());
-        hub.setCreatedAt(emergency.getCreatedAt() != null ? emergency.getCreatedAt() : LocalDateTime.now());
-        hub.setUpdatedAt(emergency.getUpdatedAt() != null ? emergency.getUpdatedAt() : LocalDateTime.now());
+        hub.setCreatedAt(emergency.getCreatedAt());
+        hub.setUpdatedAt(emergency.getUpdatedAt());
         hub.setStatus(emergency.getStatus() != null && !emergency.getStatus().trim().isEmpty() ? emergency.getStatus()
                 : "ACTIVE");
 

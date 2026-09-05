@@ -92,7 +92,7 @@ public class AccountGeneratorService {
      * - มีตัวพิมพ์ใหญ่, ตัวพิมพ์เล็ก, ตัวเลข, อักขระพิเศษ อย่างน้อยประเภทละ 1 ตัว
      * - ทุกตัวอักษรในรหัสผ่านต้องไม่ซ้ำกัน (Distinct characters)
      */
-    private String generateRandomPassword() {
+    public String generateRandomPassword() {
         List<Character> passwordChars = new ArrayList<>();
         Set<Character> usedChars = new HashSet<>();
 

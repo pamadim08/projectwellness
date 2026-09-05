@@ -30,6 +30,16 @@ public class OfficialArticleService {
     // สร้างบทความใหม่
     @Transactional
     public OfficialArticle createOfficialArticle(OfficialArticle article) {
+        // ป้องกันการสร้างบทความซ้ำซ้อน
+        if (article.getArticleTitle() != null) {
+            String title = article.getArticleTitle().trim();
+            boolean isDuplicate = repository.findAll().stream()
+                    .anyMatch(a -> a.getArticleTitle() != null && a.getArticleTitle().trim().equalsIgnoreCase(title));
+            if (isDuplicate) {
+                throw new IllegalArgumentException("บทความชื่อนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น");
+            }
+        }
+
         // วันที่เผยแพร่
         article.setPublishDate(LocalDateTime.now());
         return repository.save(article);
