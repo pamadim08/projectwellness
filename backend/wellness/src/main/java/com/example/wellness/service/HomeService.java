@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -601,6 +602,8 @@ public class HomeService {
 
                 putIfNotBlank(map, "wellnessHubDescription", wellnessHub.getWellnessHubDescription());
                 putIfNotBlank(map, "address", wellnessHub.getAddress());
+                putIfNotBlank(map, "wellnessHubImg", wellnessHub.getWellnessHubImg());
+                putIfNotBlank(map, "img", wellnessHub.getWellnessHubImg());
 
                 if (wellnessHub.getCategory() != null) {
                         map.put("categoryId", wellnessHub.getCategory().getCategoryId());

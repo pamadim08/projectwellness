@@ -1,5 +1,6 @@
 package com.example.wellness.controller;
 
+import com.example.wellness.dto.MainRouteDTO;
 import com.example.wellness.model.MainRoute;
 import com.example.wellness.service.MainRouteService;
 import org.springframework.http.HttpStatus;
@@ -191,4 +192,34 @@ public class MainRouteController {
                             : "Upload failed"));
         }
     }
+
+    /*
+
+    =======MOBILE=============
+    ==========================
+
+     */
+
+    @GetMapping("/user")
+    public ResponseEntity<?> listMainRouteUser() {
+        try {
+            List<MainRouteDTO> routes = mainRouteService.listMainRouteUser();
+            return ResponseEntity.ok(routes);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body("เกิดข้อผิดพลาด: " + e.getMessage());
+        }
+    }
+
+    // GET /v1/main-routes/{id} — ดึงตาม id
+    @GetMapping("user/{id}")
+    public ResponseEntity<?> getRouteById(@PathVariable Integer id) {
+        try {
+            MainRouteDTO route = mainRouteService.getRouteById(id);
+            return ResponseEntity.ok(route);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
 }
