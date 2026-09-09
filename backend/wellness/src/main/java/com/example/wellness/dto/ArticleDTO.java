@@ -15,6 +15,7 @@ public class ArticleDTO {
     // ข้อมูลคนโพสต์
     private String firstName;
     private String lastName;
+    private String profileImage; // 🆕 รูปโปรไฟล์ผู้เขียน (null สำหรับบทความทางการ/user ที่ยังไม่ได้ตั้งรูป)
 
     // TravelTrip (บังคับแนบเสมอสำหรับบทความใหม่ แต่บทความเก่าก่อนหน้านี้อาจไม่มี)
     private int travelTripId;
@@ -34,6 +35,4 @@ public class ArticleDTO {
     // 🆕 บทความทางการ (จาก OfficialArticle ของเพื่อน) — false เสมอสำหรับบทความ user ปกติ
     private boolean isOfficial;
     private String articleTitle; // มีค่าเฉพาะบทความทางการเท่านั้น (บทความ user ไม่มีหัวข้อ)
-
-
 }

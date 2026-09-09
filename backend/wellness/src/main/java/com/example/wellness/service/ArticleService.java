@@ -306,6 +306,7 @@ public class ArticleService {
         if (article.getMember() != null) {
             dto.setFirstName(article.getMember().getFirstName());
             dto.setLastName(article.getMember().getLastName());
+            dto.setProfileImage(article.getMember().getProfileImage()); // 🆕
         }
 
         if (article.getImage() != null && !article.getImage().isEmpty()) {
