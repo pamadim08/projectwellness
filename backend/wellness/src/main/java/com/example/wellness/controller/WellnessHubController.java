@@ -230,7 +230,7 @@ public class WellnessHubController {
 
      */
 
-    // 🆕 เพิ่ม "/user" กันชนกับ listWellnessHub() ด้านบน (ทั้งคู่เดิมเป็น GET /api/wellness-hubs)
+
     @GetMapping("/user")
     public ResponseEntity<ResponseObject> getAllWellnessHubs() {
         try {

@@ -30,33 +30,29 @@ public class MyTravelTripService {
     private final MyTravelTripDetailRepository detailRepository;
     private final MemberRepository memberRepository;
     private final WellnessHubRepository wellnessHubRepository;
-    private final DistrictRepository districtRepository; // 🆕
+    private final DistrictRepository districtRepository;
 
     @Transactional
     public Integer createTrip(CreateTripRequest request) {
-        // ดึง member
         Member member = memberRepository.findById(request.getMemberId())
                 .orElseThrow(() -> new NoSuchElementException("ไม่พบสมาชิก"));
 
-        // 🆕 ดึง district ต้นทาง-ปลายทาง
         District originDistrict = districtRepository.findById(request.getOriginDistrictId())
                 .orElseThrow(() -> new NoSuchElementException("ไม่พบอำเภอต้นทาง"));
         District destinationDistrict = districtRepository.findById(request.getDestinationDistrictId())
                 .orElseThrow(() -> new NoSuchElementException("ไม่พบอำเภอปลายทาง"));
 
-        // สร้าง MyTravelTrip
+        // 🆕 เอา trip.setOriginName()/setDestinationName() ออก — ตอนนี้เป็น @Transient getter
+        // คำนวณสดจาก originDistrict/destinationDistrict แล้ว ไม่มี setter ให้เรียกอีกต่อไป
         MyTravelTrip trip = new MyTravelTrip();
         trip.setTripName(request.getTripName());
         trip.setDescription(request.getDescription());
-        trip.setOriginName(request.getOriginName());
-        trip.setDestinationName(request.getDestinationName());
-        trip.setOriginDistrict(originDistrict);           // 🆕
-        trip.setDestinationDistrict(destinationDistrict);  // 🆕
+        trip.setOriginDistrict(originDistrict);
+        trip.setDestinationDistrict(destinationDistrict);
         trip.setMember(member);
 
         MyTravelTrip savedTrip = tripRepository.save(trip);
 
-        // สร้าง MyTravelTripDetail แต่ละ hub
         for (int i = 0; i < request.getLicenseIds().size(); i++) {
             Integer licenseId = request.getLicenseIds().get(i);
 
@@ -82,16 +78,13 @@ public class MyTravelTripService {
                 .collect(Collectors.toList());
     }
 
-    // 🆕 ดึง trip เดียวแบบเปิดกว้าง (ไม่เช็คสิทธิ์เจ้าของ) — ใช้ตอนดูตัวอย่าง trip
-    // ที่แนบมากับบทความของคนอื่น ก่อนตัดสินใจว่าจะคัดลอกเข้าบัญชีตัวเองไหม
     public MyTravelTripDTO getTripById(Integer tripId) {
         MyTravelTrip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new NoSuchElementException("ไม่พบเส้นทาง"));
         return convertToDTO(trip);
     }
 
-    // 🆕 คัดลอกเส้นทางของคนอื่นเข้าบัญชีตัวเอง (ใช้ตอนกด "คัดลอกเส้นทาง" จากบทความ)
-    // คัดลอกชื่อ/คำอธิบาย/ต้นทาง-ปลายทาง/หมวดสถานที่ทั้งหมด แต่เป็นเจ้าของใหม่
+    // 🆕 ตัดฟีเจอร์ originalOwner ออกทั้งหมด — ไม่ต้องสืบ/เก็บว่าใครเป็นเจ้าของต้นฉบับอีกต่อไป
     @Transactional
     public Integer duplicateTrip(Integer sourceTripId, Integer newMemberId) {
         MyTravelTrip sourceTrip = tripRepository.findById(sourceTripId)
@@ -103,20 +96,10 @@ public class MyTravelTripService {
         MyTravelTrip newTrip = new MyTravelTrip();
         newTrip.setTripName(sourceTrip.getTripName());
         newTrip.setDescription(sourceTrip.getDescription());
-        newTrip.setOriginName(sourceTrip.getOriginName());
-        newTrip.setDestinationName(sourceTrip.getDestinationName());
         newTrip.setOriginDistrict(sourceTrip.getOriginDistrict());
         newTrip.setDestinationDistrict(sourceTrip.getDestinationDistrict());
         newTrip.setMember(newMember);
-        // 🆕 บันทึกไว้ว่า trip นี้เป็นสำเนามาจาก trip ไหน และต้นฉบับเป็นของใคร
-        // ถ้า sourceTrip เองก็เป็นสำเนาอีกทีอยู่แล้ว ให้สืบไปถึง "เจ้าของต้นฉบับตัวจริง" เสมอ
-        // ไม่ใช่แค่เจ้าของ trip ที่กำลังกด copy (กันกรณี copy ต่อกันหลายทอด)
         newTrip.setDuplicatedFromTripId(sourceTripId);
-        newTrip.setOriginalOwner(
-                sourceTrip.getOriginalOwner() != null
-                        ? sourceTrip.getOriginalOwner()
-                        : sourceTrip.getMember()
-        );
 
         MyTravelTrip savedTrip = tripRepository.save(newTrip);
 
@@ -137,7 +120,6 @@ public class MyTravelTripService {
         MyTravelTrip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new NoSuchElementException("ไม่พบเส้นทาง"));
 
-        // เช็คว่าเป็น trip ของ member คนนี้จริงๆ
         if (trip.getMember().getMemberId() != memberId) {
             throw new RuntimeException("ไม่มีสิทธิ์ลบเส้นทางนี้");
         }
@@ -145,23 +127,20 @@ public class MyTravelTripService {
         tripRepository.delete(trip);
     }
 
-    // 🆕 แก้ไข trip — แก้ชื่อ/คำอธิบาย/รายการ hub ได้ แต่แก้อำเภอต้นทาง-ปลายทางไม่ได้
     @Transactional
     public void updateTrip(Integer tripId, UpdateTripRequest request) {
         MyTravelTrip trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new NoSuchElementException("ไม่พบเส้นทาง"));
 
-        // เช็คว่าเป็น trip ของ member คนนี้จริงๆ
         if (trip.getMember().getMemberId() != request.getMemberId()) {
             throw new RuntimeException("ไม่มีสิทธิ์แก้ไขเส้นทางนี้");
         }
 
         trip.setTripName(request.getTripName());
         trip.setDescription(request.getDescription());
-        // หมายเหตุ: ไม่แตะ originName/destinationName/originDistrict/destinationDistrict ตามที่ตกลงไว้
+        // หมายเหตุ: ไม่แตะ originDistrict/destinationDistrict ตามที่ตกลงไว้
+        // (originName/destinationName คำนวณสดจาก relation นี้อยู่แล้ว ไม่ต้องแตะเช่นกัน)
 
-        // 🆕 กลับกฎ: ถ้า trip นี้เป็นสำเนา ลบสถานที่เดิมออกได้ แต่ห้ามเพิ่มสถานที่ใหม่เข้ามา
-        // เช็คก่อนลบ detail เก่าทิ้ง เพราะต้องรู้ก่อนว่า licenseIds เดิมมีอะไรบ้าง
         if (trip.getDuplicatedFromTripId() != null) {
             List<Integer> existingLicenseIds = trip.getTripDetails().stream()
                     .map(d -> d.getWellnessHub().getLicenseId())
@@ -176,8 +155,6 @@ public class MyTravelTripService {
             }
         }
 
-        // ลบ detail (รายการ hub) เดิมทั้งหมด แล้วสร้างใหม่ตามลำดับที่ส่งมา
-        // วิธีนี้ง่ายและชัดเจนกว่าการ diff ทีละรายการ เหมาะกับ list ที่ไม่ใหญ่มาก
         detailRepository.deleteAll(trip.getTripDetails());
         trip.getTripDetails().clear();
 
@@ -204,22 +181,18 @@ public class MyTravelTripService {
         dto.setTravelTripId(trip.getTravelTripId());
         dto.setTripName(trip.getTripName());
         dto.setDescription(trip.getDescription());
+        // 🆕 trip.getOriginName()/getDestinationName() เรียกได้เหมือนเดิม ไม่ต้องแก้บรรทัดนี้
+        // เพราะเปลี่ยนแค่ข้างในเป็น @Transient getter ที่คำนวณจาก originDistrict/destinationDistrict
         dto.setOriginName(trip.getOriginName());
         dto.setDestinationName(trip.getDestinationName());
 
-        // 🆕 ส่ง district id กลับไปด้วย (อาจเป็น null สำหรับ trip เก่าที่สร้างก่อนมีคอลัมน์นี้)
         dto.setOriginDistrictId(trip.getOriginDistrict() != null
                 ? trip.getOriginDistrict().getDistrictId() : null);
         dto.setDestinationDistrictId(trip.getDestinationDistrict() != null
                 ? trip.getDestinationDistrict().getDistrictId() : null);
 
-        // 🆕 ข้อมูลว่าเป็นสำเนาไหม และต้นฉบับเป็นของใคร (ถ้ามี)
+        // 🆕 ตัดส่วนของ originalOwner ออกแล้ว เหลือแค่บอกว่าเป็นสำเนาไหม
         dto.setDuplicatedFromTripId(trip.getDuplicatedFromTripId());
-        if (trip.getOriginalOwner() != null) {
-            dto.setOriginalOwnerId(trip.getOriginalOwner().getMemberId());
-            dto.setOriginalOwnerFirstName(trip.getOriginalOwner().getFirstName());
-            dto.setOriginalOwnerLastName(trip.getOriginalOwner().getLastName());
-        }
 
         if (trip.getTripDetails() != null) {
             List<MyTravelTripDTO.HubSimpleDTO> hubs = trip.getTripDetails()
@@ -234,8 +207,8 @@ public class MyTravelTripService {
                                 ? detail.getWellnessHub().getCategory().getCategoryName()
                                 : "");
                         hub.setTravelTripIndex(detail.getTravelTripIndex());
-                        hub.setLatitude(detail.getWellnessHub().getWellnessHubLatitude());     // 🆕
-                        hub.setLongitude(detail.getWellnessHub().getWellnessHubLongitude());   // 🆕
+                        hub.setLatitude(detail.getWellnessHub().getWellnessHubLatitude());
+                        hub.setLongitude(detail.getWellnessHub().getWellnessHubLongitude());
                         return hub;
                     })
                     .collect(Collectors.toList());

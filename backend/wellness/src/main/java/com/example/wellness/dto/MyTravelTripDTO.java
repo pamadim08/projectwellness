@@ -11,15 +11,13 @@ public class MyTravelTripDTO {
     private String description;
     private String originName;
     private String destinationName;
-    private Integer originDistrictId;       // 🆕 ให้ Flutter ใช้เรียก getHubsAlongRoute ตอนแก้ไข
-    private Integer destinationDistrictId;  // 🆕
+    private Integer originDistrictId;       // ให้ Flutter ใช้เรียก getHubsAlongRoute ตอนแก้ไข
+    private Integer destinationDistrictId;
     private List<HubSimpleDTO> hubs;
 
-    // 🆕 ข้อมูลว่า trip นี้เป็นสำเนามาจากที่ไหน — null ทั้งคู่แปลว่าเป็นเส้นทางต้นฉบับ ไม่ใช่สำเนา
+    // ข้อมูลว่า trip นี้เป็นสำเนามาจากที่ไหน — null แปลว่าเป็นเส้นทางต้นฉบับ ไม่ใช่สำเนา
+    // 🆕 ตัด originalOwnerId/originalOwnerFirstName/originalOwnerLastName ออกแล้ว (ฟีเจอร์ถูกยกเลิก)
     private Integer duplicatedFromTripId;
-    private Integer originalOwnerId;
-    private String originalOwnerFirstName;
-    private String originalOwnerLastName;
 
     @Data
     public static class HubSimpleDTO {
@@ -28,7 +26,7 @@ public class MyTravelTripDTO {
         private String address;
         private String category;
         private int travelTripIndex;
-        private Double latitude;   // เปลี่ยนจาก Float เป็น Double ให้ตรงกับ WellnessHub ของเพื่อน
-        private Double longitude;  // เปลี่ยนจาก Float เป็น Double ให้ตรงกับ WellnessHub ของเพื่อน
+        private Double latitude;
+        private Double longitude;
     }
 }

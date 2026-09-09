@@ -8,6 +8,7 @@ import com.example.wellness.repository.MemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -167,23 +168,33 @@ public class MemberService {
     }
 
 
+    // 🆕 @Transactional กันปัญหา LazyInitializationException ตอนดึง trip/article ที่มี
+    // relation แบบ lazy load ต่อกันหลายชั้น (session ต้องเปิดค้างจนกว่าจะดึงข้อมูลครบ)
+    // 🆕 try/catch + printStackTrace() กัน error หายไปเงียบๆ แบบที่เจอมาก่อนหน้า
+    // (โยนต่อด้วย throw e; เพื่อให้ Controller ยังจัดการ response code ตามเดิมได้)
+    @Transactional(readOnly = true)
     public UserProfileResponse getMember(Integer memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้งานนี้ในระบบ"));
+        try {
+            Member member = memberRepository.findById(memberId)
+                    .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้งานนี้ในระบบ"));
 
-        String fullName = member.getFirstName() + " " + member.getLastName();
+            String fullName = member.getFirstName() + " " + member.getLastName();
 
-        List<Object> favorites = new ArrayList<>();
-        List<MyTravelTripDTO> routes = myTravelTripService.getMyTrips(memberId);
-        List<ArticleDTO> posts = articleService.getMyArticles(memberId);
+            List<Object> favorites = new ArrayList<>();
+            List<MyTravelTripDTO> routes = myTravelTripService.getMyTrips(memberId);
+            List<ArticleDTO> posts = articleService.getMyArticles(memberId);
 
-        return new UserProfileResponse(
-                fullName,
-                member.getEmail(),
-                member.getProfileImage(), // 🆕
-                favorites,
-                routes,
-                posts
-        );
+            return new UserProfileResponse(
+                    fullName,
+                    member.getEmail(),
+                    member.getProfileImage(),
+                    favorites,
+                    routes,
+                    posts
+            );
+        } catch (Exception e) {
+            e.printStackTrace(); // เห็น stack trace จริงใน console เสมอ ไม่หายไปเงียบๆ อีก
+            throw e;
+        }
     }
 }

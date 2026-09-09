@@ -19,13 +19,7 @@ public class MyTravelTrip {
     @Column(name = "description", length = 255)
     private String description;
 
-    @Column(name = "originName", length = 100, nullable = false)
-    private String originName;
-
-    @Column(name = "destinationName", length = 100, nullable = false)
-    private String destinationName;
-
-    // 🆕 เก็บ district id จริง ใช้ตอนแก้ไข trip เพื่อค้นหา hub เพิ่มในอำเภอเดิมได้
+    // เก็บ district id จริง ใช้ตอนแก้ไข trip เพื่อค้นหา hub เพิ่มในอำเภอเดิมได้
     @ManyToOne
     @JoinColumn(name = "origin_district_id")
     private District originDistrict;
@@ -38,20 +32,13 @@ public class MyTravelTrip {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    // 🆕 ถ้า trip นี้ถูกคัดลอกมาจาก trip อื่น เก็บ id ของ trip ต้นฉบับไว้ (ไม่ใช่ FK จริง
+    // ถ้า trip นี้ถูกคัดลอกมาจาก trip อื่น เก็บ id ของ trip ต้นฉบับไว้ (ไม่ใช่ FK จริง
     // เพราะถ้า trip ต้นฉบับถูกลบทีหลัง ไม่อยากให้กระทบ/บล็อกการลบนั้น)
     @Column(name = "duplicated_from_trip_id")
     private Integer duplicatedFromTripId;
 
-    // 🆕 เจ้าของดั้งเดิมของเส้นทางนี้ — เป็น FK จริงไปยัง Member เพราะ member ไม่ค่อยถูกลบ
-    // ต่างจาก duplicated_from_trip_id ที่ตั้งใจไม่ทำ FK (trip ลบได้บ่อยกว่า ไม่อยากให้ติด constraint)
-    // ตั้งชื่อ column ว่า original_member_id (ไม่ใช่ original_owner_id) เพื่อไม่ชนกับ column
-    // member_id เดิมที่มีอยู่แล้ว (ใช้เก็บเจ้าของปัจจุบัน)
-    @ManyToOne
-    @JoinColumn(name = "original_member_id")
-    private Member originalOwner;
 
-    @OneToMany(mappedBy = "myTravelTrip", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "myTravelTripId", cascade = CascadeType.ALL)
     private List<MyTravelTripDetail> tripDetails;
 
 //    @OneToMany(mappedBy = "myTravelTrip", cascade = CascadeType.ALL)
@@ -85,20 +72,17 @@ public class MyTravelTrip {
         this.description = description;
     }
 
+    // 🆕 เอา column origin_name/destination_name ออกแล้ว (ลบไปจาก DB จริงแล้วด้วย)
+    // คำนวณสดจาก originDistrict/destinationDistrict (FK) แทน — ไม่มี setter อีกต่อไป
+    // เพราะไม่มีอะไรให้ set (ค่าผูกกับ district เสมอ เปลี่ยนได้แค่ทาง originDistrict/destinationDistrict)
+    @Transient
     public String getOriginName() {
-        return originName;
+        return originDistrict != null ? originDistrict.getDistrictName() : null;
     }
 
-    public void setOriginName(String originName) {
-        this.originName = originName;
-    }
-
+    @Transient
     public String getDestinationName() {
-        return destinationName;
-    }
-
-    public void setDestinationName(String destinationName) {
-        this.destinationName = destinationName;
+        return destinationDistrict != null ? destinationDistrict.getDistrictName() : null;
     }
 
     public District getOriginDistrict() {
@@ -133,14 +117,6 @@ public class MyTravelTrip {
         this.duplicatedFromTripId = duplicatedFromTripId;
     }
 
-    public Member getOriginalOwner() {
-        return originalOwner;
-    }
-
-    public void setOriginalOwner(Member originalOwner) {
-        this.originalOwner = originalOwner;
-    }
-
     public List<MyTravelTripDetail> getTripDetails() {
         return tripDetails;
     }
@@ -157,12 +133,13 @@ public class MyTravelTrip {
         this.article = article;
     }
 
-    public MyTravelTrip(int travelTripId, String tripName, String description, String originName, String destinationName, Member member, List<MyTravelTripDetail> tripDetails, Article article) {
+    // 🆕 ตัด originName/destinationName ออกจาก constructor นี้ด้วย (ไม่มี field ให้ set แล้ว)
+    // ถ้ามีที่อื่นในโค้ดเรียก constructor แบบเดิม (8 parameter) จะต้องไปแก้จุดนั้นด้วย
+    public MyTravelTrip(int travelTripId, String tripName, String description, Member member,
+                        List<MyTravelTripDetail> tripDetails, Article article) {
         this.travelTripId = travelTripId;
         this.tripName = tripName;
         this.description = description;
-        this.originName = originName;
-        this.destinationName = destinationName;
         this.member = member;
         this.tripDetails = tripDetails;
         this.article = article;

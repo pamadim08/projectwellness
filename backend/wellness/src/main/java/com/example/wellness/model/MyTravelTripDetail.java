@@ -10,7 +10,7 @@ public class MyTravelTripDetail {
     @Id
     @ManyToOne
     @JoinColumn(name = "travel_trip_id", nullable = false)
-    private MyTravelTrip myTravelTrip;
+    private MyTravelTrip myTravelTripId;
 
     @Id
     @ManyToOne
@@ -25,12 +25,12 @@ public class MyTravelTripDetail {
     private int travelTripIndex;
 
 
-    public MyTravelTrip getMyTravelTrip() {
-        return myTravelTrip;
+    public MyTravelTrip getMyTravelTripId() {
+        return myTravelTripId;
     }
 
     public void setMyTravelTrip(MyTravelTrip myTravelTrip) {
-        this.myTravelTrip = myTravelTrip;
+        this.myTravelTripId = myTravelTrip;
     }
 
     public WellnessHub getWellnessHub() {
@@ -49,8 +49,8 @@ public class MyTravelTripDetail {
         this.travelTripIndex = travelTripIndex;
     }
 
-    public MyTravelTripDetail(MyTravelTrip myTravelTrip, WellnessHub wellnessHub, int travelTripIndex) {
-        this.myTravelTrip = myTravelTrip;
+    public MyTravelTripDetail(MyTravelTrip myTravelTripId, WellnessHub wellnessHub, int travelTripIndex) {
+        this.myTravelTripId = myTravelTripId;
         this.wellnessHub = wellnessHub;
         this.travelTripIndex = travelTripIndex;
     }

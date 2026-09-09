@@ -8,13 +8,13 @@ import java.util.Objects;
 
 public class MyTravelTripDetailId implements Serializable {
 
-    private int myTravelTrip;   // ถ้า MyTravelTrip ใช้ int ก็โอเค
+    private int myTravelTripId;   // ถ้า MyTravelTrip ใช้ int ก็โอเค
     private Integer wellnessHub;
 
     public MyTravelTripDetailId() {}
 
-    public MyTravelTripDetailId(int myTravelTrip, Integer wellnessHub) {
-        this.myTravelTrip = myTravelTrip;
+    public MyTravelTripDetailId(int myTravelTripId, Integer wellnessHub) {
+        this.myTravelTripId = myTravelTripId;
         this.wellnessHub = wellnessHub;
     }
 
@@ -23,12 +23,12 @@ public class MyTravelTripDetailId implements Serializable {
         if (this == o) return true;
         if (!(o instanceof MyTravelTripDetailId)) return false;
         MyTravelTripDetailId that = (MyTravelTripDetailId) o;
-        return myTravelTrip == that.myTravelTrip &&
+        return myTravelTripId == that.myTravelTripId &&
                 Objects.equals(wellnessHub, that.wellnessHub);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(myTravelTrip, wellnessHub);
+        return Objects.hash(myTravelTripId, wellnessHub);
     }
 }
