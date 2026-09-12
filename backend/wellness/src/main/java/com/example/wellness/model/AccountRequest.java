@@ -46,8 +46,8 @@ public class AccountRequest {
     // ============================
     // ข้อมูลสถานประกอบการ
     // ============================
-    @Column(name = "license_id")
-    private Integer licenseId;
+    @Column(name = "license_id", length = 100)
+    private String licenseId;
     @Column(name = "wellness_hub_name", nullable = false, length = 255)
     private String wellnessHubName;
 

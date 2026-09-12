@@ -369,13 +369,11 @@ export default function ProviderDashboard() {
     const storedLicenseId =
       provider?.licenseId || localStorage.getItem("wellnessProviderLicenseId");
 
-    const parsedLicenseId = Number(storedLicenseId);
-
-    if (!Number.isInteger(parsedLicenseId) || parsedLicenseId <= 0) {
+    if (!storedLicenseId) {
       return null;
     }
 
-    return parsedLicenseId;
+    return String(storedLicenseId).trim();
   }, [provider]);
 
   const selectedCategory = useMemo(() => {
@@ -637,21 +635,21 @@ export default function ProviderDashboard() {
       return;
     }
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
 
     if (!allowedTypes.includes(selectedFile.type)) {
       setFormErrors((previousErrors) => ({
         ...previousErrors,
-        wellnessHubImg: "รองรับเฉพาะไฟล์ JPG, PNG และ WEBP",
+        wellnessHubImg: "รองรับเฉพาะไฟล์ JPG, JPEG และ PNG",
       }));
 
       return;
     }
 
-    if (selectedFile.size > 5 * 1024 * 1024) {
+    if (selectedFile.size > 20 * 1024 * 1024) {
       setFormErrors((previousErrors) => ({
         ...previousErrors,
-        wellnessHubImg: "รูปภาพต้องมีขนาดไม่เกิน 5 MB",
+        wellnessHubImg: "รูปภาพต้องมีขนาดไม่เกิน 20 MB",
       }));
 
       return;
@@ -777,54 +775,50 @@ export default function ProviderDashboard() {
   const validateForm = () => {
     const errors = {};
 
-    const normalizedName = formData.wellnessHubName.trim();
-
     const normalizedTelephone = formData.telInformation.trim();
-
     const normalizedAddress = formData.address.trim();
-
     const normalizedMapsLink = formData.googleMapsLink.trim();
+    const normalizedContact = formData.contactInformation ? formData.contactInformation.trim() : "";
+    const normalizedDesc = formData.wellnessHubDescription ? formData.wellnessHubDescription.trim() : "";
 
-    const normalizedContact = formData.contactInformation.trim();
-
-    if (!normalizedName) {
-      errors.wellnessHubName = "กรุณากรอกชื่อสถานประกอบการ";
-    } else if (normalizedName.length > 255) {
-      errors.wellnessHubName = "ชื่อสถานประกอบการต้องไม่เกิน 255 ตัวอักษร";
-    }
-
-    if (!formData.categoryId) {
-      errors.categoryId = "กรุณาเลือกหมวดหมู่ธุรกิจ";
-    }
-
-    if (!normalizedTelephone) {
-      errors.telInformation = "กรุณากรอกเบอร์โทรศัพท์";
-    } else if (!/^[0-9+\-\s()]{8,20}$/.test(normalizedTelephone)) {
-      errors.telInformation = "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง";
-    }
-
-    if (normalizedContact && normalizedContact.length > 255) {
-      errors.contactInformation = "ช่องทางติดต่อต้องไม่เกิน 255 ตัวอักษร";
-    }
-
+    // 1. address: required, 10–255 ตัว
     if (!normalizedAddress) {
       errors.address = "กรุณากรอกรายละเอียดที่อยู่";
-    } else if (normalizedAddress.length > 255) {
-      errors.address = "ที่อยู่ต้องไม่เกิน 255 ตัวอักษร";
+    } else if (normalizedAddress.length < 10 || normalizedAddress.length > 255) {
+      errors.address = "ที่อยู่ต้องมีความยาว 10–255 ตัวอักษร";
     }
 
-    if (!formData.districtId) {
-      errors.districtId = "กรุณาเลือกอำเภอที่ตั้ง";
+    // 2. telInformation: required, ตัวเลข 9-10 หลัก ไม่มีช่องว่าง
+    if (!normalizedTelephone) {
+      errors.telInformation = "กรุณากรอกเบอร์โทรศัพท์";
+    } else if (!/^[0-9]{9,10}$/.test(normalizedTelephone)) {
+      errors.telInformation = "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก และไม่มีช่องว่าง";
     }
 
+    // 3. contactInformation: optional, ถ้ามี 3–255 ตัว
+    if (normalizedContact && (normalizedContact.length < 3 || normalizedContact.length > 255)) {
+      errors.contactInformation = "ช่องทางติดต่อต้องมีความยาว 3–255 ตัวอักษร";
+    }
+
+    // 4. wellnessHubDescription: required, 10–1000 ตัว
+    if (!normalizedDesc) {
+      errors.wellnessHubDescription = "กรุณากรอกคำอธิบายสถานประกอบการ";
+    } else if (normalizedDesc.length < 10 || normalizedDesc.length > 1000) {
+      errors.wellnessHubDescription = "คำอธิบายสถานประกอบการต้องมีความยาว 10–1000 ตัวอักษร";
+    }
+
+    // 5. googleMapsLink: required, valid Google Maps URL, no whitespace
     if (!normalizedMapsLink) {
       errors.googleMapsLink = "กรุณากรอกลิงก์ Google Maps";
+    } else if (/\s/.test(normalizedMapsLink)) {
+      errors.googleMapsLink = "ลิงก์ Google Maps ต้องไม่มีช่องว่าง";
     } else if (!isGoogleMapsUrl(normalizedMapsLink)) {
       errors.googleMapsLink = "กรุณาระบุลิงก์จาก Google Maps ที่ถูกต้อง";
     }
 
-
+    // 6. Operating Hours: จันทร์–อาทิตย์
     if (!is24Hours) {
+      const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
       DAYS.forEach((day) => {
         const detail = operatingHours[day.key];
 
@@ -834,12 +828,11 @@ export default function ProviderDashboard() {
 
         if (!detail.open || !detail.close) {
           errors.operatingHours = `กรุณาระบุเวลาเปิดและเวลาปิดของ${day.label}`;
-
           return;
         }
 
-        if (detail.open >= detail.close) {
-          errors.operatingHours = `เวลาเปิดของ${day.label}ต้องน้อยกว่าเวลาปิด`;
+        if (!timePattern.test(detail.open) || !timePattern.test(detail.close)) {
+          errors.operatingHours = `รูปแบบเวลาเปิดและเวลาปิดของ${day.label}ต้องเป็น HH:mm`;
         }
       });
     }
@@ -851,7 +844,7 @@ export default function ProviderDashboard() {
 
   const requestSave = () => {
     if (!validateForm()) {
-      showToast("error", "กรุณาตรวจสอบข้อมูลที่กรอกให้ถูกต้อง");
+      showToast("error", "กรุณากรอกข้อมูลให้ถูกต้อง");
 
       return;
     }
@@ -868,15 +861,13 @@ export default function ProviderDashboard() {
 
     try {
       const payload = {
-        wellnessHubName: formData.wellnessHubName.trim(),
-
-        contactInformation: formData.contactInformation.trim() || null,
+        address: formData.address.trim(),
 
         telInformation: formData.telInformation.trim(),
 
-        wellnessHubDescription: formData.wellnessHubDescription.trim() || null,
+        contactInformation: formData.contactInformation ? formData.contactInformation.trim() || null : null,
 
-        address: formData.address.trim(),
+        wellnessHubDescription: formData.wellnessHubDescription ? formData.wellnessHubDescription.trim() : null,
 
         googleMapsLink: formData.googleMapsLink.trim(),
 
@@ -886,17 +877,9 @@ export default function ProviderDashboard() {
         wellnessHubLongitude:
           hub?.wellnessHubLongitude ?? (formData.wellnessHubLongitude !== "" ? Number(formData.wellnessHubLongitude) : null),
 
-        certificateType: formData.certificateType || null,
-
         operatingHours: JSON.stringify(operatingHours),
 
         wellnessHubImg: formData.wellnessHubImg || null,
-
-        wellnessHubGallery: JSON.stringify(formData.wellnessHubGallery || []),
-
-        category: selectedCategory || null,
-
-        district: selectedDistrict || null,
       };
 
       const response = await axios.put(

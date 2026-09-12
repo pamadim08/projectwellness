@@ -13,8 +13,8 @@ function LoginAdmin() {
   // นิยามกฎสำหรับตรวจสอบเงื่อนไข (Regex)
   // ชื่อผู้ใช้ (adminId): ภาษาอังกฤษหรือตัวเลขเท่านั้น ห้ามช่องว่าง ห้ามเป็นค่าว่าง บังคับยาว 6-10 ตัวอักษร
   const usernameRegex = /^[a-zA-Z0-9]{6,10}$/;
-  // รหัสผ่าน (password): ภาษาอังกฤษ ตัวเลข และอักขระพิเศษ ห้ามช่องว่าง ห้ามเป็นค่าว่าง บังคับยาว 1-8 ตัวอักษร
-  const passwordRegex = /^[^\s]{1,8}$/;
+  // รหัสผ่าน (password): ภาษาอังกฤษหรือตัวเลขเท่านั้น ห้ามช่องว่าง ห้ามเป็นค่าว่าง บังคับยาว 1-8 ตัวอักษร
+  const passwordRegex = /^[a-zA-Z0-9]{1,8}$/;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -33,10 +33,13 @@ function LoginAdmin() {
           username: username,
           password: password,
         },
+        {
+          withCredentials: true,
+        }
       );
 
       if (response.status === 200) {
-        const loggedInUsername = response.data?.username || username;
+        const loggedInUsername = response.data?.data?.username || response.data?.username || username;
         localStorage.setItem("username", loggedInUsername);
         localStorage.setItem("adminName", loggedInUsername);
         localStorage.setItem(
@@ -44,14 +47,25 @@ function LoginAdmin() {
           JSON.stringify({ username: loggedInUsername, role: "ADMIN" })
         );
         localStorage.setItem("showWelcome", "true");
-        navigate("/dashboard");
+        navigate("/listAccountRequest");
       }
     } catch (err) {
-      // 2. กรณีชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้องจากการตอบกลับของหลังบ้าน
-      if (err.response && (err.response.status === 401 || err.response.status === 400 || err.response.status === 404)) {
-        setError("ไม่พบข้อมูลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+      // 2. แยก Error ตาม HTTP Status Code และ Network Error
+      if (err.response) {
+        const status = err.response.status;
+        const msg = err.response.data?.message;
+
+        if (status === 400) {
+          setError(msg || "ข้อมูลไม่ถูกต้อง");
+        } else if (status === 401) {
+          setError(msg || "ไม่พบข้อมูลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        } else if (status === 500) {
+          setError(msg || "เกิดข้อผิดพลาดจากระบบ กรุณาลองใหม่อีกครั้ง");
+        } else {
+          setError(msg || "เกิดข้อผิดพลาดในการเข้าสู่ระบบ");
+        }
       } else {
-        setError("ไม่พบข้อมูลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        setError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
       }
     }
   };

@@ -14,9 +14,15 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface WellnessHubRepository
-        extends JpaRepository<WellnessHub, Integer> {
+        extends JpaRepository<WellnessHub, String> {
 
     boolean existsByUsername(String username);
+
+    boolean existsByWellnessHubNameIgnoreCase(String wellnessHubName);
+
+    boolean existsByWellnessHubNameIgnoreCaseAndLicenseIdNot(String wellnessHubName, String licenseId);
+
+    boolean existsByGoogleMapsLink(String googleMapsLink);
 
     WellnessHub findByUsername(String username);
 
@@ -59,15 +65,9 @@ public interface WellnessHubRepository
     searchByNameStartingWithAndHasAddress(@Param("keyword") String keyword);
 
     @Query("SELECT w FROM WellnessHub w " +
-            "WHERE (:keyword IS NULL OR :keyword = '' OR " +
-            "   LOWER(w.wellnessHubName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "   OR LOWER(w.address) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-            "AND w.address IS NOT NULL " +
-            "AND TRIM(w.address) <> '' " +
-            "AND TRIM(w.address) <> 'ไม่ระบุ' " +
-            "AND (:categoryId IS NULL OR w.category.categoryId = :categoryId) " +
-            "AND (:districtId IS NULL OR w.district.districtId = :districtId) " +
-            "ORDER BY w.wellnessHubName ASC")
+            "WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(w.wellnessHubName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:categoryId IS NULL OR :categoryId = '' OR UPPER(w.category.categoryId) = UPPER(:categoryId)) " +
+            "AND (:districtId IS NULL OR w.district.districtId = :districtId)")
     List<WellnessHub> searchWithFilter(
             @Param("keyword") String keyword,
             @Param("categoryId") String categoryId,
@@ -104,4 +104,20 @@ public interface WellnessHubRepository
             @Param("districtId") List<Integer> districtIds,
             @Param("categoryId") List<String> categoryIds
     );
+
+    @Query("""
+            SELECT DISTINCT w FROM WellnessHub w
+            LEFT JOIN FETCH w.category c
+            LEFT JOIN FETCH w.district d
+            WHERE LOWER(w.wellnessHubName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(w.wellnessHubDescription) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(w.address) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(c.categoryName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(d.districtName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            ORDER BY w.wellnessHubName ASC
+            """)
+    List<WellnessHub> searchPublicHubs(@Param("keyword") String keyword);
+
+    @Query("SELECT w FROM WellnessHub w LEFT JOIN FETCH w.category LEFT JOIN FETCH w.district WHERE w.licenseId = :licenseId")
+    java.util.Optional<WellnessHub> findByIdWithCategoryAndDistrict(@Param("licenseId") String licenseId);
 }

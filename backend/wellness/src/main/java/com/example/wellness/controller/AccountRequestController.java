@@ -44,7 +44,7 @@ public class AccountRequestController {
                     .map(request -> {
                         Map<String, Object> map = new LinkedHashMap<>();
 
-                        Integer licenseId = getLicenseId(request);
+                        String licenseId = getLicenseId(request);
 
                         map.put("requestId", request.getRequestId());
                         map.put("username", request.getUsername());
@@ -77,9 +77,15 @@ public class AccountRequestController {
         try {
             AccountRequest savedRequest = service.requestWellnessHubAccount(payload);
 
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("requestId", savedRequest.getRequestId());
+            response.put("requestStatus", savedRequest.getRequestStatus());
+            response.put("message", "ส่งข้อมูลสำเร็จ!!");
+
             return ResponseEntity
                     .status(HttpStatus.CREATED)
-                    .body(savedRequest);
+                    .body(response);
 
         } catch (RuntimeException exception) {
             return ResponseEntity
@@ -92,40 +98,128 @@ public class AccountRequestController {
     // List Account Request
     // =========================
     @GetMapping
-    public List<AccountRequest> listAccountRequest() {
-        return service.listAccountRequest();
+    public ResponseEntity<List<Map<String, Object>>> listAccountRequest(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status) {
+        List<Map<String, Object>> result = service.listAccountRequest(keyword, status);
+        return ResponseEntity.ok(result);
     }
 
     // =========================
     // Detail
     // =========================
     @GetMapping("/{id}")
-    public AccountRequest getRequestById(@PathVariable Integer id) {
-        return service.getRequestById(id);
+    public ResponseEntity<?> getRequestById(@PathVariable Integer id) {
+        if (id == null || id <= 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "ไม่พบข้อมูลคำขออนุมัติ"));
+        }
+        AccountRequest request = service.getRequestById(id);
+        if (request == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "ไม่พบข้อมูลคำขออนุมัติ"));
+        }
+        return ResponseEntity.ok(request);
     }
 
     // =========================
     // Approve
     // =========================
     @PutMapping("/{id}/approve")
-    public AccountRequest approveAccountRequest(@PathVariable Integer id) {
-        return service.approveAccountRequest(id);
+    public ResponseEntity<?> approveAccountRequest(@PathVariable Integer id) {
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "ไม่พบข้อมูลคำขออนุมัติ"));
+            }
+            AccountRequest savedRequest = service.approveAccountRequest(id);
+            if (savedRequest == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "ไม่พบข้อมูลคำขออนุมัติ"));
+            }
+            return ResponseEntity.ok(savedRequest);
+        } catch (RuntimeException exception) {
+            String message = exception.getMessage();
+            if ("ไม่พบข้อมูลคำขออนุมัติ".equals(message)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", message));
+            }
+            if (message != null && (message.contains("ได้รับการอนุมัติแล้ว") || message.contains("อนุมัติแล้ว") || message.contains("ถูกปฏิเสธ"))) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", message));
+            }
+            return ResponseEntity.badRequest().body(Map.of("message", message != null ? message : "ข้อมูลไม่ถูกต้อง"));
+        } catch (Exception exception) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง"));
+        }
     }
 
     // =========================
     // Reject
     // =========================
     @PutMapping("/{id}/reject")
-    public AccountRequest reject(
+    public ResponseEntity<?> reject(
             @PathVariable Integer id,
-            @RequestParam String reason) {
-        return service.rejectRequest(id, reason);
+            @RequestParam(required = false) String reason) {
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "ไม่พบข้อมูลคำขออนุมัติ"));
+            }
+            AccountRequest savedRequest = service.rejectRequest(id, reason);
+            if (savedRequest == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "ไม่พบข้อมูลคำขออนุมัติ"));
+            }
+            return ResponseEntity.ok(savedRequest);
+        } catch (RuntimeException exception) {
+            String message = exception.getMessage();
+            if ("ไม่พบข้อมูลคำขออนุมัติ".equals(message)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", message));
+            }
+            if (message != null && (message.contains("ได้รับการอนุมัติแล้ว") || message.contains("อนุมัติแล้ว") || message.contains("ถูกปฏิเสธไปแล้ว") || message.contains("ถูกปฏิเสธ"))) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", message));
+            }
+            return ResponseEntity.badRequest().body(Map.of("message", message != null ? message : "ข้อมูลไม่ถูกต้อง"));
+        } catch (Exception exception) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง"));
+        }
+    }
+
+    // =========================
+    // Notify Request Result
+    // =========================
+    @PostMapping("/{id}/notify")
+    public ResponseEntity<?> notifyRequestResult(@PathVariable Integer id) {
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "ไม่พบข้อมูลคำขออนุมัติ"));
+            }
+            com.example.wellness.model.Notification notification = service.notifyRequestResult(id);
+            return ResponseEntity.ok(Map.of(
+                    "message", "ส่งอีเมลแจ้งผลสำเร็จ",
+                    "notificationId", notification.getNotificationId(),
+                    "status", notification.getNotificationStatus(),
+                    "notifyDate", notification.getNotifydate()
+            ));
+        } catch (RuntimeException exception) {
+            String message = exception.getMessage();
+            if ("ไม่พบข้อมูลคำขออนุมัติ".equals(message)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", message));
+            }
+            if (message != null && (message.contains("PENDING") || message.contains("ได้ส่งอีเมลแจ้งผล") || message.contains("ไปแล้ว"))) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", message));
+            }
+            if (message != null && (message.contains("ไม่ถูกต้อง") || message.contains("ไม่พบเหตุผล"))) {
+                return ResponseEntity.badRequest().body(Map.of("message", message));
+            }
+            if ("การส่งล้มเหลว".equals(message) || (message != null && message.contains("เกิดข้อผิดพลาดในการบันทึกข้อมูล"))) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", message));
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", message != null ? message : "การส่งล้มเหลว"));
+        } catch (Exception exception) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง"));
+        }
     }
 
     // =========================
     // Helper Methods
     // =========================
-    private Integer getLicenseId(AccountRequest request) {
+    private String getLicenseId(AccountRequest request) {
         return request.getLicenseId();
     }
 

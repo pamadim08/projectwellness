@@ -21,7 +21,7 @@ public class MyTravelTripDTO {
 
     @Data
     public static class HubSimpleDTO {
-        private Integer licenseId;
+        private String licenseId;
         private String wellnessHubName;
         private String address;
         private String category;

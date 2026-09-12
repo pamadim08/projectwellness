@@ -23,15 +23,32 @@ public class WellnessHubAuthService {
     }
 
     public Map<String, Object> login(String username, String password) {
-        WellnessHub hub = wellnessHubRepository.findByUsername(username);
+        if (username == null || password == null) {
+            throw new IllegalArgumentException("กรุณากรอกข้อมูลให้ถูกต้อง");
+        }
+
+        String trimmedUsername = username.trim();
+        if (trimmedUsername.isEmpty() || password.isEmpty() || username.contains(" ") || password.contains(" ")) {
+            throw new IllegalArgumentException("กรุณากรอกข้อมูลให้ถูกต้อง");
+        }
+
+        if (trimmedUsername.length() < 4 || trimmedUsername.length() > 10) {
+            throw new IllegalArgumentException("กรุณากรอกข้อมูลให้ถูกต้อง");
+        }
+
+        if (password.length() != 8) {
+            throw new IllegalArgumentException("กรุณากรอกข้อมูลให้ถูกต้อง");
+        }
+
+        WellnessHub hub = wellnessHubRepository.findByUsername(trimmedUsername);
 
         if (hub != null) {
             if (!hub.getPassword().equals(password)) {
-                throw new RuntimeException("รหัสผ่านไม่ถูกต้อง");
+                throw new SecurityException("ไม่พบข้อมูลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
             }
 
             if (!"ACTIVE".equalsIgnoreCase(hub.getStatus())) {
-                throw new RuntimeException("บัญชีนี้ยังไม่ได้รับการอนุมัติ");
+                throw new SecurityException("บัญชีนี้ยังไม่ได้รับการอนุมัติ");
             }
 
             Map<String, Object> response = new HashMap<>();
@@ -43,18 +60,18 @@ public class WellnessHubAuthService {
             return response;
         }
 
-        EmergencyService emergencyService = emergencyServiceRepository.findByUsername(username);
+        EmergencyService emergencyService = emergencyServiceRepository.findByUsername(trimmedUsername);
 
         if (emergencyService == null) {
-            throw new RuntimeException("ไม่พบชื่อผู้ใช้งาน");
+            throw new SecurityException("ไม่พบข้อมูลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
         }
 
         if (!emergencyService.getPassword().equals(password)) {
-            throw new RuntimeException("รหัสผ่านไม่ถูกต้อง");
+            throw new SecurityException("ไม่พบข้อมูลผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
         }
 
         if (!"ACTIVE".equalsIgnoreCase(emergencyService.getStatus())) {
-            throw new RuntimeException("บัญชีนี้ยังไม่ได้รับการอนุมัติ");
+            throw new SecurityException("บัญชีนี้ยังไม่ได้รับการอนุมัติ");
         }
 
         Map<String, Object> response = new HashMap<>();

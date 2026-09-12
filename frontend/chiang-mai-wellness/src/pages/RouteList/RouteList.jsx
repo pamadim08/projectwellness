@@ -17,8 +17,8 @@ import { Link } from "react-router-dom";
 import LoadingState from "../../Components/LoadingState/LoadingState";
 import "./RouteList.css";
 
-// API URL สำหรับดึงข้อมูลเส้นทางแนะนำ
-const API_URL = "http://localhost:8080/api/home/recommended-routes";
+// API URL สำหรับดึงข้อมูลเส้นทางทั้งหมดสำหรับผู้ใช้
+const API_URL = "http://localhost:8080/api/home/routes";
 const ITEMS_PER_PAGE = 9;
 
 const CATEGORY_OPTIONS = [
@@ -357,10 +357,15 @@ export default function RouteList() {
               </div>
             </section>
 
-            {filteredRoutes.length === 0 ? (
+            {routes.length === 0 ? (
               <section className="route-list-state">
                 <Search />
-                <h2>ไม่พบเส้นทาง</h2>
+                <h2>ไม่พบข้อมูลเส้นทางท่องเที่ยวเชิงสุขภาพหลัก</h2>
+              </section>
+            ) : filteredRoutes.length === 0 ? (
+              <section className="route-list-state">
+                <Search />
+                <h2>ไม่พบข้อมูลเส้นทางท่องเที่ยวเชิงสุขภาพหลัก</h2>
                 <p>ไม่พบข้อมูลที่ตรงกับคำค้นหาหรือตัวกรองที่เลือก</p>
                 {hasActiveFilters && (
                   <button type="button" onClick={clearFilters}>

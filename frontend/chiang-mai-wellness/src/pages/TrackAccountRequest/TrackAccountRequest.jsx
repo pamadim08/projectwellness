@@ -92,9 +92,10 @@ export default function TrackAccountRequest() {
   const [error, setError] = useState("");
 
   const searchRequests = useCallback(async (searchUsername) => {
-    const normalizedUsername = searchUsername.trim();
+    const rawUsername = searchUsername || "";
+    const normalizedUsername = rawUsername.trim();
 
-    if (!normalizedUsername) {
+    if (!normalizedUsername || /\s/.test(rawUsername) || normalizedUsername.length < 4 || normalizedUsername.length > 10) {
       setError("กรุณากรอกชื่อผู้ใช้งาน (Username)");
       setResults([]);
       setSearched(false);
@@ -164,7 +165,7 @@ export default function TrackAccountRequest() {
             <div>
               <h2>ค้นหาคำขอด้วย Username</h2>
 
-              <p>ระบุชื่อผู้ใช้งาน (Username) ที่ใช้ในการยื่นคำขอเพื่อตรวจสอบสถานะ</p>
+              <p>ระบุชื่อผู้ใช้งาน (Username) ความยาว 4–10 ตัวอักษร ไม่มีช่องว่าง</p>
             </div>
           </div>
 
@@ -180,9 +181,10 @@ export default function TrackAccountRequest() {
                 type="text"
                 value={username}
                 onChange={handleUsernameChange}
-                placeholder="ระบุชื่อผู้ใช้งาน (Username) เช่น wellness_hub01"
+                placeholder="ระบุชื่อผู้ใช้งาน (Username) 4–10 ตัวอักษร"
                 aria-label="ระบุชื่อผู้ใช้งาน (Username)"
                 autoComplete="off"
+                maxLength={10}
               />
             </div>
 
@@ -223,12 +225,12 @@ export default function TrackAccountRequest() {
               <FileSearch2 />
             </div>
 
-            <h2>ไม่พบคำขอสำหรับ Username นี้</h2>
+            <h2>ไม่พบข้อมูลคำขอของท่านในระบบ</h2>
 
             <p>
-              ไม่พบข้อมูลคำขอที่ตรงกับชื่อผู้ใช้ <strong>“{username.trim()}”</strong>
+              ไม่พบข้อมูลคำขอของท่านในระบบสำหรับชื่อผู้ใช้ <strong>“{username.trim()}”</strong>
               <br />
-              กรุณาตรวจสอบความถูกต้องของ Username อีกครั้ง
+              กรุณาตรวจสอบความถูกต้องของชื่อผู้ใช้งาน (Username) อีกครั้ง
             </p>
           </section>
         )}

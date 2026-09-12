@@ -203,6 +203,33 @@ function ApproveAccountRequest() {
         `http://localhost:8080/api/account-requests/${id}/approve`,
       );
 
+      // Trigger Notify Request Result
+      try {
+        await axios.post(
+          `http://localhost:8080/api/account-requests/${id}/notify`,
+        );
+      } catch (notifyErr) {
+        console.error("Notify failed:", notifyErr);
+        const notifyErrMsg = notifyErr?.response?.data?.message || notifyErr?.message || "";
+        setShowApprove(false);
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: notifyErrMsg.includes("บันทึก") ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล" : "การส่งล้มเหลว",
+          message: notifyErrMsg || "การส่งล้มเหลว",
+          onConfirm: () => {
+            navigate("/listAccountRequest", {
+              state: {
+                updatedRequestId: Number(id),
+                requestStatus: "APPROVED",
+              },
+            });
+          },
+          children: null,
+        });
+        return;
+      }
+
       setShowApprove(false);
       setStatusModal({
         isOpen: true,
@@ -274,16 +301,32 @@ function ApproveAccountRequest() {
       console.error(err);
       setShowApprove(false);
       const errMsg = err?.response?.data?.message || err?.message || "";
-      if (
-        errMsg.toLowerCase().includes("mail") ||
-        errMsg.includes("อีเมล") ||
-        errMsg.toLowerCase().includes("email")
-      ) {
+      const status = err?.response?.status;
+
+      if (status === 404) {
         setStatusModal({
           isOpen: true,
           type: "error",
-          title: "การส่งล้มเหลว",
-          message: "การส่งล้มเหลว",
+          title: "ไม่พบข้อมูลคำขออนุมัติ",
+          message: errMsg || "ไม่พบข้อมูลคำขออนุมัติ",
+          onConfirm: null,
+          children: null,
+        });
+      } else if (status === 409) {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "คำขอถูกประมวลผลแล้ว",
+          message: errMsg || "คำขอนี้ได้รับการประมวลผลไปแล้ว",
+          onConfirm: null,
+          children: null,
+        });
+      } else if (status === 400) {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "ข้อมูลไม่ถูกต้อง",
+          message: errMsg || "ข้อมูลไม่ถูกต้อง",
           onConfirm: null,
           children: null,
         });
@@ -292,7 +335,7 @@ function ApproveAccountRequest() {
           isOpen: true,
           type: "error",
           title: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
-          message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง",
+          message: errMsg || "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง",
           onConfirm: null,
           children: null,
         });
@@ -340,6 +383,34 @@ function ApproveAccountRequest() {
           params: { reason: finalReason },
         },
       );
+
+      // Trigger Notify Request Result
+      try {
+        await axios.post(
+          `http://localhost:8080/api/account-requests/${id}/notify`,
+        );
+      } catch (notifyErr) {
+        console.error("Notify failed:", notifyErr);
+        const notifyErrMsg = notifyErr?.response?.data?.message || notifyErr?.message || "";
+        setShowReject(false);
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: notifyErrMsg.includes("บันทึก") ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล" : "การส่งล้มเหลว",
+          message: notifyErrMsg || "การส่งล้มเหลว",
+          onConfirm: () => {
+            navigate("/listAccountRequest", {
+              state: {
+                updatedRequestId: Number(id),
+                requestStatus: "REJECTED",
+                rejectionReason: finalReason,
+              },
+            });
+          },
+          children: null,
+        });
+        return;
+      }
 
       setShowReject(false);
       setStatusModal({
@@ -407,16 +478,32 @@ function ApproveAccountRequest() {
       console.error(err);
       setShowReject(false);
       const errMsg = err?.response?.data?.message || err?.message || "";
-      if (
-        errMsg.toLowerCase().includes("mail") ||
-        errMsg.includes("อีเมล") ||
-        errMsg.toLowerCase().includes("email")
-      ) {
+      const status = err?.response?.status;
+
+      if (status === 404) {
         setStatusModal({
           isOpen: true,
           type: "error",
-          title: "การส่งล้มเหลว",
-          message: "การส่งล้มเหลว",
+          title: "ไม่พบข้อมูลคำขออนุมัติ",
+          message: errMsg || "ไม่พบข้อมูลคำขออนุมัติ",
+          onConfirm: null,
+          children: null,
+        });
+      } else if (status === 409) {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "คำขอถูกประมวลผลแล้ว",
+          message: errMsg || "คำขอนี้ได้รับการประมวลผลไปแล้ว",
+          onConfirm: null,
+          children: null,
+        });
+      } else if (status === 400) {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "ข้อมูลไม่ถูกต้อง",
+          message: errMsg || "ข้อมูลไม่ถูกต้อง",
           onConfirm: null,
           children: null,
         });
@@ -425,7 +512,7 @@ function ApproveAccountRequest() {
           isOpen: true,
           type: "error",
           title: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
-          message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง",
+          message: errMsg || "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง",
           onConfirm: null,
           children: null,
         });

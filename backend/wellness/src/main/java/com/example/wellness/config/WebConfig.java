@@ -13,6 +13,18 @@ import java.util.List;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    private final AdminAuthInterceptor adminAuthInterceptor;
+
+    public WebConfig(AdminAuthInterceptor adminAuthInterceptor) {
+        this.adminAuthInterceptor = adminAuthInterceptor;
+    }
+
+    @Override
+    public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
+        registry.addInterceptor(adminAuthInterceptor)
+                .addPathPatterns("/**");
+    }
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // ไฟล์ที่อัปโหลดจากระบบ

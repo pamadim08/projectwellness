@@ -24,6 +24,13 @@ import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal
 const API_URL = "http://localhost:8080/api/articles";
 const ROWS_PER_PAGE = 10;
 
+const SYSTEM_CATEGORIES = [
+  "ข่าวประชาสัมพันธ์",
+  "กิจกรรมสุขภาพ",
+  "โปรโมชั่น",
+  "บทความสุขภาพ",
+];
+
 function ListOfficialArticle() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,14 +63,22 @@ function ListOfficialArticle() {
       setAdminName(storedAdminName);
     }
 
-    loadArticles();
+    loadArticles("", "");
   }, []);
 
-  const loadArticles = async () => {
+  const loadArticles = async (keyword = searchQuery, category = selectedCategory) => {
     setIsLoading(true);
 
     try {
-      const response = await axios.get(API_URL);
+      const params = {};
+      if (keyword && keyword.trim()) {
+        params.keyword = keyword.trim();
+      }
+      if (category && category.trim()) {
+        params.category = category.trim();
+      }
+
+      const response = await axios.get(API_URL, { params });
 
       setArticles(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
@@ -82,12 +97,20 @@ function ListOfficialArticle() {
 
   const handleSearch = () => {
     setCurrentPage(1);
+    loadArticles(searchQuery, selectedCategory);
+  };
+
+  const handleCategoryChange = (newCategory) => {
+    setSelectedCategory(newCategory);
+    setCurrentPage(1);
+    loadArticles(searchQuery, newCategory);
   };
 
   const handleResetFilter = () => {
     setSearchQuery("");
     setSelectedCategory("");
     setCurrentPage(1);
+    loadArticles("", "");
   };
 
   const handleLogout = () => {
@@ -143,49 +166,14 @@ function ListOfficialArticle() {
     }
   };
 
-  const categories = useMemo(() => {
-    return [
-      ...new Set(
-        articles.map((article) => article.articleCategory).filter(Boolean),
-      ),
-    ];
-  }, [articles]);
-
-  const filteredArticles = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
-
-    return articles
-      .filter((article) => {
-        const title = article.articleTitle?.toLowerCase() || "";
-
-        const author = article.author?.toLowerCase() || "";
-
-        const matchesSearch =
-          !normalizedSearch ||
-          title.includes(normalizedSearch) ||
-          author.includes(normalizedSearch);
-
-        const matchesCategory =
-          !selectedCategory || article.articleCategory === selectedCategory;
-
-        return matchesSearch && matchesCategory;
-      })
-      .sort((first, second) => {
-        const firstId = first.articleId || 0;
-        const secondId = second.articleId || 0;
-
-        return secondId - firstId;
-      });
-  }, [articles, searchQuery, selectedCategory]);
-
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredArticles.length / ROWS_PER_PAGE),
+    Math.ceil(articles.length / ROWS_PER_PAGE),
   );
 
   const firstRowIndex = (currentPage - 1) * ROWS_PER_PAGE;
 
-  const currentRows = filteredArticles.slice(
+  const currentRows = articles.slice(
     firstRowIndex,
     firstRowIndex + ROWS_PER_PAGE,
   );
@@ -350,14 +338,11 @@ function ListOfficialArticle() {
             <select
               className="article-filter-select"
               value={selectedCategory}
-              onChange={(event) => {
-                setSelectedCategory(event.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(event) => handleCategoryChange(event.target.value)}
             >
               <option value="">-- หมวดหมู่ทั้งหมด --</option>
 
-              {categories.map((category) => (
+              {SYSTEM_CATEGORIES.map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>
@@ -487,7 +472,7 @@ function ListOfficialArticle() {
                   <tr>
                     <td colSpan="8" className="official-article-empty">
                       <FontAwesomeIcon icon={faCircleExclamation} />
-                      ไม่พบข้อมูลบทความประชาสัมพันธ์
+                      ไม่พบบทความ
                     </td>
                   </tr>
                 )}

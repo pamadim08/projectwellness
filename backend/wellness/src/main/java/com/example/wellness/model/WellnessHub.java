@@ -1,5 +1,6 @@
 package com.example.wellness.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -18,8 +19,8 @@ import java.time.LocalDateTime;
 public class WellnessHub {
 
     @Id
-    @Column(name = "license_id")
-    private Integer licenseId; // ตรงกับ "เลขใบอนุญาตประกอบกิจการ" ในฟอร์ม
+    @Column(name = "license_id", length = 100)
+    private String licenseId; // ตรงกับ "เลขใบอนุญาตประกอบกิจการ" ในฟอร์ม
 
     @Column(name = "wellness_hub_name", nullable = false, length = 255)
     private String wellnessHubName;
@@ -33,6 +34,7 @@ public class WellnessHub {
     @Column(name = "google_maps_link", columnDefinition = "TEXT", nullable = false)
     private String googleMapsLink;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "password", length = 100)
     private String password;
 

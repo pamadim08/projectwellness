@@ -54,7 +54,7 @@ public class MyTravelTripService {
         MyTravelTrip savedTrip = tripRepository.save(trip);
 
         for (int i = 0; i < request.getLicenseIds().size(); i++) {
-            Integer licenseId = request.getLicenseIds().get(i);
+            String licenseId = request.getLicenseIds().get(i);
 
             WellnessHub hub = wellnessHubRepository.findById(licenseId)
                     .orElseThrow(() -> new NoSuchElementException(
@@ -142,12 +142,12 @@ public class MyTravelTripService {
         // (originName/destinationName คำนวณสดจาก relation นี้อยู่แล้ว ไม่ต้องแตะเช่นกัน)
 
         if (trip.getDuplicatedFromTripId() != null) {
-            List<Integer> existingLicenseIds = trip.getTripDetails().stream()
+            List<String> existingLicenseIds = trip.getTripDetails().stream()
                     .map(d -> d.getWellnessHub().getLicenseId())
                     .collect(Collectors.toList());
 
-            List<Integer> newLicenseIds = request.getLicenseIds();
-            for (Integer newId : newLicenseIds) {
+            List<String> newLicenseIds = request.getLicenseIds();
+            for (String newId : newLicenseIds) {
                 if (!existingLicenseIds.contains(newId)) {
                     throw new IllegalArgumentException(
                             "เส้นทางนี้คัดลอกมาจากผู้อื่น สามารถลบสถานที่ได้เท่านั้น ไม่สามารถเพิ่มสถานที่ใหม่ได้");
@@ -159,7 +159,7 @@ public class MyTravelTripService {
         trip.getTripDetails().clear();
 
         for (int i = 0; i < request.getLicenseIds().size(); i++) {
-            Integer licenseId = request.getLicenseIds().get(i);
+            String licenseId = request.getLicenseIds().get(i);
 
             WellnessHub hub = wellnessHubRepository.findById(licenseId)
                     .orElseThrow(() -> new NoSuchElementException(

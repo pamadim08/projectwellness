@@ -16,7 +16,7 @@ public class EmailService {
     public void sendApproveEmail(
             String email,
             String wellnessHubName,
-            Integer licenseId,
+            String licenseId,
             String username,
             String password) {
 
@@ -45,7 +45,7 @@ public class EmailService {
     public void sendRejectEmail(
             String email,
             String wellnessHubName,
-            Integer licenseId,
+            String licenseId,
             String reason) {
 
         SimpleMailMessage message = new SimpleMailMessage();
@@ -76,7 +76,7 @@ public class EmailService {
     public void notifyRequestResult(
             String email,
             String wellnessHubName,
-            Integer licenseId,
+            String licenseId,
             boolean isApproved,
             String username,
             String password,

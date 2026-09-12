@@ -47,6 +47,10 @@ const ListWellnessHub = () => {
     message: "",
   });
 
+  // State สำหรับจัดการ Error เมื่อโหลดข้อมูลไม่สำเร็จ
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
   // 2. ฟังก์ชันโหลดข้อมูลพร้อมระบบตรวจสอบ Cache
   const loadData = async (
     search = searchQuery,
@@ -59,10 +63,14 @@ const ListWellnessHub = () => {
     if (wellnessHubCache && isDefaultFilter && !forceRefresh) {
       setListWellnessHub(wellnessHubCache);
       setIsLoading(false);
+      setHasError(false);
+      setErrorMessage("");
       return;
     }
 
     setIsLoading(true);
+    setHasError(false);
+    setErrorMessage("");
 
     try {
       const response = await axios.post(
@@ -81,8 +89,12 @@ const ListWellnessHub = () => {
       }
 
       setListWellnessHub(data);
+      setHasError(false);
+      setErrorMessage("");
     } catch (error) {
       console.error("Error fetching data:", error);
+      setHasError(true);
+      setErrorMessage("เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง");
       setListWellnessHub([]);
     } finally {
       setIsLoading(false);
@@ -395,6 +407,24 @@ const ListWellnessHub = () => {
                       </td>
                     </tr>
                   ))
+                ) : hasError ? (
+                  <tr>
+                    <td
+                      colSpan="6"
+                      className="text-center"
+                      style={{
+                        padding: "30px",
+                        color: "#dc3545",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      <FontAwesomeIcon
+                        icon={faCircleExclamation}
+                        style={{ marginRight: "8px" }}
+                      />{" "}
+                      {errorMessage || "เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง"}
+                    </td>
+                  </tr>
                 ) : (
                   <tr>
                     <td

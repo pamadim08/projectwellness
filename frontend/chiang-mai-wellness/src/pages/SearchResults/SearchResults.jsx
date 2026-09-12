@@ -223,7 +223,7 @@ export default function SearchResults() {
     const normalizedKeyword = keyword.trim();
 
     if (!normalizedKeyword) {
-      setValidationError("กรุณากรอกคำค้นหาก่อนกดค้นหา");
+      setValidationError("กรุณากรอกคำค้นหา");
       return;
     }
 
@@ -397,8 +397,16 @@ export default function SearchResults() {
                 <div className="empty-icon-box">
                   <Search />
                 </div>
-                <h2>ไม่พบข้อมูลที่ค้นหา</h2>
-                <p>ลองใช้คำค้นหาที่สั้นลง หรือเลือกประเภทหมวดหมู่เพื่อค้นหาใหม่อีกครั้ง</p>
+                <h2>
+                  {searchType === "WELLNESS_HUB"
+                    ? "ไม่พบข้อมูลสถานประกอบการ"
+                    : "ไม่พบข้อมูลที่ค้นหา"}
+                </h2>
+                <p>
+                  {searchType === "WELLNESS_HUB"
+                    ? "ไม่พบสถานประกอบการที่ตรงกับคำค้นหาที่คุณระบุ"
+                    : "ลองใช้คำค้นหาที่สั้นลง หรือเลือกประเภทหมวดหมู่เพื่อค้นหาใหม่อีกครั้ง"}
+                </p>
               </section>
             ) : (
               <>

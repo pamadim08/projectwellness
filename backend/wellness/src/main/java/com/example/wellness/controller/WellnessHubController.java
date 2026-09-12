@@ -6,6 +6,8 @@ import com.example.wellness.dto.WellnessHubDTO;
 import com.example.wellness.model.WellnessHub;
 import com.example.wellness.service.WellnessHubService;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -19,7 +21,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/wellness-hubs")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class WellnessHubController {
 
     private final WellnessHubService wellnessHubService;
@@ -69,8 +71,8 @@ public class WellnessHubController {
      * Service จะตรวจทั้งสองตาราง
      */
     @GetMapping("/{id}")
-    public ResponseEntity<WellnessHub> viewWellnessHubDetail(
-            @PathVariable Integer id) {
+    public ResponseEntity<?> viewWellnessHubDetail(
+            @PathVariable String id) {
         WellnessHub result = wellnessHubService.viewWellnessHubDetail(id);
 
         if (result == null) {
@@ -79,7 +81,7 @@ public class WellnessHubController {
                     .build();
         }
 
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(toResponseMap(result));
     }
 
     /*
@@ -89,7 +91,7 @@ public class WellnessHubController {
      */
     @GetMapping("/next-license-id")
     public ResponseEntity<?> getNextLicenseId() {
-        Integer nextId = wellnessHubService.generateNextLicenseId();
+        String nextId = wellnessHubService.generateNextLicenseId();
         String username = "WH_" + nextId;
         return ResponseEntity.ok(Map.of(
                 "licenseId", nextId,
@@ -117,15 +119,22 @@ public class WellnessHubController {
 
             return ResponseEntity
                     .status(HttpStatus.CREATED)
-                    .body(createdHub);
+                    .body(toResponseMap(createdHub));
 
-        } catch (RuntimeException exception) {
+        } catch (IllegalArgumentException exception) {
             return ResponseEntity
                     .badRequest()
                     .body(
                             Map.of(
                                     "message",
                                     exception.getMessage()));
+        } catch (Exception exception) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                            Map.of(
+                                    "message",
+                                    "ไม่สามารถบันทึกข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง"));
         }
     }
 
@@ -142,30 +151,81 @@ public class WellnessHubController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<?> editWellnessHub(
-            @PathVariable Integer id,
-            @RequestBody WellnessHub hub) {
+            @PathVariable String id,
+            @RequestBody WellnessHub hub,
+            HttpServletRequest httpRequest) {
         try {
+            HttpSession session = httpRequest.getSession(false);
+            String adminUsername = session != null ? (String) session.getAttribute("adminUsername") : null;
+            String providerLicenseId = session != null ? (String) session.getAttribute("providerLicenseId") : null;
+
+            if (adminUsername == null && providerLicenseId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "กรุณาเข้าสู่ระบบ"));
+            }
+
+            boolean isProvider = (adminUsername == null && providerLicenseId != null);
+            if (isProvider && !providerLicenseId.equals(id)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "ท่านไม่มีสิทธิ์จัดการข้อมูลสถานประกอบการนี้"));
+            }
+
             WellnessHub updatedHub = wellnessHubService
                     .editWellnessHub(
                             id,
-                            hub);
+                            hub,
+                            isProvider);
 
             if (updatedHub == null) {
                 return ResponseEntity
-                        .notFound()
-                        .build();
+                        .status(HttpStatus.NOT_FOUND)
+                        .body(
+                                Map.of(
+                                        "message",
+                                        "ไม่พบข้อมูลสถานประกอบการ"));
             }
 
-            return ResponseEntity.ok(updatedHub);
+            return ResponseEntity.ok(toResponseMap(updatedHub));
 
-        } catch (RuntimeException exception) {
+        } catch (IllegalArgumentException exception) {
             return ResponseEntity
                     .badRequest()
                     .body(
                             Map.of(
                                     "message",
-                                    exception.getMessage()));
+                                    "กรุณากรอกข้อมูลให้ถูกต้อง"));
+        } catch (Exception exception) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(
+                            Map.of(
+                                    "message",
+                                    "ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง"));
         }
+    }
+
+    private Map<String, Object> toResponseMap(WellnessHub hub) {
+        if (hub == null) return null;
+        Map<String, Object> map = new java.util.LinkedHashMap<>();
+        map.put("licenseId", hub.getLicenseId());
+        map.put("wellnessHubName", hub.getWellnessHubName());
+        map.put("address", hub.getAddress());
+        map.put("contactInformation", hub.getContactInformation());
+        map.put("googleMapsLink", hub.getGoogleMapsLink());
+        map.put("telInformation", hub.getTelInformation());
+        map.put("wellnessHubDescription", hub.getWellnessHubDescription());
+        map.put("wellnessHubImg", hub.getWellnessHubImg());
+        map.put("wellnessHubGallery", hub.getWellnessHubGallery());
+        map.put("wellnessHubLatitude", hub.getWellnessHubLatitude());
+        map.put("wellnessHubLongitude", hub.getWellnessHubLongitude());
+        map.put("status", hub.getStatus());
+        map.put("certificateType", hub.getCertificateType());
+        map.put("category", hub.getCategory());
+        map.put("district", hub.getDistrict());
+        map.put("operatingHours", hub.getOperatingHours());
+        map.put("createdAt", hub.getCreatedAt());
+        map.put("updatedAt", hub.getUpdatedAt());
+        return map;
     }
 
     /*
@@ -177,7 +237,7 @@ public class WellnessHubController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(
-            @PathVariable Integer id) {
+            @PathVariable String id) {
         try {
             boolean deleted = wellnessHubService
                     .deleteWellnessHub(id);
@@ -243,7 +303,7 @@ public class WellnessHubController {
 
     // 2. ดึงข้อมูลรายร้านตาม ID
     @GetMapping("/user/{id}")
-    public ResponseEntity<ResponseObject> getWellnessHubDetail(@PathVariable Integer id) {
+    public ResponseEntity<ResponseObject> getWellnessHubDetail(@PathVariable String id) {
         try {
             WellnessHubDTO dto = wellnessHubService.getWellnessHubDetail(id);
             return new ResponseEntity<>(new ResponseObject(true, "ดึงข้อมูลสถานประกอบการรหัส " + id + " สำเร็จ", dto), HttpStatus.OK);
@@ -284,7 +344,7 @@ public class WellnessHubController {
     @PostMapping("/favorite")
     public ResponseEntity<?> addToFavorite(
             @RequestParam Integer memberId,
-            @RequestParam Integer licenseId) {
+            @RequestParam String licenseId) {
         try {
             wellnessHubService.addToFavorite(memberId, licenseId);
             return ResponseEntity.ok("เพิ่มรายการโปรดสำเร็จ");
@@ -296,7 +356,7 @@ public class WellnessHubController {
     @DeleteMapping("/favorite")
     public ResponseEntity<?> removeFromFavorite(
             @RequestParam Integer memberId,
-            @RequestParam Integer licenseId) {
+            @RequestParam String licenseId) {
         wellnessHubService.removeFromFavorite(memberId, licenseId);
         return ResponseEntity.ok("ลบรายการโปรดสำเร็จ");
     }
@@ -309,7 +369,7 @@ public class WellnessHubController {
     @GetMapping("/favorite/check")
     public ResponseEntity<?> checkFavorite(
             @RequestParam Integer memberId,
-            @RequestParam Integer licenseId) {
+            @RequestParam String licenseId) {
         return ResponseEntity.ok(wellnessHubService.isFavorite(memberId, licenseId));
     }
 

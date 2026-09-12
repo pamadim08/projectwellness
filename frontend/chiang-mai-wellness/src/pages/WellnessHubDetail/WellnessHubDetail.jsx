@@ -455,9 +455,9 @@ export default function WellnessHubDetail() {
       behavior: "auto",
     });
 
-    const normalizedLicenseId = Number(licenseId);
+    const normalizedLicenseId = String(licenseId ?? "").trim();
 
-    if (!Number.isInteger(normalizedLicenseId) || normalizedLicenseId <= 0) {
+    if (!normalizedLicenseId) {
       setHub(null);
       setError("รหัสสถานประกอบการไม่ถูกต้อง");
       setLoading(false);
@@ -470,7 +470,7 @@ export default function WellnessHubDetail() {
 
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/home/wellness-hubs/${normalizedLicenseId}`,
+        `${API_BASE_URL}/home/wellness-hubs/${encodeURIComponent(normalizedLicenseId)}`,
         {
           timeout: 30000,
         },

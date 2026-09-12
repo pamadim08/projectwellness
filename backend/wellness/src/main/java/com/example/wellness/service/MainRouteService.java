@@ -80,7 +80,7 @@ public class MainRouteService {
     // 🏛️ เมธอดสำหรับดึงข้อมูลสรุปไปแสดงที่หน้าตาราง ListMainRoute
     public List<Map<String, Object>> listMainRoute() {
 
-        List<MainRoute> routes = mainRouteRepository.findAll();
+        List<MainRoute> routes = mainRouteRepository.findAllWithDetailsAndDistricts();
         List<Map<String, Object>> resultList = new ArrayList<>();
         List<Category> allCategories = categoryRepository.findAll();
 
@@ -93,25 +93,15 @@ public class MainRouteService {
             map.put("routeDescription", route.getRouteDescription());
             map.put("routeImage", route.getRouteImage());
 
-            String districtsPassed = route.getDetails().stream()
-                    .sorted(Comparator.comparing(MainRouteDetail::getOrderNumber))
-                    .map(d -> "อ." + d.getDistrict().getDistrictName())
-                    .collect(Collectors.joining(" -> "));
+            String districtsPassed = route.getDetails() != null
+                    ? route.getDetails().stream()
+                            .filter(d -> d.getDistrict() != null)
+                            .sorted(Comparator.comparing(MainRouteDetail::getOrderNumber))
+                            .map(d -> "อ." + d.getDistrict().getDistrictName())
+                            .collect(Collectors.joining(" -> "))
+                    : "";
 
             map.put("districtsPassed", districtsPassed.isEmpty() ? "ยังไม่ได้กำหนดอำเภอ" : districtsPassed);
-
-            // ==========================================
-            // 🌟 เพิ่มส่วนนี้เข้าไป เพื่อส่ง routePoints ไปให้ DTO เพื่อน
-            // ==========================================
-            map.put("routePoints", route.getDetails().stream()
-                    .filter(d -> d.getDistrict() != null) // กัน null ปลอดภัยไว้ก่อน
-                    .sorted(Comparator.comparing(MainRouteDetail::getOrderNumber))
-                    .map(d -> Map.of(
-                            "districtName", d.getDistrict().getDistrictName(),
-                            "latitude", d.getDistrict().getLatitude(),
-                            "longitude", d.getDistrict().getLongitude()))
-                    .collect(Collectors.toList()));
-            // ==========================================
 
             List<String> catIds = new ArrayList<>();
             if (route.getCategoryId() != null && !route.getCategoryId().isEmpty()) {
@@ -185,29 +175,22 @@ public class MainRouteService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        long wellnessHubCount = wellnessHubRepository.findAll()
+        if (districtIds.isEmpty() || distinctCategoryIds.isEmpty()) {
+            route.setPinCount(0);
+            return;
+        }
+
+        long wellnessHubCount = wellnessHubRepository.findByDistrict_DistrictIdInAndCategory_CategoryIdIn(
+                        districtIds, distinctCategoryIds)
                 .stream()
-                .filter(h -> h.getDistrict() != null
-                        && districtIds.contains(
-                                h.getDistrict().getDistrictId()))
-                .filter(h -> h.getCategory() != null
-                        && distinctCategoryIds.contains(
-                                String.valueOf(
-                                        h.getCategory().getCategoryId())))
                 .filter(h -> isValidCoordinate(
                         h.getWellnessHubLatitude(),
                         h.getWellnessHubLongitude()))
                 .count();
 
-        long emergencyServiceCount = emergencyServiceRepository.findAll()
+        long emergencyServiceCount = emergencyServiceRepository.findByDistrict_DistrictIdInAndCategory_CategoryIdIn(
+                        districtIds, distinctCategoryIds)
                 .stream()
-                .filter(e -> e.getDistrict() != null
-                        && districtIds.contains(
-                                e.getDistrict().getDistrictId()))
-                .filter(e -> e.getCategory() != null
-                        && distinctCategoryIds.contains(
-                                String.valueOf(
-                                        e.getCategory().getCategoryId())))
                 .filter(e -> isValidCoordinate(
                         e.getWellnessHubLatitude(),
                         e.getWellnessHubLongitude()))
@@ -231,17 +214,50 @@ public class MainRouteService {
     // 🟢 เมธอดสร้างเส้นทางท่องเที่ยวใหม่
     @Transactional
     public MainRoute createMainRoute(Map<String, Object> payload) {
-        // ป้องกันการกดซ้ำหรือสร้างเส้นทางชื่อซ้ำ
-        String routeName = payload.get("routeName") != null ? payload.get("routeName").toString().trim() : "";
-        if (!routeName.isEmpty()) {
-            boolean isDuplicate = mainRouteRepository.findAll().stream()
-                    .anyMatch(r -> r.getRouteName() != null && r.getRouteName().trim().equalsIgnoreCase(routeName));
-            if (isDuplicate) {
-                throw new IllegalArgumentException("เส้นทางชื่อนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น");
+        if (payload == null) {
+            throw new IllegalArgumentException("กรุณาระบุข้อมูลเส้นทาง");
+        }
+
+        // 1. routeName: required, ไทย/อังกฤษ/ตัวเลขเท่านั้น, 5–50 ตัว
+        Object nameObj = payload.get("routeName");
+        if (nameObj == null || nameObj.toString().trim().isEmpty()) {
+            throw new IllegalArgumentException("กรุณาระบุชื่อเส้นทาง");
+        }
+        String routeName = nameObj.toString().trim();
+        if (routeName.length() < 5 || routeName.length() > 50) {
+            throw new IllegalArgumentException("ชื่อเส้นทางต้องมีความยาว 5-50 ตัวอักษร");
+        }
+        if (!routeName.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
+            throw new IllegalArgumentException("ชื่อเส้นทางต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
+        }
+
+        // 2. routeDescription: optional, แต่ถ้ามีต้อง 10–255 ตัว
+        Object descObj = payload.get("routeDescription");
+        String routeDescription = "";
+        if (descObj != null && !descObj.toString().trim().isEmpty()) {
+            routeDescription = descObj.toString().trim();
+            if (routeDescription.length() < 10 || routeDescription.length() > 255) {
+                throw new IllegalArgumentException("รายละเอียดเส้นทางต้องมีความยาว 10-255 ตัวอักษร");
+            }
+        }
+
+        // 3. District: ต้องมีอย่างน้อย 2 อำเภอ
+        List<Map<String, Object>> detailsRaw = (List<Map<String, Object>>) payload.get("details");
+        if (detailsRaw == null || detailsRaw.size() < 2) {
+            throw new IllegalArgumentException("กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ");
+        }
+
+        // 4. Category validation
+        List<String> categoryIds = normalizeCategoryIds(payload.get("categoryIds"));
+        for (String catId : categoryIds) {
+            if (!categoryRepository.existsById(catId.trim().toUpperCase())) {
+                throw new IllegalArgumentException("ไม่พบหมวดหมู่รหัส " + catId);
             }
         }
 
         MainRoute route = convertPayloadToEntity(payload);
+        route.setRouteName(routeName);
+        route.setRouteDescription(routeDescription);
 
         route.setCreatedAt(LocalDateTime.now());
         route.setUpdatedAt(LocalDateTime.now());
@@ -262,54 +278,103 @@ public class MainRouteService {
     // 🟡 เมธอดแก้ไขอัปเดตทับข้อมูลเดิม
     @Transactional
     public MainRoute editMainRoute(Integer id, Map<String, Object> payload) {
-        MainRoute oldRoute = mainRouteRepository.findById(id).orElse(null);
-
-        if (oldRoute != null) {
-            MainRoute incomingRoute = convertPayloadToEntity(payload);
-
-            oldRoute.setRouteName(incomingRoute.getRouteName());
-            oldRoute.setRouteDescription(incomingRoute.getRouteDescription());
-            oldRoute.setCategoryId(incomingRoute.getCategoryId());
-            oldRoute.setRouteImage(incomingRoute.getRouteImage());
-
-            oldRoute.getDetails().clear();
-
-            if (incomingRoute.getDetails() != null) {
-                for (MainRouteDetail detail : incomingRoute.getDetails()) {
-                    detail.setMainRoute(oldRoute);
-                    oldRoute.getDetails().add(detail);
-                }
-            }
-
-            oldRoute.setUpdatedAt(LocalDateTime.now());
-
-            calculatePinCount(oldRoute);
-
-            return mainRouteRepository.save(oldRoute);
+        if (payload == null) {
+            throw new IllegalArgumentException("กรุณาระบุข้อมูลเส้นทาง");
         }
 
-        return null;
+        MainRoute oldRoute = mainRouteRepository.findById(id).orElse(null);
+        if (oldRoute == null) {
+            return null;
+        }
+
+        // 1. routeName: required, ไทย/อังกฤษ/ตัวเลข/ช่องว่าง, 5–50 ตัว
+        Object nameObj = payload.get("routeName");
+        if (nameObj == null || nameObj.toString().trim().isEmpty()) {
+            throw new IllegalArgumentException("กรุณาระบุชื่อเส้นทาง");
+        }
+        String routeName = nameObj.toString().trim();
+        if (routeName.length() < 5 || routeName.length() > 50) {
+            throw new IllegalArgumentException("ชื่อเส้นทางต้องมีความยาว 5-50 ตัวอักษร");
+        }
+        if (!routeName.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
+            throw new IllegalArgumentException("ชื่อเส้นทางต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
+        }
+
+        // 2. routeDescription: optional แต่ถ้ามีต้อง 10–255 ตัว
+        Object descObj = payload.get("routeDescription");
+        String routeDescription = "";
+        if (descObj != null && !descObj.toString().trim().isEmpty()) {
+            routeDescription = descObj.toString().trim();
+            if (routeDescription.length() < 10 || routeDescription.length() > 255) {
+                throw new IllegalArgumentException("รายละเอียดเส้นทางต้องมีความยาว 10-255 ตัวอักษร");
+            }
+        }
+
+        // 3. District: ต้องมีอย่างน้อย 2 อำเภอ
+        List<Map<String, Object>> detailsRaw = (List<Map<String, Object>>) payload.get("details");
+        if (detailsRaw == null || detailsRaw.size() < 2) {
+            throw new IllegalArgumentException("กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ");
+        }
+
+        // 4. Category validation
+        List<String> categoryIds = normalizeCategoryIds(payload.get("categoryIds"));
+        for (String catId : categoryIds) {
+            if (!categoryRepository.existsById(catId.trim().toUpperCase())) {
+                throw new IllegalArgumentException("ไม่พบหมวดหมู่รหัส " + catId);
+            }
+        }
+
+        MainRoute incomingRoute = convertPayloadToEntity(payload);
+
+        oldRoute.setRouteName(routeName);
+        oldRoute.setRouteDescription(routeDescription);
+        oldRoute.setCategoryId(incomingRoute.getCategoryId());
+        if (payload.containsKey("routeImage")) {
+            oldRoute.setRouteImage(incomingRoute.getRouteImage());
+        }
+
+        oldRoute.getDetails().clear();
+
+        if (incomingRoute.getDetails() != null) {
+            for (MainRouteDetail detail : incomingRoute.getDetails()) {
+                detail.setMainRoute(oldRoute);
+                oldRoute.getDetails().add(detail);
+            }
+        }
+
+        oldRoute.setUpdatedAt(LocalDateTime.now());
+
+        calculatePinCount(oldRoute);
+
+        return mainRouteRepository.save(oldRoute);
     }
 
     // 🛠️ 6. ปรับปรุงตรรกะแปลง Payload เป็น Entity ให้บังคับเซฟ EM01, EM02 เสมอ
     private MainRoute convertPayloadToEntity(Map<String, Object> payload) {
         MainRoute route = new MainRoute();
 
-        route.setRouteName(payload.get("routeName").toString());
+        route.setRouteName(payload.get("routeName") != null ? payload.get("routeName").toString().trim() : "");
         route.setRouteDescription(
                 payload.get("routeDescription") != null
-                        ? payload.get("routeDescription").toString()
+                        ? payload.get("routeDescription").toString().trim()
                         : "");
 
         // Set route image if provided in payload
         if (payload.get("routeImage") != null) {
-            route.setRouteImage(payload.get("routeImage").toString());
+            route.setRouteImage(payload.get("routeImage").toString().trim());
         }
 
         try {
             List<String> categoryIds = normalizeCategoryIds(payload.get("categoryIds"));
+            for (String catId : categoryIds) {
+                if (!categoryRepository.existsById(catId.trim().toUpperCase())) {
+                    throw new IllegalArgumentException("ไม่พบหมวดหมู่รหัส " + catId);
+                }
+            }
             String jsonString = objectMapper.writeValueAsString(categoryIds);
             route.setCategoryId(jsonString);
+        } catch (IllegalArgumentException ex) {
+            throw ex;
         } catch (Exception exception) {
             throw new IllegalArgumentException(
                     "ไม่สามารถบันทึกหมวดหมู่ของเส้นทางได้",
@@ -320,22 +385,29 @@ public class MainRouteService {
         List<Map<String, Object>> detailsRaw = (List<Map<String, Object>>) payload.get("details");
 
         if (detailsRaw != null) {
+            Set<Integer> orderNumbers = new HashSet<>();
+            Set<Integer> districtIds = new HashSet<>();
             for (Map<String, Object> raw : detailsRaw) {
+                if (raw.get("orderNumber") == null || raw.get("districtId") == null) {
+                    throw new IllegalArgumentException("ข้อมูลลำดับอำเภอไม่ถูกต้อง");
+                }
                 MainRouteDetail detail = new MainRouteDetail();
 
-                detail.setOrderNumber(
-                        Integer.parseInt(
-                                raw.get("orderNumber").toString()));
-
-                District dist = districtRepository.findById(
-                        Integer.parseInt(
-                                raw.get("districtId").toString()))
-                        .orElse(null);
-
-                if (dist != null) {
-                    detail.setDistrict(dist);
-                    detailList.add(detail);
+                int orderNumber = Integer.parseInt(raw.get("orderNumber").toString());
+                if (!orderNumbers.add(orderNumber)) {
+                    throw new IllegalArgumentException("ลำดับอำเภอต้องไม่ซ้ำกัน");
                 }
+                detail.setOrderNumber(orderNumber);
+
+                Integer districtId = Integer.parseInt(raw.get("districtId").toString());
+                if (!districtIds.add(districtId)) {
+                    throw new IllegalArgumentException("ไม่สามารถเลือกอำเภอซ้ำกันในเส้นทางได้");
+                }
+                District dist = districtRepository.findById(districtId)
+                        .orElseThrow(() -> new IllegalArgumentException("ไม่พบอำเภอรหัส " + districtId));
+
+                detail.setDistrict(dist);
+                detailList.add(detail);
             }
         }
 

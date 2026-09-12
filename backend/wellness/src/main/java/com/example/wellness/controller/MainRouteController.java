@@ -54,8 +54,14 @@ public class MainRouteController {
     // 🏛️ [GET] /api/main-routes/{id}
     // ค้นหาเส้นทางเจาะจงรายไอดี
     @GetMapping("/{id}")
-    public MainRoute getMainRouteById(@PathVariable Integer id) {
-        return mainRouteService.getMainRouteById(id);
+    public ResponseEntity<?> getMainRouteById(@PathVariable Integer id) {
+        MainRoute route = mainRouteService.getMainRouteById(id);
+        if (route == null) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "ไม่พบข้อมูลเส้นทาง"));
+        }
+        return ResponseEntity.ok(route);
     }
 
     // 🟢 เส้นทางรับข้อมูลชุดใหม่ [POST]
@@ -64,10 +70,14 @@ public class MainRouteController {
         try {
             MainRoute saved = mainRouteService.createMainRoute(payload);
             return ResponseEntity.ok(saved);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("❌ ไม่สามารถดำเนินการสร้างบันทึกใหม่ได้: " + e.getMessage());
+                    .body(Map.of("message", "บันทึกเส้นทางไม่สำเร็จ กรุณาลองอีกครั้ง"));
         }
     }
 
@@ -83,11 +93,15 @@ public class MainRouteController {
             }
             return ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
-                    .body("❌ ไม่พบข้อมูลเส้นทางเก่าที่ระบุไอดีเข้ามาแก้ไข");
+                    .body(Map.of("message", "ไม่พบข้อมูลเส้นทาง"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("❌ ไม่สามารถบันทึกทับรายการเก่าได้: " + e.getMessage());
+                    .body(Map.of("message", "ไม่สามารถแก้ไขข้อมูลเส้นทางหลักได้ กรุณาลองใหม่อีกครั้ง"));
         }
     }
 
@@ -121,23 +135,22 @@ public class MainRouteController {
                         .body(Map.of("message", "No file provided"));
             }
 
-            long maxBytes = 5L * 1024L * 1024L;
+            long maxBytes = 20L * 1024L * 1024L;
 
             if (file.getSize() > maxBytes) {
                 return ResponseEntity
                         .status(HttpStatus.PAYLOAD_TOO_LARGE)
-                        .body(Map.of("message", "File too large"));
+                        .body(Map.of("message", "File too large (Max 20MB)"));
             }
 
             String contentType = file.getContentType();
 
             if (contentType == null ||
                     !(contentType.equals("image/jpeg") ||
-                            contentType.equals("image/png") ||
-                            contentType.equals("image/webp"))) {
+                            contentType.equals("image/png"))) {
                 return ResponseEntity
                         .badRequest()
-                        .body(Map.of("message", "Invalid file type"));
+                        .body(Map.of("message", "Invalid file type (Only JPG and PNG are supported)"));
             }
 
             String uploadsDir = "uploads/routes";

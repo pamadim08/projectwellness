@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import axios from "axios";
 
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
@@ -31,6 +32,56 @@ import ArticleList from "./pages/ArticleList/ArticleList";
 import LoginWellnessHub from "./pages/LoginWellnessHub/LoginWellnessHub";
 import ProviderDashboard from "./pages/ProviderDashboard/ProviderDashboard";
 import ArticleDetail from "./pages/ArticleDetail/ArticleDetail";
+
+// ส่ง Session Cookie อัตโนมัติไปกับทุก Request
+axios.defaults.withCredentials = true;
+
+// ป้องกันการ Register Interceptor ซ้ำ
+let isInterceptorRegistered = false;
+
+if (!isInterceptorRegistered) {
+  isInterceptorRegistered = true;
+
+  // Interceptor ดักจับกรณี API ตอบ 401 Unauthorized สำหรับฝั่ง Admin
+  axios.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response && error.response.status === 401) {
+        // ล้างข้อมูล Admin ใน localStorage
+        localStorage.removeItem("adminUser");
+        localStorage.removeItem("adminName");
+        localStorage.removeItem("username");
+        localStorage.removeItem("role");
+        localStorage.removeItem("token");
+
+        const adminPrefixes = [
+          "/dashboard",
+          "/listWellnesshub",
+          "/add-wellness",
+          "/listMainRoute",
+          "/createMainRoute",
+          "/editMainRoute",
+          "/listOfficialArticle",
+          "/createOfficialArticle",
+          "/editOfficialArticle",
+          "/listAccountRequest",
+          "/account-requests",
+        ];
+
+        const currentPath = window.location.pathname;
+        const isAdminPath = adminPrefixes.some((path) =>
+          currentPath.toLowerCase().startsWith(path.toLowerCase())
+        );
+
+        // ถ้าอยู่ในหน้าฝั่ง Admin ให้ redirect ไปที่ /login
+        if (isAdminPath && !currentPath.toLowerCase().startsWith("/login")) {
+          window.location.href = "/login";
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -79,7 +130,7 @@ function App() {
               </PublicLayout>
             }
           />
-         
+
           <Route
             path="/search"
             element={
@@ -151,7 +202,7 @@ function App() {
                 <ArticleDetail />
               </PublicLayout>
             }
-          />  
+          />
           <Route
             path="/track-status"
             element={
@@ -183,7 +234,7 @@ function App() {
             path="/listOfficialArticle"
             element={<ListOfficialArticle />}
           />
-          
+
           <Route
             path="/editOfficialArticle/:id"
             element={<CreateOfficialArticle />}

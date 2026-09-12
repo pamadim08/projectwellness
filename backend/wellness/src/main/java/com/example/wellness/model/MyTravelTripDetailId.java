@@ -9,11 +9,11 @@ import java.util.Objects;
 public class MyTravelTripDetailId implements Serializable {
 
     private int myTravelTripId;   // ถ้า MyTravelTrip ใช้ int ก็โอเค
-    private Integer wellnessHub;
+    private String wellnessHub;
 
     public MyTravelTripDetailId() {}
 
-    public MyTravelTripDetailId(int myTravelTripId, Integer wellnessHub) {
+    public MyTravelTripDetailId(int myTravelTripId, String wellnessHub) {
         this.myTravelTripId = myTravelTripId;
         this.wellnessHub = wellnessHub;
     }

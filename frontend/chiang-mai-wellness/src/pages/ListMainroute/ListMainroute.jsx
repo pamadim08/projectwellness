@@ -19,6 +19,7 @@ const ListMainRoute = () => {
   const location = useLocation();
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   // State สำหรับจัดการ Popup ยืนยันการลบ
   const [showDeletePopup, setShowDeletePopup] = useState(false);
@@ -49,10 +50,12 @@ const ListMainRoute = () => {
     if (mainRouteCache && !forceRefresh) {
       setRoutes(mainRouteCache);
       setLoading(false);
+      setHasError(false);
       return;
     }
 
     setLoading(true);
+    setHasError(false);
     try {
       const res = await axiosInstance.get(
         "http://localhost:8080/api/main-routes",
@@ -61,9 +64,16 @@ const ListMainRoute = () => {
 
       mainRouteCache = routeData; // บันทึกลง Cache
       setRoutes(routeData);
+      setHasError(false);
     } catch (err) {
       console.error("❌ ขัดข้องในการดึงข้อมูลตารางทะเบียนเส้นทางสุขภาพ", err);
-      setRoutes([]);
+      setHasError(true);
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: "เกิดข้อผิดพลาด",
+        message: "เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง",
+      });
     } finally {
       setLoading(false);
     }
@@ -211,6 +221,34 @@ const ListMainRoute = () => {
                     กำลังโหลดข้อมูลระบบ...
                   </td>
                 </tr>
+              ) : hasError ? (
+                <tr>
+                  <td
+                    colSpan="10"
+                    style={{
+                      textAlign: "center",
+                      color: "#ef4444",
+                      padding: "40px 0",
+                      fontSize: "14px",
+                    }}
+                  >
+                    ❌ เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง
+                  </td>
+                </tr>
+              ) : sortedRoutes.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="10"
+                    style={{
+                      textAlign: "center",
+                      color: "#94a3b8",
+                      padding: "40px 0",
+                      fontSize: "14px",
+                    }}
+                  >
+                    ไม่พบข้อมูลเส้นทางท่องเที่ยวหลัก
+                  </td>
+                </tr>
               ) : (
                 sortedRoutes.map((item, index) => (
                   <tr key={item.routeId || index}>
@@ -272,22 +310,6 @@ const ListMainRoute = () => {
                     </td>
                   </tr>
                 ))
-              )}
-
-              {!loading && sortedRoutes.length === 0 && (
-                <tr>
-                  <td
-                    colSpan="10"
-                    style={{
-                      textAlign: "center",
-                      color: "#94a3b8",
-                      padding: "40px 0",
-                      fontSize: "14px",
-                    }}
-                  >
-                    📂 ไม่พบข้อมูลทะเบียนเส้นทางสุขภาพในระบบฐานข้อมูลกลางขณะนี้
-                  </td>
-                </tr>
               )}
             </tbody>
           </table>

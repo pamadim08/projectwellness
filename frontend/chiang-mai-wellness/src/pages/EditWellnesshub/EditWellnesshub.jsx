@@ -101,11 +101,14 @@ const EditWellnessHub = () => {
       } catch (error) {
         console.error("Error loading data:", error);
         setIsLoading(false);
+        const isNotFound = error.response && error.response.status === 404;
         setStatusModal({
           isOpen: true,
           type: "error",
-          title: "ไม่สามารถดึงข้อมูลสถานประกอบการได้",
-          message: "ไม่สามารถดึงข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง",
+          title: isNotFound ? "ไม่พบข้อมูลสถานประกอบการ" : "เกิดข้อผิดพลาดในการโหลดข้อมูล",
+          message: isNotFound
+            ? "ไม่พบข้อมูลสถานประกอบการที่ต้องการแก้ไข กรุณาตรวจสอบรหัสอีกครั้ง"
+            : "ไม่สามารถดึงข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง",
         });
       }
     };
@@ -189,13 +192,13 @@ const EditWellnessHub = () => {
     const districtId = String(formData.districtId || "").trim();
     const googleMapsLink = String(formData.googleMapsLink || "").trim();
 
-    // 1. ชื่อสถานประกอบการ: 2-100 ตัวอักษร
-    if (!name || name.length < 2 || name.length > 100 || !/^[a-zA-Z0-9\u0E00-\u0E7F\s/.\-()&,'#+]+$/.test(name)) {
+    // 1. ชื่อสถานประกอบการ: 5-100 ตัวอักษร ไทย/อังกฤษ/ตัวเลข
+    if (!name || name.length < 5 || name.length > 100 || !/^[a-zA-Z0-9\u0E00-\u0E7F\s]+$/.test(name)) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุชื่อสถานประกอบการ 2-100 ตัวอักษร)",
+        message: "กรุณาระบุชื่อสถานประกอบการเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลข ความยาว 5-100 ตัวอักษร",
       });
       return;
     }
@@ -206,29 +209,29 @@ const EditWellnessHub = () => {
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณากรอกข้อมูลให้ถูกต้อง (เลือกหมวดหมู่ธุรกิจ)",
+        message: "กรุณาเลือกหมวดหมู่ธุรกิจ",
       });
       return;
     }
 
-    // 3. เบอร์โทรศัพท์: ตัวเลข 9-10 หลัก
-    if (tel && !/^0\d{8,9}$/.test(tel) && !/^[0-9\-+\s]{9,15}$/.test(tel)) {
+    // 3. เบอร์โทรศัพท์: ตัวเลข 9-10 หลัก ไม่มีช่องว่าง
+    if (!tel || !/^[0-9]{9,10}$/.test(tel)) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุเบอร์โทรศัพท์ติดต่อให้ถูกต้อง เช่น 0812345678)",
+        message: "กรุณาระบุเบอร์โทรศัพท์เป็นตัวเลข 9-10 หลัก โดยไม่มีช่องว่างหรืออักขระพิเศษ",
       });
       return;
     }
 
-    // 4. ที่อยู่: 5-255 ตัวอักษร
-    if (!address || address.length < 5 || address.length > 255) {
+    // 4. ที่อยู่: 10-255 ตัวอักษร
+    if (!address || address.length < 10 || address.length > 255) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุรายละเอียดที่อยู่ 5-255 ตัวอักษร)",
+        message: "กรุณาระบุรายละเอียดที่อยู่ ความยาว 10-255 ตัวอักษร",
       });
       return;
     }
@@ -239,79 +242,25 @@ const EditWellnessHub = () => {
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณากรอกข้อมูลให้ถูกต้อง (เลือกอำเภอที่ตั้ง)",
+        message: "กรุณาเลือกอำเภอที่ตั้ง",
       });
       return;
     }
 
-    // 6. Google Maps: ห้ามว่าง ต้องเป็น URL ที่ถูกต้อง
+    // 6. Google Maps: ห้ามว่าง ต้องเป็น URL ที่ถูกต้อง และไม่มีช่องว่าง
     if (!googleMapsLink || /\s/.test(googleMapsLink) || !/^https?:\/\/.+/i.test(googleMapsLink)) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุลิงก์ Google Maps ให้ถูกต้อง ขึ้นต้นด้วย http:// หรือ https://)",
+        message: "กรุณาระบุลิงก์ Google Maps ให้ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https:// และไม่มีช่องว่าง)",
       });
       return;
     }
 
-    setIsLoading(true);
-
-    // 🔍 ดึงข้อมูลสถานประกอบการทั้งหมด เพื่อเช็กการซ้ำของชื่อและพิกัดแผนที่ (ยกเว้นรายการที่กำลังแก้ไขอยู่)
     const parsedCoords = parseLatLngFromGoogleMapsLink(googleMapsLink);
-    try {
-      const existingHubsRes = await axiosInstance.get("http://localhost:8080/api/wellness-hubs");
-      const existingHubs = Array.isArray(existingHubsRes.data) ? existingHubsRes.data : [];
 
-      const otherHubs = existingHubs.filter(
-        (hub) => String(hub.licenseId) !== String(formData.licenseId) && String(hub.licenseId) !== String(id)
-      );
-
-      // 1) เช็กชื่อซ้ำ
-      const isDuplicateName = otherHubs.some(
-        (hub) => String(hub.wellnessHubName || "").trim().toLowerCase() === name.toLowerCase()
-      );
-      if (isDuplicateName) {
-        setIsLoading(false);
-        setStatusModal({
-          isOpen: true,
-          type: "warning",
-          title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-          message: "กรุณากรอกข้อมูลให้ถูกต้อง (ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว)",
-        });
-        return;
-      }
-
-      // 2) เช็กพิกัด / ลิงก์ Google Maps ซ้ำ
-      if (parsedCoords) {
-        const isDuplicateLocation = otherHubs.some((hub) => {
-          const sameLink = hub.googleMapsLink && String(hub.googleMapsLink).trim() === googleMapsLink;
-          const hLat = parseFloat(hub.wellnessHubLatitude ?? hub.latitude);
-          const hLng = parseFloat(hub.wellnessHubLongitude ?? hub.longitude);
-
-          const sameCoords =
-            !isNaN(hLat) &&
-            !isNaN(hLng) &&
-            Math.abs(hLat - parsedCoords.lat) < 0.0001 &&
-            Math.abs(hLng - parsedCoords.lng) < 0.0001;
-
-          return sameLink || sameCoords;
-        });
-
-        if (isDuplicateLocation) {
-          setIsLoading(false);
-          setStatusModal({
-            isOpen: true,
-            type: "warning",
-            title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-            message: "กรุณากรอกข้อมูลให้ถูกต้อง (พิกัดแผนที่หรือลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว)",
-          });
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn("⚠️ ไม่สามารถดึงข้อมูลมาเช็กซ้ำก่อนบันทึกได้:", err);
-    }
+    setIsLoading(true);
 
     const payload = {
       licenseId: formData.licenseId,
@@ -346,11 +295,21 @@ const EditWellnessHub = () => {
       });
     } catch (error) {
       setIsLoading(false);
+      const is400 = error.response && error.response.status === 400;
+      const is404 = error.response && error.response.status === 404;
+      const errorMessage =
+        error.response?.data?.message ||
+        "ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง";
+
       setStatusModal({
         isOpen: true,
-        type: "error",
-        title: "ไม่สามารถแก้ไขข้อมูลได้",
-        message: "ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง",
+        type: is400 ? "warning" : "error",
+        title: is400
+          ? "กรุณากรอกข้อมูลให้ถูกต้อง"
+          : is404
+          ? "ไม่พบข้อมูลสถานประกอบการ"
+          : "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
+        message: errorMessage,
       });
     }
   };

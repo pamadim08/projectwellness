@@ -87,6 +87,15 @@ function CreateOfficialArticle() {
       }
     } catch (err) {
       console.error("เกิดข้อผิดพลาดในการโหลดข้อมูลบทความ:", err);
+      const is404 = err.response && err.response.status === 404;
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: is404 ? "ไม่พบข้อมูลบทความ" : "เกิดข้อผิดพลาด",
+        message: is404
+          ? "ไม่พบข้อมูลบทความที่ต้องการแก้ไข กรุณาตรวจสอบรหัสบทความอีกครั้ง"
+          : "ไม่สามารถเชื่อมต่อระบบเพื่อดึงข้อมูลบทความได้",
+      });
     }
   };
 
@@ -134,7 +143,7 @@ function CreateOfficialArticle() {
     const selectedFiles = Array.from(e.target.files || []);
     if (selectedFiles.length === 0) return;
 
-    // รวมรูปภาพประกอบสูงสุด 4 รูป
+    // รวมรูปภาพประกอบสูงสุด 4 รูป (เมื่อรวมรูปปกจะเป็นสูงสุด 5 รูป)
     const remainingSlots = 4 - articleImages.length;
     if (remainingSlots <= 0) {
       const msg = "เพิ่มรูปภาพประกอบได้สูงสุด 4 รูป (เมื่อรวมรูปปกจะเป็นสูงสุด 5 รูป)";
@@ -205,9 +214,10 @@ function CreateOfficialArticle() {
       err.title = "กรุณากรอกข้อมูลให้ครบถ้วน";
     }
 
-    // 2. รายละเอียดบทความ: ห้ามว่าง, 50–2,500 ตัวอักษร
+    // 2. รายละเอียดบทความ: ห้ามว่าง, Create: 50–2,500 ตัวอักษร, Edit: 20–2,500 ตัวอักษร
     const rawDetailText = articleDetail.replace(/<[^>]*>/g, "").trim();
-    if (!rawDetailText || rawDetailText.length < 50 || rawDetailText.length > 2500) {
+    const minDetailLen = id ? 20 : 50;
+    if (!rawDetailText || rawDetailText.length < minDetailLen || rawDetailText.length > 2500) {
       err.detail = "กรุณากรอกข้อมูลให้ครบถ้วน";
     }
 
@@ -223,7 +233,7 @@ function CreateOfficialArticle() {
           isOpen: true,
           type: "warning",
           title: "กรุณากรอกข้อมูลให้ถูกต้องตามเงื่อนไข",
-          message: "กรุณากรอกข้อมูลให้ถูกต้องตามเงื่อนไข (ชื่อบทความ 10–100 ตัวอักษร, รายละเอียด 50–2,500 ตัวอักษร)",
+          message: "กรุณากรอกข้อมูลให้ถูกต้องตามเงื่อนไข (ชื่อบทความ 10–100 ตัวอักษร, รายละเอียด 20–2,500 ตัวอักษร)",
         });
       } else {
         setStatusModal({
@@ -291,19 +301,26 @@ function CreateOfficialArticle() {
     } catch (error) {
       console.error("ไม่สามารถบันทึกบทความได้", error);
       setIsSubmitting(false);
+      const is400 = error.response && error.response.status === 400;
       if (id) {
+        const errorMsg = is400
+          ? (error.response?.data?.message || "กรุณากรอกข้อมูลให้ถูกต้องตามเงื่อนไข")
+          : "ไม่สามารถแก้ไขข้อมูลบทความได้ กรุณาลองใหม่อีกครั้ง";
         setStatusModal({
           isOpen: true,
-          type: "error",
-          title: "ไม่สามารถแก้ไขข้อมูลได้",
-          message: "ไม่สามารถแก้ไขข้อมูลบทความได้ กรุณาลองใหม่อีกครั้ง",
+          type: is400 ? "warning" : "error",
+          title: is400 ? "กรุณากรอกข้อมูลให้ถูกต้องตามเงื่อนไข" : "ไม่สามารถแก้ไขข้อมูลได้",
+          message: errorMsg,
         });
       } else {
+        const errorMsg = is400
+          ? (error.response?.data?.message || "กรุณากรอกข้อมูลให้ครบถ้วน")
+          : "สร้างบทความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
         setStatusModal({
           isOpen: true,
-          type: "error",
-          title: "สร้างบทความไม่สำเร็จ",
-          message: "สร้างบทความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+          type: is400 ? "warning" : "error",
+          title: is400 ? "กรุณากรอกข้อมูลให้ครบถ้วน" : "สร้างบทความไม่สำเร็จ",
+          message: errorMsg,
         });
       }
     }

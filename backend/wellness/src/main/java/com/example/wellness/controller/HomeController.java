@@ -101,8 +101,8 @@ public class HomeController {
      * GET /api/home/routes
      */
     @GetMapping("/routes")
-    public ResponseEntity<List<MainRoute>> getAllRoutes() {
-        List<MainRoute> routes = homeService.getAllRoutes();
+    public ResponseEntity<List<Map<String, Object>>> getAllRoutes() {
+        List<Map<String, Object>> routes = homeService.getAllRoutes();
         return ResponseEntity.ok(routes);
     }
 
@@ -161,8 +161,8 @@ public class HomeController {
      */
     @GetMapping("/wellness-hubs/{licenseId}")
     public ResponseEntity<?> getWellnessHubDetail(
-            @PathVariable Integer licenseId) {
-        if (licenseId == null || licenseId <= 0) {
+            @PathVariable String licenseId) {
+        if (licenseId == null || licenseId.trim().isEmpty()) {
             return ResponseEntity
                     .badRequest()
                     .body(

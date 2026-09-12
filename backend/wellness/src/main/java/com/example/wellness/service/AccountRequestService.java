@@ -35,6 +35,7 @@ public class AccountRequestService {
         private final EmailService emailService;
         private final CategoryRepository categoryRepository;
         private final DistrictRepository districtRepository;
+        private final com.example.wellness.repository.NotificationRepository notificationRepository;
 
         public AccountRequestService(
                         AccountRequestRepository repository,
@@ -42,22 +43,51 @@ public class AccountRequestService {
                         EmergencyServiceRepository emergencyServiceRepository,
                         EmailService emailService,
                         CategoryRepository categoryRepository,
-                        DistrictRepository districtRepository) {
+                        DistrictRepository districtRepository,
+                        com.example.wellness.repository.NotificationRepository notificationRepository) {
                 this.repository = repository;
                 this.wellnessHubRepository = wellnessHubRepository;
                 this.emergencyServiceRepository = emergencyServiceRepository;
                 this.emailService = emailService;
                 this.categoryRepository = categoryRepository;
                 this.districtRepository = districtRepository;
+                this.notificationRepository = notificationRepository;
         }
 
         // =====================================================
-        // รายการคำขอทั้งหมด
+        // รายการคำขอทั้งหมด (Summary เฉพาะฟิลด์ที่หน้า List ใช้งาน)
         // =====================================================
 
         @Transactional(readOnly = true)
-        public List<AccountRequest> listAccountRequest() {
-                return repository.findAllByOrderByRequestIdDesc();
+        public List<Map<String, Object>> listAccountRequest(String keyword, String status) {
+                String trimmedKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+                String trimmedStatus = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
+
+                List<Object[]> rows;
+                if (trimmedKeyword == null && trimmedStatus == null) {
+                        rows = repository.findAllSummariesByOrderByRequestIdDesc();
+                } else {
+                        rows = repository.searchAccountRequestSummaries(trimmedKeyword, trimmedStatus);
+                }
+
+                return rows.stream()
+                                .map(this::mapRowToSummaryMap)
+                                .toList();
+        }
+
+        private Map<String, Object> mapRowToSummaryMap(Object[] row) {
+                Map<String, Object> map = new java.util.LinkedHashMap<>();
+                map.put("requestId", row[0]);
+                map.put("licenseId", row[1]);
+                map.put("wellnessHubName", row[2]);
+                map.put("requesterName", row[3]);
+                map.put("contactInformation", row[4]);
+                map.put("tellInformation", row[5]);
+                map.put("userEmail", row[6]);
+                map.put("requestStatus", row[7]);
+                map.put("rejectionReason", row[8]);
+                map.put("processedDate", row[9]);
+                return map;
         }
 
         // =====================================================
@@ -83,10 +113,14 @@ public class AccountRequestService {
                         throw new RuntimeException("ไม่พบข้อมูลคำขอ");
                 }
 
-                Integer licenseId = getRequiredInteger(
+                String licenseId = getRequiredString(
                                 payload,
                                 "licenseId",
-                                "เลขใบอนุญาตสถานประกอบการไม่ถูกต้อง");
+                                "กรุณาระบุเลขที่ใบอนุญาต");
+
+                if (licenseId.contains(" ") || !licenseId.matches("^[A-Za-z0-9]{10,13}$")) {
+                        throw new RuntimeException("เลขที่ใบอนุญาตต้องเป็นภาษาอังกฤษหรือตัวเลข 10–13 ตัวอักษรและไม่มีช่องว่าง");
+                }
 
                 /*
                  * ตรวจคำขอที่กำลังรอ / อนุมัติแล้ว หรือมีเลขใบอนุญาตในระบบแล้ว
@@ -108,41 +142,94 @@ public class AccountRequestService {
                 // =================================================
 
                 String requesterName = getRequiredString(payload, "requesterName", "กรุณาระบุชื่อผู้ยื่นคำขอ");
-                String userEmail = getRequiredString(payload, "userEmail", "กรุณาระบุอีเมล");
-                String username = getRequiredString(payload, "username", "กรุณาระบุ Username").trim();
-                if (username.contains(" ")) {
-                        throw new RuntimeException("Username ต้องไม่มีช่องว่าง");
-                }
-                if (!username.matches("^[\\x21-\\x7E]{4,20}$")) {
-                        throw new RuntimeException("Username ต้องเป็นภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษ ความยาว 4–20 ตัวอักษร");
+                if (requesterName.length() < 4 || requesterName.length() > 255) {
+                        throw new RuntimeException("ชื่อผู้ยื่นคำขอต้องมีความยาว 4–255 ตัวอักษร");
                 }
 
-                if (wellnessHubRepository.existsByUsername(username)
+                String userEmail = getRequiredString(payload, "userEmail", "กรุณาระบุอีเมล");
+                if (userEmail.contains(" ") || userEmail.length() < 5 || userEmail.length() > 255 || !userEmail.matches("^[\\w!#$%&'*+/=?`{|}~^-]+(?:\\.[\\w!#$%&'*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}$")) {
+                        throw new RuntimeException("รูปแบบอีเมลไม่ถูกต้องหรือความยาวไม่อยู่ในช่วง 5–255 ตัวอักษร");
+                }
+
+                String username = getRequiredString(payload, "username", "กรุณาระบุ Username").trim();
+                if (username.contains(" ") || username.matches(".*\\s+.*")) {
+                        throw new RuntimeException("Username ต้องไม่มีช่องว่าง");
+                }
+                if (username.length() < 4 || username.length() > 10) {
+                        throw new RuntimeException("Username ต้องมีความยาว 4–10 ตัวอักษร");
+                }
+
+                if (repository.existsByUsernameIgnoreCaseAndRequestStatus(username, STATUS_PENDING)) {
+                        throw new RuntimeException("ชื่อผู้ใช้ (Username) นี้มีคำขอที่กำลังรอตรวจสอบในระบบอยู่แล้ว กรุณาใช้ชื่ออื่น");
+                }
+
+                if (repository.existsByUsernameIgnoreCaseAndRequestStatus(username, STATUS_APPROVED)
+                                || wellnessHubRepository.existsByUsername(username)
                                 || emergencyServiceRepository.existsByUsername(username)) {
                         throw new RuntimeException("ชื่อผู้ใช้ (Username) นี้ถูกใช้งานแล้ว กรุณาใช้ชื่ออื่น");
                 }
 
                 String password = getRequiredString(payload, "password", "กรุณาระบุ Password");
+                if (password.contains(" ") || password.length() != 8) {
+                        throw new RuntimeException("รหัสผ่านต้องมีความยาว 8 ตัวอักษรและไม่มีช่องว่าง");
+                }
+
                 String wellnessHubName = getRequiredString(payload, "wellnessHubName", "กรุณาระบุชื่อสถานประกอบการ");
+                if (wellnessHubName.length() < 5 || wellnessHubName.length() > 100) {
+                        throw new RuntimeException("ชื่อสถานประกอบการต้องมีความยาว 5–100 ตัวอักษร");
+                }
+
                 String address = getRequiredString(payload, "address", "กรุณาระบุที่อยู่");
+                if (address.length() < 10 || address.length() > 255) {
+                        throw new RuntimeException("ที่อยู่ต้องมีความยาว 10–255 ตัวอักษร");
+                }
+
                 String tellInformation = getRequiredString(payload, "tellInformation", "กรุณาระบุเบอร์โทรศัพท์");
+                if (!tellInformation.matches("^[0-9]{9,10}$")) {
+                        throw new RuntimeException("เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลักและไม่มีช่องว่างหรือสัญลักษณ์พิเศษ");
+                }
+
+                String contactInfo = getOptionalString(payload, "contactInformation");
+                if (contactInfo != null && (contactInfo.length() < 3 || contactInfo.length() > 255)) {
+                        throw new RuntimeException("ช่องทางติดต่อเพิ่มเติมต้องมีความยาว 3–255 ตัวอักษร");
+                }
+
                 String wellnessHubDescription = getRequiredString(payload, "wellnessHubDescription",
                                 "กรุณาระบุรายละเอียดบริการ");
+                if (wellnessHubDescription.length() < 10 || wellnessHubDescription.length() > 255) {
+                        throw new RuntimeException("รายละเอียดบริการต้องมีความยาว 10–255 ตัวอักษร");
+                }
+
                 String verificationDocuments = getRequiredString(payload, "verificationDocuments",
                                 "กรุณาแนบเอกสารยืนยันสิทธิ์");
+                validateBase64File(verificationDocuments, new String[] { "application/pdf", "image/jpeg", "image/png" }, 10 * 1024 * 1024L, "เอกสารยืนยันสิทธิ์");
 
-                String gmapsLink = getOptionalString(payload, "googleMapsLink");
-                if (gmapsLink != null && !gmapsLink.trim().isEmpty()) {
-                        String cleanGmaps = gmapsLink.trim();
-                        boolean dupHubLink = wellnessHubRepository.findAll().stream()
-                                        .anyMatch(h -> h.getGoogleMapsLink() != null
-                                                        && cleanGmaps.equalsIgnoreCase(h.getGoogleMapsLink().trim()));
-                        boolean dupEmerLink = emergencyServiceRepository.findAll().stream()
-                                        .anyMatch(e -> e.getGoogleMapsLink() != null
-                                                        && cleanGmaps.equalsIgnoreCase(e.getGoogleMapsLink().trim()));
-                        if (dupHubLink || dupEmerLink) {
-                                throw new RuntimeException("ลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง");
-                        }
+                String wellnessHubImg = getOptionalString(payload, "wellnessHubImg");
+                if (wellnessHubImg != null) {
+                        validateBase64File(wellnessHubImg, new String[] { "image/jpeg", "image/png" }, 20 * 1024 * 1024L, "รูปหน้าปก");
+                }
+
+                String wellnessHubGallery = getOptionalString(payload, "wellnessHubGallery");
+                if (wellnessHubGallery != null && !wellnessHubGallery.trim().isEmpty()) {
+                        validateGalleryBase64(wellnessHubGallery, 20 * 1024 * 1024L);
+                }
+
+                String gmapsLink = getRequiredString(payload, "googleMapsLink", "กรุณาระบุลิงก์ Google Maps");
+                if (gmapsLink.contains(" ")) {
+                        throw new RuntimeException("ลิงก์ Google Maps ต้องไม่มีช่องว่าง");
+                }
+                if (!gmapsLink.startsWith("http://") && !gmapsLink.startsWith("https://")) {
+                        throw new RuntimeException("รูปแบบลิงก์ Google Maps ไม่ถูกต้อง");
+                }
+                String cleanGmaps = gmapsLink.trim();
+                boolean dupHubLink = wellnessHubRepository.findAll().stream()
+                                .anyMatch(h -> h.getGoogleMapsLink() != null
+                                                && cleanGmaps.equalsIgnoreCase(h.getGoogleMapsLink().trim()));
+                boolean dupEmerLink = emergencyServiceRepository.findAll().stream()
+                                .anyMatch(e -> e.getGoogleMapsLink() != null
+                                                && cleanGmaps.equalsIgnoreCase(e.getGoogleMapsLink().trim()));
+                if (dupHubLink || dupEmerLink) {
+                        throw new RuntimeException("ลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง");
                 }
 
                 // =================================================
@@ -169,14 +256,14 @@ public class AccountRequestService {
                 request.setPassword(password);
                 request.setRequesterName(requesterName);
                 request.setUserEmail(userEmail);
-                request.setContactInformation(getOptionalString(payload, "contactInformation"));
+                request.setContactInformation(contactInfo);
                 request.setTellInformation(tellInformation);
                 request.setWellnessHubName(wellnessHubName);
                 request.setAddress(address);
-                request.setGoogleMapsLink(gmapsLink);
+                request.setGoogleMapsLink(cleanGmaps);
                 request.setWellnessHubDescription(wellnessHubDescription);
-                request.setWellnessHubImg(getOptionalString(payload, "wellnessHubImg"));
-                request.setWellnessHubGallery(getOptionalString(payload, "wellnessHubGallery"));
+                request.setWellnessHubImg(wellnessHubImg);
+                request.setWellnessHubGallery(wellnessHubGallery);
                 request.setWellnessHubLatitude(getOptionalDouble(payload, "wellnessHubLatitude"));
                 request.setWellnessHubLongitude(getOptionalDouble(payload, "wellnessHubLongitude"));
 
@@ -323,16 +410,7 @@ public class AccountRequestService {
                 request.setRejectionReason(null);
                 request.setProcessedDate(LocalDateTime.now());
 
-                AccountRequest savedRequest = repository.save(request);
-
-                emailService.sendApproveEmail(
-                                savedRequest.getUserEmail(),
-                                savedRequest.getWellnessHubName(),
-                                savedRequest.getLicenseId(),
-                                savedRequest.getUsername(),
-                                savedRequest.getPassword());
-
-                return savedRequest;
+                return repository.save(request);
         }
 
         // =====================================================
@@ -352,7 +430,7 @@ public class AccountRequestService {
                 }
 
                 if (STATUS_APPROVED.equalsIgnoreCase(request.getRequestStatus())) {
-                        throw new RuntimeException("ไม่สามารถปฏิเสธคำขอที่อนุมัติแล้วได้");
+                        throw new RuntimeException("คำขอนี้ได้รับการอนุมัติแล้ว");
                 }
 
                 if (STATUS_REJECTED.equalsIgnoreCase(request.getRequestStatus())) {
@@ -371,15 +449,98 @@ public class AccountRequestService {
                 request.setRejectionReason(reason.trim());
                 request.setProcessedDate(LocalDateTime.now());
 
-                AccountRequest savedRequest = repository.save(request);
+                return repository.save(request);
+        }
 
-                emailService.sendRejectEmail(
-                                savedRequest.getUserEmail(),
-                                savedRequest.getWellnessHubName(),
-                                savedRequest.getLicenseId(),
-                                savedRequest.getRejectionReason());
+        // =====================================================
+        // แจ้งผลการพิจารณาคำขอ (Notify Request Result)
+        // =====================================================
 
-                return savedRequest;
+        public com.example.wellness.model.Notification notifyRequestResult(Integer id) {
+                if (id == null || id <= 0) {
+                        throw new RuntimeException("ไม่พบข้อมูลคำขออนุมัติ");
+                }
+
+                AccountRequest request = repository.findById(id).orElse(null);
+                if (request == null) {
+                        throw new RuntimeException("ไม่พบข้อมูลคำขออนุมัติ");
+                }
+
+                String status = request.getRequestStatus();
+                if (STATUS_PENDING.equalsIgnoreCase(status)) {
+                        throw new RuntimeException("คำขอนี้ยังอยู่ระหว่างรอพิจารณา (PENDING) ไม่สามารถส่งแจ้งผลได้");
+                }
+
+                if (!STATUS_APPROVED.equalsIgnoreCase(status) && !STATUS_REJECTED.equalsIgnoreCase(status)) {
+                        throw new RuntimeException("สถานะคำขอไม่ถูกต้องสำหรับการแจ้งผล");
+                }
+
+                // ตรวจสอบว่าเคยส่ง Notification status = SENT สำหรับคำขอนี้สำเร็จแล้วหรือไม่ (ป้องกันการส่งซ้ำ)
+                boolean alreadySent = notificationRepository.existsByAccountRequestRequestIdAndNotificationStatus(id, "SENT");
+                if (alreadySent) {
+                        throw new RuntimeException("ได้ส่งอีเมลแจ้งผลการพิจารณาไปแล้ว");
+                }
+
+                String userEmail = request.getUserEmail();
+                if (userEmail == null || userEmail.trim().isEmpty() || !userEmail.contains("@")) {
+                        throw new RuntimeException("อีเมลผู้ยื่นคำขอไม่ถูกต้อง");
+                }
+
+                boolean isApproved = STATUS_APPROVED.equalsIgnoreCase(status);
+                if (!isApproved) {
+                        String rejectionReason = request.getRejectionReason();
+                        if (rejectionReason == null || rejectionReason.trim().isEmpty()) {
+                                throw new RuntimeException("ไม่พบเหตุผลการไม่อนุมัติในคำขอ");
+                        }
+                }
+
+                // ส่ง Email
+                try {
+                        if (isApproved) {
+                                emailService.sendApproveEmail(
+                                                request.getUserEmail(),
+                                                request.getWellnessHubName(),
+                                                request.getLicenseId(),
+                                                request.getUsername(),
+                                                request.getPassword());
+                        } else {
+                                emailService.sendRejectEmail(
+                                                request.getUserEmail(),
+                                                request.getWellnessHubName(),
+                                                request.getLicenseId(),
+                                                request.getRejectionReason());
+                        }
+                } catch (Exception e) {
+                        // บันทึกประวัติกรณีส่งล้มเหลว (FAILED)
+                        try {
+                                com.example.wellness.model.Notification failedNotification = new com.example.wellness.model.Notification();
+                                failedNotification.setAccountRequest(request);
+                                failedNotification.setNotifydate(LocalDateTime.now());
+                                failedNotification.setNotificationStatus("FAILED");
+                                failedNotification.setMessageBody("การส่งอีเมลล้มเหลว");
+                                notificationRepository.save(failedNotification);
+                        } catch (Exception ignored) {
+                        }
+                        throw new RuntimeException("การส่งล้มเหลว");
+                }
+
+                // บันทึกประวัติกรณีส่งสำเร็จ (SENT)
+                try {
+                        com.example.wellness.model.Notification sentNotification = new com.example.wellness.model.Notification();
+                        sentNotification.setAccountRequest(request);
+                        sentNotification.setNotifydate(LocalDateTime.now());
+                        sentNotification.setNotificationStatus("SENT");
+                        String message = isApproved
+                                        ? "ส่งอีเมลแจ้งผลการอนุมัติสำเร็จ: " + request.getWellnessHubName()
+                                        : "ส่งอีเมลแจ้งผลการไม่อนุมัติสำเร็จ: " + request.getWellnessHubName() + " (" + request.getRejectionReason() + ")";
+                        if (message.length() > 255) {
+                                message = message.substring(0, 252) + "...";
+                        }
+                        sentNotification.setMessageBody(message);
+                        return notificationRepository.save(sentNotification);
+                } catch (Exception e) {
+                        throw new RuntimeException("เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง");
+                }
         }
 
         // =====================================================
@@ -388,11 +549,14 @@ public class AccountRequestService {
 
         @Transactional(readOnly = true)
         public List<AccountRequest> trackRequestStatus(String username) {
-                if (username == null || username.trim().isEmpty()) {
-                        throw new RuntimeException("กรุณาระบุชื่อผู้ใช้งาน (Username)");
+                if (username == null || username.trim().isEmpty() || username.contains(" ") || username.matches(".*\\s+.*")) {
+                        throw new RuntimeException("กรุณากรอกชื่อผู้ใช้งาน (Username)");
                 }
 
                 String normalizedUsername = username.trim();
+                if (normalizedUsername.length() < 4 || normalizedUsername.length() > 10) {
+                        throw new RuntimeException("กรุณากรอกชื่อผู้ใช้งาน (Username)");
+                }
 
                 return repository.findByUsernameIgnoreCaseOrderByRequestIdDesc(normalizedUsername);
         }
@@ -577,6 +741,66 @@ public class AccountRequestService {
                 }
                 if (longitude < -180 || longitude > 180) {
                         throw new RuntimeException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
+                }
+        }
+
+        private void validateBase64File(String dataUrl, String[] allowedMimes, long maxSizeBytes, String fieldLabel) {
+                if (dataUrl == null || dataUrl.trim().isEmpty()) {
+                        return;
+                }
+                String trimmed = dataUrl.trim();
+                if (!trimmed.startsWith("data:")) {
+                        throw new RuntimeException("รูปแบบไฟล์" + fieldLabel + "ไม่ถูกต้อง");
+                }
+                int commaIndex = trimmed.indexOf(',');
+                if (commaIndex == -1) {
+                        throw new RuntimeException("รูปแบบไฟล์" + fieldLabel + "ไม่ถูกต้อง");
+                }
+                String metadata = trimmed.substring(5, commaIndex);
+                String mime = metadata.split(";")[0].trim().toLowerCase();
+
+                boolean mimeAllowed = false;
+                for (String allowed : allowedMimes) {
+                        if (allowed.equalsIgnoreCase(mime)) {
+                                mimeAllowed = true;
+                                break;
+                        }
+                }
+                if (!mimeAllowed) {
+                        throw new RuntimeException("ชนิดไฟล์" + fieldLabel + "ไม่รองรับ (รองรับเฉพาะ " + String.join(", ", allowedMimes) + ")");
+                }
+
+                String base64Data = trimmed.substring(commaIndex + 1);
+                try {
+                        byte[] decoded = java.util.Base64.getDecoder().decode(base64Data);
+                        if (decoded.length > maxSizeBytes) {
+                                long maxMb = maxSizeBytes / (1024 * 1024);
+                                throw new RuntimeException("ขนาดไฟล์" + fieldLabel + "ต้องไม่เกิน " + maxMb + " MB");
+                        }
+                } catch (IllegalArgumentException e) {
+                        throw new RuntimeException("รูปแบบ Base64 ของไฟล์" + fieldLabel + "ไม่ถูกต้อง");
+                }
+        }
+
+        private void validateGalleryBase64(String galleryJson, long maxSizeBytes) {
+                if (galleryJson == null || galleryJson.trim().isEmpty()) {
+                        return;
+                }
+                try {
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        List<?> list = mapper.readValue(galleryJson, List.class);
+                        if (list != null) {
+                                for (Object item : list) {
+                                        if (item instanceof String dataUrl) {
+                                                validateBase64File(dataUrl, new String[] { "image/jpeg", "image/png" }, maxSizeBytes, "รูปภาพบรรยากาศ");
+                                        }
+                                }
+                        }
+                } catch (Exception e) {
+                        if (e instanceof RuntimeException re) {
+                                throw re;
+                        }
+                        throw new RuntimeException("รูปแบบข้อมูลรูปภาพบรรยากาศไม่ถูกต้อง");
                 }
         }
 }

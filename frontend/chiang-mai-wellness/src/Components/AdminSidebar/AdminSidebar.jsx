@@ -130,8 +130,17 @@ export default function AdminSidebar({
     setShowLogoutPopup(false);
   };
 
-  const handleConfirmLogout = () => {
+  const handleConfirmLogout = async () => {
     setShowLogoutPopup(false);
+    try {
+      await axios.post(
+        `${API_BASE_URL}/admin/logout`,
+        {},
+        { withCredentials: true }
+      );
+    } catch (err) {
+      // ignore logout network errors
+    }
     localStorage.removeItem("adminUser");
     localStorage.removeItem("adminName");
     localStorage.removeItem("username");

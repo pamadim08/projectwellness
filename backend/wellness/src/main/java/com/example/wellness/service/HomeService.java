@@ -19,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -76,15 +78,43 @@ public class HomeService {
 
         public List<Map<String, Object>> getRecommendedRoutes() {
                 List<MainRoute> routes = homeRepository.findRecommendedRoutes();
-
-                return routes == null
-                                ? new ArrayList<>()
-                                : routes.stream()
-                                                .map(this::convertRouteHomeResult)
-                                                .toList();
+                return convertRoutes(routes);
         }
 
-        private Map<String, Object> convertRouteHomeResult(MainRoute route) {
+        public List<Map<String, Object>> getAllRoutes() {
+                List<MainRoute> routes = homeRepository.findAllRoutes();
+                return convertRoutes(routes);
+        }
+
+        private List<Map<String, Object>> convertRoutes(List<MainRoute> routes) {
+                if (routes == null || routes.isEmpty()) {
+                        return new ArrayList<>();
+                }
+
+                // รวบรวม categoryId ของ routes ทั้งหมดก่อน เพื่อ Query categories เพียง 1 ครั้ง (แก้ N+1)
+                Set<String> allCategoryIds = new LinkedHashSet<>();
+                for (MainRoute route : routes) {
+                        if (route != null) {
+                                allCategoryIds.addAll(parseCategoryIds(route.getCategoryId()));
+                        }
+                }
+
+                Map<String, Category> categoryMap = new HashMap<>();
+                if (!allCategoryIds.isEmpty()) {
+                        List<Category> categories = categoryRepository.findAllById(allCategoryIds);
+                        for (Category category : categories) {
+                                if (category != null && category.getCategoryId() != null) {
+                                        categoryMap.put(category.getCategoryId(), category);
+                                }
+                        }
+                }
+
+                return routes.stream()
+                                .map(route -> convertRouteHomeResult(route, categoryMap))
+                                .toList();
+        }
+
+        private Map<String, Object> convertRouteHomeResult(MainRoute route, Map<String, Category> categoryMap) {
                 Map<String, Object> map = new LinkedHashMap<>();
 
                 if (route == null) {
@@ -98,6 +128,8 @@ public class HomeService {
                 putIfNotBlank(map, "routeImage", buildRouteImageUrl(route.getRouteImage()));
 
                 map.put("pinCount", route.getPinCount() == null ? 0 : route.getPinCount());
+                map.put("createdAt", route.getCreatedAt());
+                map.put("updatedAt", route.getUpdatedAt());
 
                 // districts: ordered by orderNumber (nulls last)
                 List<MainRouteDetail> sortedDetails = route.getDetails() == null
@@ -141,16 +173,22 @@ public class HomeService {
                  */
                 List<String> categoryIds = parseCategoryIds(route.getCategoryId());
 
-                List<Category> categories = categoryIds.isEmpty()
-                                ? new ArrayList<>()
-                                : categoryRepository.findAllById(categoryIds);
+                List<Category> categories = new ArrayList<>();
+                if (categoryMap != null && !categoryIds.isEmpty()) {
+                        for (String catId : categoryIds) {
+                                Category cat = categoryMap.get(catId);
+                                if (cat != null) {
+                                        categories.add(cat);
+                                }
+                        }
+                }
 
                 List<Map<String, Object>> categoryMaps = categories.stream()
                                 .map(category -> {
-                                        Map<String, Object> categoryMap = new LinkedHashMap<>();
-                                        categoryMap.put("categoryId", category.getCategoryId());
-                                        categoryMap.put("categoryName", category.getCategoryName());
-                                        return categoryMap;
+                                        Map<String, Object> categoryMapEntry = new LinkedHashMap<>();
+                                        categoryMapEntry.put("categoryId", category.getCategoryId());
+                                        categoryMapEntry.put("categoryName", category.getCategoryName());
+                                        return categoryMapEntry;
                                 })
                                 .toList();
 
@@ -170,10 +208,6 @@ public class HomeService {
                 return homeRepository.findLatestArticles();
         }
 
-        public List<MainRoute> getAllRoutes() {
-                return homeRepository.findAllRoutes();
-        }
-
         public List<OfficialArticle> getAllArticles() {
                 return homeRepository.findAllArticles();
         }
@@ -188,7 +222,7 @@ public class HomeService {
                         return null;
                 }
 
-                MainRoute route = mainRouteRepository.findById(routeId).orElse(null);
+                MainRoute route = mainRouteRepository.findByIdWithDetailsAndDistricts(routeId).orElse(null);
                 if (route == null) {
                         return null;
                 }
@@ -322,13 +356,15 @@ public class HomeService {
          * รายละเอียดสถานประกอบการ
          * =====================================================
          */
-        public Map<String, Object> getWellnessHubDetail(Integer licenseId) {
-                if (licenseId == null || licenseId <= 0) {
+        public Map<String, Object> getWellnessHubDetail(String licenseId) {
+                if (licenseId == null || licenseId.trim().isEmpty()) {
                         return null;
                 }
 
+                String cleanId = licenseId.trim();
+
                 WellnessHub wellnessHub = wellnessHubRepository
-                                .findById(licenseId)
+                                .findByIdWithCategoryAndDistrict(cleanId)
                                 .orElse(null);
 
                 if (wellnessHub != null) {
@@ -336,7 +372,7 @@ public class HomeService {
                 }
 
                 EmergencyService emergencyService = emergencyServiceRepository
-                                .findById(licenseId)
+                                .findByIdWithCategoryAndDistrict(cleanId)
                                 .orElse(null);
 
                 if (emergencyService != null) {
@@ -403,45 +439,23 @@ public class HomeService {
                 }
 
                 /*
-                 * ค้นหาสถานประกอบการ
+                 * ค้นหาสถานประกอบการ (ยิง Query ตรงจาก Database)
                  */
                 if (normalizedType.equals("ALL") ||
                                 normalizedType.equals("WELLNESS_HUB")) {
-                        List<WellnessHub> allWellnessHubs = new ArrayList<>(
-                                        wellnessHubRepository.findAll());
+                        List<WellnessHub> wellnessHubList = wellnessHubRepository
+                                        .searchPublicHubs(searchKeyword);
 
-                        List<WellnessHub> emergencyResults = emergencyServiceRepository
-                                        .findAll()
+                        List<WellnessHub> emergencyList = emergencyServiceRepository
+                                        .searchPublicEmergencyServices(searchKeyword)
                                         .stream()
                                         .map(this::convertEmergencyToWellnessHub)
                                         .toList();
 
-                        allWellnessHubs.addAll(emergencyResults);
+                        List<WellnessHub> allResults = new ArrayList<>(wellnessHubList);
+                        allResults.addAll(emergencyList);
 
-                        wellnessHubResults = allWellnessHubs
-                                        .stream()
-                                        .filter(hub -> containsKeyword(
-                                                        hub.getWellnessHubName(),
-                                                        searchKeyword) ||
-                                                        containsKeyword(
-                                                                        hub.getWellnessHubDescription(),
-                                                                        searchKeyword)
-                                                        ||
-                                                        containsKeyword(
-                                                                        hub.getAddress(),
-                                                                        searchKeyword)
-                                                        ||
-                                                        (hub.getCategory() != null &&
-                                                                        containsKeyword(
-                                                                                        hub.getCategory()
-                                                                                                        .getCategoryName(),
-                                                                                        searchKeyword))
-                                                        ||
-                                                        (hub.getDistrict() != null &&
-                                                                        containsKeyword(
-                                                                                        hub.getDistrict()
-                                                                                                        .getDistrictName(),
-                                                                                        searchKeyword)))
+                        wellnessHubResults = allResults.stream()
                                         .map(this::convertWellnessHubToSearchResult)
                                         .toList();
                 }

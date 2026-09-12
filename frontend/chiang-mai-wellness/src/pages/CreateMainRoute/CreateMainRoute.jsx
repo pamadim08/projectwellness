@@ -76,7 +76,7 @@ const CreateMainRoute = () => {
   const [orderedRouteDetails, setOrderedRouteDetails] = useState([]);
   const [errors, setErrors] = useState({});
 
-  const [loadingRoute, setLoadingRoute] = useState(false);
+  const [loadingRoute, setLoadingRoute] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusModal, setStatusModal] = useState({
     isOpen: false,
@@ -241,16 +241,16 @@ const CreateMainRoute = () => {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedTypes = ["image/jpeg", "image/png"];
     if (!allowedTypes.includes(file.type)) {
-      setImageError("ชนิดไฟล์ไม่รองรับ (รองรับ JPG/PNG/WEBP)");
+      setImageError("ชนิดไฟล์ไม่รองรับ (รองรับ JPG/PNG)");
       event.target.value = "";
       return;
     }
 
-    const maxBytes = 5 * 1024 * 1024;
+    const maxBytes = 20 * 1024 * 1024;
     if (file.size > maxBytes) {
-      setImageError("ขนาดไฟล์ต้องไม่เกิน 5 MB");
+      setImageError("ขนาดไฟล์ต้องไม่เกิน 20 MB");
       event.target.value = "";
       return;
     }
@@ -344,7 +344,7 @@ const CreateMainRoute = () => {
     }
 
     const fetchSystemDBData = async () => {
-      if (id) setLoadingRoute(true);
+      setLoadingRoute(true);
 
       try {
         const [catRes, distRes, hubRes] = await Promise.all([
@@ -377,6 +377,15 @@ const CreateMainRoute = () => {
           await loadRouteData(id, districts);
         } catch (err) {
           console.error("❌ เกิดข้อผิดพลาดขณะโหลดเส้นทางเก่า:", err);
+          const is404 = err.response && err.response.status === 404;
+          setStatusModal({
+            isOpen: true,
+            type: "error",
+            title: is404 ? "ไม่พบข้อมูลเส้นทาง" : "เกิดข้อผิดพลาดในการโหลดข้อมูล",
+            message: is404
+              ? "ไม่พบข้อมูลเส้นทางหลักที่ต้องการแก้ไข กรุณาตรวจสอบรหัสเส้นทางอีกครั้ง"
+              : "ไม่สามารถเชื่อมต่อระบบเพื่อดึงข้อมูลเส้นทางได้ กรุณาลองใหม่อีกครั้ง",
+          });
         } finally {
           if (isMounted) setLoadingRoute(false);
         }
@@ -822,45 +831,39 @@ const CreateMainRoute = () => {
     if (isSubmitting) return;
 
     const trimmedRouteName = routeName.trim();
-    const routeNameRegex = /^[a-zA-Z0-9\u0E00-\u0E7F\s]{10,50}$/;
+    const routeNameRegex = /^[a-zA-Z0-9\u0E00-\u0E7F\s]{5,50}$/;
+    const trimmedDescription = routeDescription.trim();
 
     // 1. ตรวจสอบจำนวนอำเภอ (อย่างน้อย 2 อำเภอ)
     if (orderedRouteDetails.length < 2) {
-      if (!id) {
-        setStatusModal({
-          isOpen: true,
-          type: "warning",
-          title: "กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ",
-          message: "กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ",
-        });
-      } else {
-        setStatusModal({
-          isOpen: true,
-          type: "warning",
-          title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-          message: "กรุณากรอกข้อมูลให้ถูกต้อง (เลือกอำเภออย่างน้อย 2 อำเภอ)",
-        });
-      }
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ",
+        message: "กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ",
+      });
       return;
     }
 
-    // 2. ตรวจสอบชื่อเส้นทาง
+    // 2. ตรวจสอบชื่อเส้นทาง: 5-50 ตัวอักษร ไทย/อังกฤษ/ตัวเลข
     if (!trimmedRouteName || !routeNameRegex.test(trimmedRouteName)) {
-      if (!id) {
-        setStatusModal({
-          isOpen: true,
-          type: "warning",
-          title: "กรุณากรอกข้อมูลให้ครบถ้วน",
-          message: "กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อเส้นทางความยาว 10–50 ตัวอักษร)",
-        });
-      } else {
-        setStatusModal({
-          isOpen: true,
-          type: "warning",
-          title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-          message: "กรุณากรอกข้อมูลให้ถูกต้อง (ชื่อเส้นทางความยาว 10–50 ตัวอักษร)",
-        });
-      }
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ครบถ้วน",
+        message: "กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อเส้นทางภาษาไทย/อังกฤษ/ตัวเลข ความยาว 5–50 ตัวอักษร)",
+      });
+      return;
+    }
+
+    // 3. ตรวจสอบรายละเอียดเส้นทาง: ว่างได้ แต่ถ้ามีต้อง 10–255 ตัวอักษร
+    if (trimmedDescription.length > 0 && (trimmedDescription.length < 10 || trimmedDescription.length > 255)) {
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ครบถ้วน",
+        message: "กรุณากรอกข้อมูลให้ครบถ้วน (รายละเอียดเส้นทางความยาว 10–255 ตัวอักษร)",
+      });
       return;
     }
 
@@ -901,7 +904,7 @@ const CreateMainRoute = () => {
 
       const finalPayload = {
         routeName: trimmedRouteName,
-        routeDescription: routeDescription.trim(),
+        routeDescription: trimmedDescription,
         routeImage: finalRouteImage,
         categoryIds: categoryIdsForSave,
         details: orderedRouteDetails.map((dist, idx) => ({
@@ -942,18 +945,26 @@ const CreateMainRoute = () => {
       console.error("❌ ไม่สามารถบันทึกข้อมูลเส้นทางได้", err);
       setIsSubmitting(false);
       if (id) {
+        const is400 = err.response && err.response.status === 400;
+        const errorMessage = is400
+          ? (err.response?.data?.message || "กรุณากรอกข้อมูลให้ครบถ้วน")
+          : "ไม่สามารถแก้ไขข้อมูลเส้นทางหลักได้ กรุณาลองใหม่อีกครั้ง";
         setStatusModal({
           isOpen: true,
-          type: "error",
-          title: "ไม่สามารถแก้ไขข้อมูลได้",
-          message: "ไม่สามารถแก้ไขข้อมูลเส้นทางหลักได้ กรุณาลองใหม่อีกครั้ง",
+          type: is400 ? "warning" : "error",
+          title: is400 ? "กรุณากรอกข้อมูลให้ครบถ้วน" : "ไม่สามารถแก้ไขข้อมูลได้",
+          message: errorMessage,
         });
       } else {
+        const is400 = err.response && err.response.status === 400;
+        const errorMessage = is400
+          ? (err.response?.data?.message || "กรุณากรอกข้อมูลให้ครบถ้วน")
+          : "บันทึกเส้นทางไม่สำเร็จ กรุณาลองอีกครั้ง";
         setStatusModal({
           isOpen: true,
-          type: "error",
-          title: "บันทึกเส้นทางไม่สำเร็จ",
-          message: "บันทึกเส้นทางไม่สำเร็จ กรุณาลองอีกครั้ง",
+          type: is400 ? "warning" : "error",
+          title: is400 ? "กรุณากรอกข้อมูลให้ครบถ้วน" : "บันทึกเส้นทางไม่สำเร็จ",
+          message: errorMessage,
         });
       }
     }
@@ -965,8 +976,12 @@ const CreateMainRoute = () => {
         <div className="loading-overlay">
           <div className="loading-box">
             <i className="fa-solid fa-spinner fa-spin"></i>
-            <h3>กำลังโหลดข้อมูลเส้นทาง</h3>
-            <p>กรุณารอสักครู่ ระบบกำลังดึงแผนที่ หมวดหมู่ และอำเภอเดิม</p>
+            <h3>{id ? "กำลังโหลดข้อมูลเส้นทาง" : "กำลังโหลดข้อมูลระบบ"}</h3>
+            <p>
+              {id
+                ? "กรุณารอสักครู่ ระบบกำลังดึงแผนที่ หมวดหมู่ และอำเภอเดิม"
+                : "กรุณารอสักครู่ ระบบกำลังโหลดข้อมูลหมวดหมู่และอำเภอ..."}
+            </p>
           </div>
         </div>
       )}
@@ -1494,7 +1509,7 @@ const CreateMainRoute = () => {
                     </div>
 
                     <p className="gov-route-image-hint">
-                      รองรับ JPG, PNG, WEBP • ขนาดสูงสุด 5 MB
+                      รองรับ JPG, PNG • ขนาดสูงสุด 20 MB
                     </p>
 
                     {imageFileName && (

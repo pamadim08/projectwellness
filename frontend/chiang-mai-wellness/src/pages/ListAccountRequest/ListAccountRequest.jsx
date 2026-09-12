@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -17,18 +18,11 @@ import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 const API_URL = "http://localhost:8080/api/account-requests";
 const ROWS_PER_PAGE = 10;
 
-// 🌟 Cache ข้อมูลไว้ระหว่างการเปลี่ยนหน้า
-// เมื่อ Refresh Browser ค่า Cache จะถูกล้างและโหลดข้อมูลใหม่จาก Backend
-let accountRequestCache = null;
-
 function ListAccountRequest() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [accountRequests, setAccountRequests] = useState(
-    Array.isArray(accountRequestCache) ? accountRequestCache : [],
-  );
-
+  const [accountRequests, setAccountRequests] = useState([]);
   const [adminName, setAdminName] = useState("Admin");
 
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -36,15 +30,11 @@ function ListAccountRequest() {
 
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [isLoading, setIsLoading] = useState(
-    !Array.isArray(accountRequestCache),
-  );
-
+  const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
   // 🌟 State สำหรับ Popup ดูเหตุผลที่ไม่อนุมัติ
   const [showRejectReasonPopup, setShowRejectReasonPopup] = useState(false);
-
   const [selectedRejectRequest, setSelectedRejectRequest] = useState(null);
 
   // 🌟 State สำหรับ Popup ยืนยันออกจากระบบ
@@ -52,15 +42,11 @@ function ListAccountRequest() {
 
   useEffect(() => {
     const storedAdminName = localStorage.getItem("adminName");
-
     if (storedAdminName) {
       setAdminName(storedAdminName);
     }
 
-    // 🌟 โหลดจาก Backend เฉพาะครั้งแรกที่ยังไม่มี Cache
-    if (!Array.isArray(accountRequestCache)) {
-      fetchAccountRequests();
-    }
+    fetchAccountRequests("", "");
   }, []);
 
   // 🌟 รับข้อมูลสถานะที่เปลี่ยนจากหน้าพิจารณา
@@ -71,11 +57,10 @@ function ListAccountRequest() {
     }
 
     const updatedRequestId = Number(location.state.updatedRequestId);
-
     const requestStatus = normalizeStatus(location.state.requestStatus);
 
     setAccountRequests((previousRequests) => {
-      const updatedRequests = previousRequests.map((request) => {
+      return previousRequests.map((request) => {
         if (Number(request.requestId) !== updatedRequestId) {
           return request;
         }
@@ -89,10 +74,6 @@ function ListAccountRequest() {
               : null,
         };
       });
-
-      accountRequestCache = updatedRequests;
-
-      return updatedRequests;
     });
   }, [
     location.state?.updatedRequestId,
@@ -100,33 +81,35 @@ function ListAccountRequest() {
     location.state?.rejectionReason,
   ]);
 
-  const fetchAccountRequests = async () => {
+  const fetchAccountRequests = async (keyword = searchKeyword, status = statusFilter) => {
     try {
       setIsLoading(true);
       setErrorMessage("");
 
-      const response = await fetch(API_URL);
-
-      if (!response.ok) {
-        throw new Error(`ไม่สามารถโหลดข้อมูลคำร้องได้ (${response.status})`);
+      const params = {};
+      if (keyword && keyword.trim()) {
+        params.keyword = keyword.trim();
+      }
+      if (status && status.trim()) {
+        params.status = status.trim();
       }
 
-      const data = await response.json();
-
+      const response = await axios.get(API_URL, { params });
+      const data = response.data;
       const normalizedData = Array.isArray(data) ? data : [];
-
       setAccountRequests(normalizedData);
-
-      // 🌟 บันทึกข้อมูลไว้ใน Cache
-      accountRequestCache = normalizedData;
     } catch (error) {
       console.error("เกิดข้อผิดพลาดในการโหลดคำร้อง:", error);
-
       setAccountRequests([]);
-
-      accountRequestCache = null;
-
-      setErrorMessage(error.message || "เกิดข้อผิดพลาดในการโหลดข้อมูลคำร้อง");
+      if (error.response?.status === 401) {
+        setErrorMessage("ไม่มีสิทธิ์เข้าถึง (กรุณาเข้าสู่ระบบในฐานะ Admin)");
+      } else {
+        setErrorMessage(
+          error.response?.data?.message ||
+            error.message ||
+            "เกิดข้อผิดพลาดในการโหลดข้อมูลคำร้อง",
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -214,45 +197,14 @@ function ListAccountRequest() {
     }).length;
   }, [accountRequests]);
 
-  const filteredRequests = useMemo(() => {
-    const normalizedKeyword = searchKeyword.trim().toLowerCase();
-
-    return accountRequests
-      .filter((request) => {
-        const status = normalizeStatus(request.requestStatus);
-
-        const matchesStatus = !statusFilter || status === statusFilter;
-
-        const searchableText = [
-          request.requestId,
-          getLicenseId(request),
-          getWellnessHubName(request),
-          getRequesterName(request),
-          request.userEmail,
-          getTelephone(request),
-        ]
-          .filter((value) => value !== null && value !== undefined)
-          .join(" ")
-          .toLowerCase();
-
-        const matchesKeyword =
-          !normalizedKeyword || searchableText.includes(normalizedKeyword);
-
-        return matchesStatus && matchesKeyword;
-      })
-      .sort((first, second) => {
-        return (second.requestId || 0) - (first.requestId || 0);
-      });
-  }, [accountRequests, searchKeyword, statusFilter]);
-
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredRequests.length / ROWS_PER_PAGE),
+    Math.ceil(accountRequests.length / ROWS_PER_PAGE),
   );
 
   const firstRowIndex = (currentPage - 1) * ROWS_PER_PAGE;
 
-  const currentRows = filteredRequests.slice(
+  const currentRows = accountRequests.slice(
     firstRowIndex,
     firstRowIndex + ROWS_PER_PAGE,
   );
@@ -265,12 +217,20 @@ function ListAccountRequest() {
 
   const handleSearch = () => {
     setCurrentPage(1);
+    fetchAccountRequests(searchKeyword, statusFilter);
+  };
+
+  const handleStatusChange = (newStatus) => {
+    setStatusFilter(newStatus);
+    setCurrentPage(1);
+    fetchAccountRequests(searchKeyword, newStatus);
   };
 
   const handleResetFilter = () => {
     setSearchKeyword("");
     setStatusFilter("");
     setCurrentPage(1);
+    fetchAccountRequests("", "");
   };
 
   const handleApproveRequest = (requestId) => {
@@ -295,12 +255,7 @@ function ListAccountRequest() {
   // 🌟 ยืนยันออกจากระบบ
   const handleConfirmLogout = () => {
     localStorage.clear();
-
-    // 🌟 ล้าง Cache เมื่อออกจากระบบ
-    accountRequestCache = null;
-
     setShowLogoutPopup(false);
-
     navigate("/login");
   };
 
@@ -385,10 +340,7 @@ function ListAccountRequest() {
             <select
               className="account-request-filter-select"
               value={statusFilter}
-              onChange={(event) => {
-                setStatusFilter(event.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(event) => handleStatusChange(event.target.value)}
             >
               <option value="">-- สถานะทั้งหมด --</option>
               <option value="PENDING">รอพิจารณา</option>
@@ -421,7 +373,7 @@ function ListAccountRequest() {
 
               <span>{errorMessage}</span>
 
-              <button type="button" onClick={fetchAccountRequests}>
+              <button type="button" onClick={() => fetchAccountRequests(searchKeyword, statusFilter)}>
                 ลองใหม่
               </button>
             </div>
@@ -448,6 +400,13 @@ function ListAccountRequest() {
                     <td colSpan="8" className="account-request-loading">
                       <FontAwesomeIcon icon={faSpinner} spin />
                       กำลังโหลดข้อมูลคำร้อง...
+                    </td>
+                  </tr>
+                ) : errorMessage ? (
+                  <tr>
+                    <td colSpan="8" className="account-request-empty">
+                      <FontAwesomeIcon icon={faCircleExclamation} />
+                      {errorMessage}
                     </td>
                   </tr>
                 ) : currentRows.length > 0 ? (
@@ -532,7 +491,7 @@ function ListAccountRequest() {
                   <tr>
                     <td colSpan="8" className="account-request-empty">
                       <FontAwesomeIcon icon={faCircleExclamation} />
-                      ไม่พบข้อมูลคำร้องขอเปิดใช้งานระบบ
+                      ไม่พบข้อมูลคำขอสถานประกอบการ
                     </td>
                   </tr>
                 )}

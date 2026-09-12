@@ -97,22 +97,36 @@ export default function LoginWellnessHub() {
     const username = formData.username.trim();
     const password = formData.password;
 
-    if (!username) {
-      validationErrors.username = "กรุณากรอกชื่อผู้ใช้";
-    } else if (/\s/.test(username)) {
-      validationErrors.username = "ชื่อผู้ใช้ต้องไม่มีช่องว่าง";
-    } else if (!/^[\x21-\x7E]{4,20}$/.test(username)) {
-      validationErrors.username =
-        "ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษ ความยาว 4–20 ตัวอักษร";
-    }
+    const isUsernameValid =
+      Boolean(username) &&
+      !/\s/.test(formData.username) &&
+      username.length >= 4 &&
+      username.length <= 10;
 
-    if (!password) {
-      validationErrors.password = "กรุณากรอกรหัสผ่าน";
-    } else if (/\s/.test(password)) {
-      validationErrors.password = "รหัสผ่านต้องไม่มีช่องว่าง";
-    } else if (!/^[\x21-\x7E]{8}$/.test(password)) {
-      validationErrors.password =
-        "รหัสผ่านต้องเป็นภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษจำนวน 8 ตัวอักษร";
+    const isPasswordValid =
+      Boolean(password) &&
+      !/\s/.test(password) &&
+      password.length === 8;
+
+    if (!isUsernameValid || !isPasswordValid) {
+      if (!username) {
+        validationErrors.username = "กรุณากรอกชื่อผู้ใช้";
+      } else if (/\s/.test(formData.username)) {
+        validationErrors.username = "ชื่อผู้ใช้ต้องไม่มีช่องว่าง";
+      } else if (username.length < 4 || username.length > 10) {
+        validationErrors.username =
+          "ชื่อผู้ใช้ต้องมีความยาว 4–10 ตัวอักษร";
+      }
+
+      if (!password) {
+        validationErrors.password = "กรุณากรอกรหัสผ่าน";
+      } else if (/\s/.test(password)) {
+        validationErrors.password = "รหัสผ่านต้องไม่มีช่องว่าง";
+      } else if (password.length !== 8) {
+        validationErrors.password = "รหัสผ่านต้องมีความยาว 8 ตัวอักษร";
+      }
+
+      validationErrors.submit = "กรุณากรอกข้อมูลให้ถูกต้อง";
     }
 
     setErrors(validationErrors);
@@ -324,13 +338,13 @@ export default function LoginWellnessHub() {
                   onChange={handleInputChange}
                   placeholder="กรอกชื่อผู้ใช้"
                   autoComplete="username"
-                  maxLength={20}
+                  maxLength={10}
                   disabled={submitting}
                 />
               </div>
 
               <div className="provider-login-field__support">
-                <span>ภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษ 4–20 ตัวอักษร</span>
+                <span>ความยาว 4–10 ตัวอักษร ไม่มีช่องว่าง</span>
               </div>
 
               {errors.username && (

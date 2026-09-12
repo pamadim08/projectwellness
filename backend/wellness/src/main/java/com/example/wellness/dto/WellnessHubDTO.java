@@ -8,7 +8,7 @@ import java.util.List;
 @Data
 public class WellnessHubDTO {
 
-    private Integer licenseId;
+    private String licenseId;
 
     private String wellnessHubName;
 

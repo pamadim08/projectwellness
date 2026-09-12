@@ -26,11 +26,11 @@ import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal
 import "./RequestWellnessHubAccount.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
-const MAX_COVER_SIZE = 5 * 1024 * 1024;
-const MAX_GALLERY_SIZE = 5 * 1024 * 1024;
+const MAX_COVER_SIZE = 20 * 1024 * 1024;
+const MAX_GALLERY_SIZE = 20 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 const MAX_GALLERY_IMAGES = 4;
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png"];
 const ACCEPTED_DOCUMENT_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 
 const DAYS = [
@@ -135,8 +135,19 @@ export default function RequestWellnessHubAccount() {
           axios.get(`${API_BASE_URL}/categories`),
           axios.get(`${API_BASE_URL}/districts`),
         ]);
-        setCategories(categoriesRes.data || []);
+        const catList = categoriesRes.data || [];
+        setCategories(catList);
         setDistricts(districtsRes.data || []);
+
+        const defaultCat = catList.find((c) =>
+          (c.categoryName || c.name || "").includes("นวดและสปา")
+        );
+        if (defaultCat) {
+          setFormData((prev) => ({
+            ...prev,
+            categoryId: prev.categoryId || defaultCat.categoryId || defaultCat.id || "",
+          }));
+        }
       } catch (error) {
         console.error("ไม่สามารถดึงข้อมูลหมวดหมู่หรืออำเภอได้", error);
       }
@@ -170,7 +181,7 @@ export default function RequestWellnessHubAccount() {
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
       setFormErrors((prev) => ({
         ...prev,
-        coverFile: "รองรับเฉพาะไฟล์ JPG, PNG และ WEBP",
+        coverFile: "รองรับเฉพาะไฟล์ JPG และ PNG",
       }));
       return;
     }
@@ -178,7 +189,7 @@ export default function RequestWellnessHubAccount() {
     if (file.size > MAX_COVER_SIZE) {
       setFormErrors((prev) => ({
         ...prev,
-        coverFile: "รูปหน้าปกต้องมีขนาดไม่เกิน 5 MB",
+        coverFile: "รูปหน้าปกต้องมีขนาดไม่เกิน 20 MB",
       }));
       return;
     }
@@ -220,7 +231,7 @@ export default function RequestWellnessHubAccount() {
       setFormErrors((prev) => ({
         ...prev,
         galleryImages:
-          "บางไฟล์ไม่ถูกเพิ่ม เนื่องจากชนิดไฟล์ไม่รองรับ ขนาดเกิน 5 MB หรือเกินจำนวนสูงสุด",
+          "บางไฟล์ไม่ถูกเพิ่ม เนื่องจากชนิดไฟล์ไม่รองรับ (รับเฉพาะ JPG/PNG) ขนาดเกิน 20 MB หรือเกินจำนวนสูงสุด",
       }));
     } else {
       setFormErrors((prev) => ({ ...prev, galleryImages: "" }));
@@ -320,49 +331,61 @@ export default function RequestWellnessHubAccount() {
     const errors = {};
 
     // ผู้สมัคร
-    if (!formData.requesterName.trim()) {
+    const requesterName = formData.requesterName.trim();
+    if (!requesterName) {
       errors.requesterName = "กรุณาระบุชื่อผู้ยื่นคำขอ";
+    } else if (requesterName.length < 4 || requesterName.length > 255) {
+      errors.requesterName = "ชื่อผู้ยื่นคำขอต้องมีความยาว 4–255 ตัวอักษร";
     }
 
-    if (!formData.userEmail.trim()) {
+    const userEmail = formData.userEmail.trim();
+    if (!userEmail) {
       errors.userEmail = "กรุณาระบุอีเมล";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.userEmail.trim())) {
-      errors.userEmail = "รูปแบบอีเมลไม่ถูกต้อง";
+    } else if (/\s/.test(formData.userEmail)) {
+      errors.userEmail = "อีเมลต้องไม่มีช่องว่าง";
+    } else if (userEmail.length < 5 || userEmail.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
+      errors.userEmail = "รูปแบบอีเมลไม่ถูกต้อง (ความยาว 5–255 ตัวอักษร)";
     }
 
-    if (!formData.tellInformation.trim()) {
+    const tellInfo = formData.tellInformation.trim();
+    if (!tellInfo) {
       errors.tellInformation = "กรุณาระบุเบอร์โทรศัพท์";
-    } else if (!/^[0-9+\-\s()]{8,20}$/.test(formData.tellInformation.trim())) {
-      errors.tellInformation = "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง";
+    } else if (!/^[0-9]{9,10}$/.test(tellInfo)) {
+      errors.tellInformation = "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก และไม่มีสัญลักษณ์พิเศษหรือช่องว่าง";
     }
 
     // ข้อมูลบัญชีผู้ใช้
     const username = formData.username.trim();
     if (!username) {
       errors.username = "กรุณาระบุชื่อผู้ใช้ (Username)";
-    } else if (/\s/.test(username)) {
+    } else if (/\s/.test(formData.username)) {
       errors.username = "ชื่อผู้ใช้ต้องไม่มีช่องว่าง";
-    } else if (!/^[\x21-\x7E]{4,20}$/.test(username)) {
-      errors.username =
-        "ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษ ความยาว 4–20 ตัวอักษร";
+    } else if (username.length < 4 || username.length > 10) {
+      errors.username = "ชื่อผู้ใช้ต้องมีความยาว 4–10 ตัวอักษร";
     }
 
-    if (!formData.password.trim()) {
+    const password = formData.password;
+    if (!password) {
       errors.password = "กรุณาระบุรหัสผ่าน (Password)";
-    } else if (/\s/.test(formData.password)) {
+    } else if (/\s/.test(password)) {
       errors.password = "รหัสผ่านต้องไม่มีช่องว่าง";
-    } else if (!/^[\x21-\x7E]{8}$/.test(formData.password)) {
-      errors.password =
-        "รหัสผ่านต้องเป็นภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษ ความยาว 8 ตัวอักษร";
+    } else if (password.length !== 8) {
+      errors.password = "รหัสผ่านต้องมีความยาว 8 ตัวอักษร";
     }
 
     // สถานประกอบการ
-    if (!formData.wellnessHubName.trim()) {
+    const hubName = formData.wellnessHubName.trim();
+    if (!hubName) {
       errors.wellnessHubName = "กรุณาระบุชื่อสถานประกอบการ";
+    } else if (hubName.length < 5 || hubName.length > 100) {
+      errors.wellnessHubName = "ชื่อสถานประกอบการต้องมีความยาว 5–100 ตัวอักษร";
     }
 
-    if (!formData.licenseId.trim()) {
+    const licenseId = formData.licenseId.trim();
+    if (!licenseId) {
       errors.licenseId = "กรุณาระบุเลขที่ใบอนุญาต";
+    } else if (/\s/.test(formData.licenseId) || !/^[A-Za-z0-9]{10,13}$/.test(licenseId)) {
+      errors.licenseId = "เลขที่ใบอนุญาตต้องเป็นภาษาอังกฤษหรือตัวเลข 10–13 ตัวอักษรและไม่มีช่องว่าง";
     }
 
     if (!formData.categoryId) {
@@ -373,19 +396,33 @@ export default function RequestWellnessHubAccount() {
       errors.districtId = "กรุณาเลือกอำเภอ/พื้นที่";
     }
 
-    if (!formData.address.trim()) {
+    const address = formData.address.trim();
+    if (!address) {
       errors.address = "กรุณาระบุที่อยู่";
+    } else if (address.length < 10 || address.length > 255) {
+      errors.address = "ที่อยู่ต้องมีความยาว 10–255 ตัวอักษร";
     }
 
-    if (!formData.googleMapsLink.trim()) {
+    const contactInfo = formData.contactInformation.trim();
+    if (contactInfo && (contactInfo.length < 3 || contactInfo.length > 255)) {
+      errors.contactInformation = "ช่องทางติดต่อเพิ่มเติมต้องมีความยาว 3–255 ตัวอักษร";
+    }
+
+    const gmapsLink = formData.googleMapsLink.trim();
+    if (!gmapsLink) {
       errors.googleMapsLink = "กรุณาระบุลิงก์ Google Maps";
-    } else if (!/^https?:\/\//i.test(formData.googleMapsLink.trim())) {
+    } else if (/\s/.test(formData.googleMapsLink)) {
+      errors.googleMapsLink = "ลิงก์ Google Maps ต้องไม่มีช่องว่าง";
+    } else if (!/^https?:\/\//i.test(gmapsLink)) {
       errors.googleMapsLink =
         "ลิงก์ Google Maps ต้องขึ้นต้นด้วย http:// หรือ https://";
     }
 
-    if (!formData.wellnessHubDescription.trim()) {
+    const hubDescription = formData.wellnessHubDescription.trim();
+    if (!hubDescription) {
       errors.wellnessHubDescription = "กรุณาระบุรายละเอียดบริการ";
+    } else if (hubDescription.length < 10 || hubDescription.length > 255) {
+      errors.wellnessHubDescription = "รายละเอียดบริการต้องมีความยาว 10–255 ตัวอักษร";
     }
 
     if (!verificationDocument) {
@@ -800,9 +837,10 @@ export default function RequestWellnessHubAccount() {
                     id="wellnessHubName"
                     name="wellnessHubName"
                     type="text"
+                    maxLength={100}
                     value={formData.wellnessHubName}
                     onChange={handleInputChange}
-                    placeholder="เช่น นวดแผนไทย เชียงใหม่"
+                    placeholder="เช่น นวดแผนไทย เชียงใหม่ (5–100 ตัวอักษร)"
                     className={
                       formErrors.wellnessHubName
                         ? "request-account-input--error"
@@ -824,9 +862,10 @@ export default function RequestWellnessHubAccount() {
                     id="licenseId"
                     name="licenseId"
                     type="text"
+                    maxLength={13}
                     value={formData.licenseId}
                     onChange={handleInputChange}
-                    placeholder="เช่น 5001234567"
+                    placeholder="เช่น 5001234567 (10–13 ตัวอักษร)"
                     className={
                       formErrors.licenseId ? "request-account-input--error" : ""
                     }
@@ -1097,9 +1136,10 @@ export default function RequestWellnessHubAccount() {
                       id="tellInformation"
                       name="tellInformation"
                       type="tel"
+                      maxLength={10}
                       value={formData.tellInformation}
                       onChange={handleInputChange}
-                      placeholder="เช่น 0812345678"
+                      placeholder="เช่น 0812345678 (9–10 หลัก)"
                       className={
                         formErrors.tellInformation
                           ? "request-account-input--error"
@@ -1341,10 +1381,10 @@ export default function RequestWellnessHubAccount() {
                       id="username"
                       name="username"
                       type="text"
-                      maxLength={20}
+                      maxLength={10}
                       value={formData.username}
                       onChange={handleInputChange}
-                      placeholder="กำหนดชื่อผู้ใช้ (ภาษาอังกฤษ ตัวเลข หรืออักขระพิเศษ 4–20 ตัวอักษร)"
+                      placeholder="กำหนดชื่อผู้ใช้ (ความยาว 4–10 ตัวอักษร ไม่มีช่องว่าง)"
                       className={
                         formErrors.username
                           ? "request-account-input--error"

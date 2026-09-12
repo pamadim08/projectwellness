@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 public class EmergencyServiceDTO {
-    private Integer licenseId;
+    private String licenseId;
     private String name;
     private String address;
     private String telInformation;

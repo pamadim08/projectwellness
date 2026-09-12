@@ -11,13 +11,37 @@ public interface AccountRequestRepository
                 extends JpaRepository<AccountRequest, Integer> {
 
         // =============================
-        // List
+        // List & Search
         // =============================
 
         List<AccountRequest> findAllByOrderByRequestIdDesc();
 
         List<AccountRequest> findByRequestStatusOrderByRequestIdDesc(
                         String requestStatus);
+
+        @org.springframework.data.jpa.repository.Query("SELECT " +
+                        "r.requestId, r.licenseId, r.wellnessHubName, r.requesterName, " +
+                        "r.contactInformation, r.tellInformation, r.userEmail, " +
+                        "r.requestStatus, r.rejectionReason, r.processedDate " +
+                        "FROM AccountRequest r ORDER BY r.requestId DESC")
+        List<Object[]> findAllSummariesByOrderByRequestIdDesc();
+
+        @org.springframework.data.jpa.repository.Query("SELECT " +
+                        "r.requestId, r.licenseId, r.wellnessHubName, r.requesterName, " +
+                        "r.contactInformation, r.tellInformation, r.userEmail, " +
+                        "r.requestStatus, r.rejectionReason, r.processedDate " +
+                        "FROM AccountRequest r WHERE " +
+                        "(:keyword IS NULL OR :keyword = '' OR " +
+                        "LOWER(r.wellnessHubName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                        "LOWER(r.licenseId) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                        "LOWER(r.requesterName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                        "LOWER(r.userEmail) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                        "LOWER(r.tellInformation) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
+                        "(:status IS NULL OR :status = '' OR UPPER(r.requestStatus) = UPPER(:status)) " +
+                        "ORDER BY r.requestId DESC")
+        List<Object[]> searchAccountRequestSummaries(
+                        @org.springframework.data.repository.query.Param("keyword") String keyword,
+                        @org.springframework.data.repository.query.Param("status") String status);
 
         // =============================
         // Count
@@ -34,19 +58,27 @@ public interface AccountRequestRepository
         // =============================
 
         boolean existsByLicenseIdAndRequestStatus(
-                        Integer licenseId,
+                        String licenseId,
                         String requestStatus);
 
         List<AccountRequest> findByLicenseIdAndRequestStatusOrderByRequestIdDesc(
-                        Integer licenseId,
+                        String licenseId,
                         String requestStatus);
 
         long deleteByLicenseIdAndRequestStatus(
-                        Integer licenseId,
+                        String licenseId,
                         String requestStatus);
 
         void deleteByLicenseId(
-                        Integer licenseId);
+                        String licenseId);
+
+        // =============================
+        // ตรวจ Username ซ้ำตามสถานะคำขอ
+        // =============================
+
+        boolean existsByUsernameIgnoreCaseAndRequestStatus(
+                        String username,
+                        String requestStatus);
 
         // =============================
         // Search
@@ -62,6 +94,6 @@ public interface AccountRequestRepository
                         String wellnessHubName);
 
         List<AccountRequest> findByLicenseIdOrderByRequestIdDesc(
-                        Integer licenseId);
+                        String licenseId);
 
 }

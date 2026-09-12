@@ -1,5 +1,6 @@
 package com.example.wellness.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -18,8 +19,8 @@ import java.time.LocalDateTime;
 public class EmergencyService {
 
     @Id
-    @Column(name = "license_id")
-    private Integer licenseId;
+    @Column(name = "license_id", length = 100)
+    private String licenseId;
 
     @Column(name = "wellness_hub_name")
     private String wellnessHubName;
@@ -60,6 +61,7 @@ public class EmergencyService {
     @Column(name = "username")
     private String username;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "password")
     private String password;
 

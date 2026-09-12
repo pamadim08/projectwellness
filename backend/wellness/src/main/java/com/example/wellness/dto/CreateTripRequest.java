@@ -13,5 +13,5 @@ public class CreateTripRequest {
     private String destinationName;
     private Integer originDistrictId;       // 🆕
     private Integer destinationDistrictId;  // 🆕
-    private List<Integer> licenseIds;
+    private List<String> licenseIds;
 }
