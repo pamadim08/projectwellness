@@ -19,6 +19,7 @@ import {
 
 import "./ListOfficialArticle.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
+import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 
 const API_URL = "http://localhost:8080/api/articles";
 const ROWS_PER_PAGE = 10;
@@ -40,9 +41,11 @@ function ListOfficialArticle() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [toast, setToast] = useState({
-    show: false,
-    type: "",
+  // Status Modal State
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: "info",
+    title: "",
     message: "",
   });
 
@@ -56,49 +59,6 @@ function ListOfficialArticle() {
     loadArticles();
   }, []);
 
-  useEffect(() => {
-    if (!location.state?.showToast) {
-      return;
-    }
-
-    setToast({
-      show: true,
-      type: location.state.toastType || "success",
-      message: location.state.toastMessage || "ดำเนินการเกี่ยวกับบทความสำเร็จ",
-    });
-
-    navigate(location.pathname, {
-      replace: true,
-      state: {},
-    });
-
-    const timer = window.setTimeout(() => {
-      setToast({
-        show: false,
-        type: "",
-        message: "",
-      });
-    }, 4000);
-
-    return () => window.clearTimeout(timer);
-  }, [location.state, location.pathname, navigate]);
-
-  const showToast = (type, message) => {
-    setToast({
-      show: true,
-      type,
-      message,
-    });
-
-    window.setTimeout(() => {
-      setToast({
-        show: false,
-        type: "",
-        message: "",
-      });
-    }, 4000);
-  };
-
   const loadArticles = async () => {
     setIsLoading(true);
 
@@ -109,8 +69,12 @@ function ListOfficialArticle() {
     } catch (error) {
       console.error("ไม่สามารถโหลดรายการบทความได้", error);
       setArticles([]);
-
-      showToast("error", "ไม่สามารถโหลดข้อมูลบทความจากระบบได้");
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถโหลดข้อมูลบทความจากระบบได้",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -156,14 +120,24 @@ function ListOfficialArticle() {
       setShowDeletePopup(false);
       setSelectedArticle(null);
 
-      showToast("success", "ลบบทความสำเร็จ");
+      setStatusModal({
+        isOpen: true,
+        type: "success",
+        title: "สำเร็จ",
+        message: "ลบบทความสำเร็จ",
+      });
     } catch (error) {
       console.error("ไม่สามารถลบบทความได้", error);
 
       setShowDeletePopup(false);
       setSelectedArticle(null);
 
-      showToast("error", "ไม่สามารถลบบทความได้กรุณาลองอีกครั้ง");
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถลบบทความได้ กรุณาลองอีกครั้ง",
+      });
     } finally {
       setDeletingId(null);
     }
@@ -273,32 +247,6 @@ function ListOfficialArticle() {
 
   return (
     <div className="official-article-page">
-      {toast.show && (
-        <div className={`article-toast article-toast-${toast.type}`}>
-          <div className="article-toast-content">
-            <FontAwesomeIcon
-              icon={toast.type === "success" ? faCircleCheck : faCircleXmark}
-            />
-
-            <span>{toast.message}</span>
-          </div>
-
-          <button
-            type="button"
-            className="article-toast-close"
-            aria-label="ปิดข้อความแจ้งเตือน"
-            onClick={() =>
-              setToast({
-                show: false,
-                type: "",
-                message: "",
-              })
-            }
-          >
-            <FontAwesomeIcon icon={faXmark} />
-          </button>
-        </div>
-      )}
 
       {/* Popup ยืนยันลบ */}
       {showDeletePopup && selectedArticle && (
@@ -572,6 +520,19 @@ function ListOfficialArticle() {
           )}
         </div>
       </main>
+
+      <AdminStatusModal
+        isOpen={statusModal.isOpen}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+        onClose={() =>
+          setStatusModal((previous) => ({
+            ...previous,
+            isOpen: false,
+          }))
+        }
+      />
     </div>
   );
 }

@@ -4,38 +4,9 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faRightToBracket,
-  faBuildingColumns,
   faHeartPulse,
 } from "@fortawesome/free-solid-svg-icons";
 import "./Navbar.css";
-
-// 🌟 รายชื่อโลโก้หน่วยงานจำลอง (Mockup) - สามารถนำรูปจริงมาใส่ใน logoUrl ได้ภายหลัง
-const PARTNER_ORGANIZATIONS = [
-  {
-    id: "org-1",
-    name: "สำนักงานสาธารณสุขจังหวัดเชียงใหม่ (สสจ.)",
-    shortName: "LOGO 1",
-    subText: "โลโก้หน่วยงานจำลอง 1",
-    logoUrl: "", // ใส่ URL หรือ path รูปภาพจริงที่นี่
-    badgeColor: "#10b981",
-  },
-  {
-    id: "org-2",
-    name: "จังหวัดเชียงใหม่",
-    shortName: "LOGO 2",
-    subText: "โลโก้หน่วยงานจำลอง 2",
-    logoUrl: "",
-    badgeColor: "#3b82f6",
-  },
-  {
-    id: "org-3",
-    name: "กรมการแพทย์แผนไทยและการแพทย์ทางเลือก / ภาคีเครือข่าย",
-    shortName: "LOGO 3",
-    subText: "โลโก้หน่วยงานจำลอง 3",
-    logoUrl: "",
-    badgeColor: "#f59e0b",
-  },
-];
 
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -76,8 +47,12 @@ function Navbar() {
       label: "บทความสุขภาพ",
     },
     {
+      path: "/request-wellness-hub-account",
+      label: "ยื่นคำขอ",
+    },
+    {
       path: "/track-status",
-      label: "ติดตามสถานะคำขอ",
+      label: "ติดตามสถานะ",
     },
   ];
 
@@ -95,7 +70,7 @@ function Navbar() {
       <div className="navbar__top-accent" />
 
       <div className="navbar__container">
-        {/* 🌟 1. ส่วนแบรนด์ (โลโก้จำลองแบบไอคอน) และโลโก้หน่วยงาน */}
+        {/* 🌟 1. ส่วนแบรนด์ */}
         <div className="navbar__identity">
           <Link
             to="/"
@@ -103,7 +78,7 @@ function Navbar() {
             onClick={closeMenu}
             aria-label="หน้าแรก Chiang Mai Wellness Route"
           >
-            {/* โลโก้ใหญ่แบบจำลองใช้ไอคอนเวลเนส */}
+            {/* โลโก้แบบจำลองใช้ไอคอนเวลเนส */}
             <div className="navbar__brand-logo-wrap">
               <FontAwesomeIcon
                 icon={faHeartPulse}
@@ -121,81 +96,13 @@ function Navbar() {
               </span>
             </div>
           </Link>
-
-          {/* เส้นคั่นแยกแบรนด์กับโลโก้หน่วยงาน */}
-          <div className="navbar__divider" />
-
-          {/* รายการโลโก้หน่วยงานภาคีเครือข่าย */}
-          <div
-            className="navbar__partners"
-            aria-label="หน่วยงานภาคีเครือข่ายร่วมพัฒนา"
-          >
-            <span className="navbar__partners-label">
-              <FontAwesomeIcon
-                icon={faBuildingColumns}
-                className="navbar__partners-icon"
-              />
-              ภาคีเครือข่าย:
-            </span>
-
-            <div className="navbar__partner-list">
-              {PARTNER_ORGANIZATIONS.map((org) => (
-                <div
-                  key={org.id}
-                  className="navbar__partner-item"
-                  tabIndex={0}
-                  role="img"
-                  aria-label={org.name}
-                >
-                  {org.logoUrl ? (
-                    <img
-                      src={org.logoUrl}
-                      alt={org.name}
-                      className="navbar__partner-img"
-                    />
-                  ) : (
-                    <div
-                      className="navbar__partner-badge"
-                      style={{ "--badge-accent": org.badgeColor }}
-                    >
-                      <span>{org.shortName}</span>
-                    </div>
-                  )}
-
-                  {/* Tooltip รายละเอียดหน่วยงาน */}
-                  <div className="navbar__partner-tooltip">
-                    <strong className="navbar__partner-tooltip-name">
-                      {org.name}
-                    </strong>
-                    <span className="navbar__partner-tooltip-sub">
-                      {org.subText}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
-        {/* 🌟 2. เมนูนำทาง (Desktop Nav สะอาดตา ไม่มีไอคอนรก) */}
+        {/* 🌟 2. เมนูนำทาง (Desktop Nav แถวเดียว สวยงาม สะอาดตา) */}
         <nav
           className={`navbar__nav ${isMenuOpen ? "navbar__nav--open" : ""}`}
           aria-label="เมนูหลัก"
         >
-          {/* ส่วนแสดงหน่วยงานเฉพาะบนจอมือถือ */}
-          <div className="navbar__mobile-partners">
-            <span className="navbar__mobile-partners-title">
-              หน่วยงานภาคีเครือข่าย
-            </span>
-            <div className="navbar__mobile-partner-chips">
-              {PARTNER_ORGANIZATIONS.map((org) => (
-                <span key={org.id} className="navbar__mobile-partner-chip">
-                  {org.name}
-                </span>
-              ))}
-            </div>
-          </div>
-
           <div className="navbar__menu-links">
             {menuItems.map((item) => (
               <NavLink
@@ -231,8 +138,9 @@ function Navbar() {
         {/* 🌟 3. ปุ่ม Hamburger Toggle (สำหรับ Mobile / Tablet) */}
         <button
           type="button"
-          className={`navbar__toggle-btn ${isMenuOpen ? "navbar__toggle-btn--active" : ""
-            }`}
+          className={`navbar__toggle-btn ${
+            isMenuOpen ? "navbar__toggle-btn--active" : ""
+          }`}
           aria-label={isMenuOpen ? "ปิดเมนู" : "เปิดเมนู"}
           aria-expanded={isMenuOpen}
           onClick={toggleMenu}

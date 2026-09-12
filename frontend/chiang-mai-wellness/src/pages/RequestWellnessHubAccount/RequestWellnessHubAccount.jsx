@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 import "./RequestWellnessHubAccount.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
@@ -81,6 +82,12 @@ export default function RequestWellnessHubAccount() {
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
 
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState("");
@@ -456,22 +463,59 @@ export default function RequestWellnessHubAccount() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (submitting || !validateForm()) {
+    if (submitting) return;
+
+    if (!validateForm()) {
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลและแนบเอกสารให้ครบถ้วน",
+        message: "กรุณากรอกข้อมูลและแนบเอกสารให้ครบถ้วน",
+      });
       return;
     }
 
     setSubmitting(true);
 
+    const licenseId = formData.licenseId.trim();
     const name = formData.wellnessHubName.trim();
     const gmapsLink = formData.googleMapsLink.trim();
     const parsedCoords = parseLatLngFromGoogleMapsLink(gmapsLink);
 
     try {
-      const existingHubsRes = await axios.get(`${API_BASE_URL}/wellness-hubs`);
-      const existingHubs = Array.isArray(existingHubsRes.data) ? existingHubsRes.data : [];
+      const [existingHubsRes, existingEmerRes] = await Promise.allSettled([
+        axios.get(`${API_BASE_URL}/wellness-hubs`),
+        axios.get(`${API_BASE_URL}/emergency-services`),
+      ]);
+      const hubsList = existingHubsRes.status === "fulfilled" && Array.isArray(existingHubsRes.value?.data)
+        ? existingHubsRes.value.data
+        : [];
+      const emerList = existingEmerRes.status === "fulfilled" && Array.isArray(existingEmerRes.value?.data)
+        ? existingEmerRes.value.data
+        : [];
+      const allExisting = [...hubsList, ...emerList];
 
-      // 1) เช็กชื่อซ้ำ
-      const isDuplicateName = existingHubs.some(
+      // 1) เช็กเลขที่ใบอนุญาตซ้ำ
+      const isDuplicateLicense = allExisting.some(
+        (hub) => String(hub.licenseId || "").trim() === licenseId
+      );
+      if (isDuplicateLicense) {
+        setFormErrors((prev) => ({
+          ...prev,
+          licenseId: "เลขที่ใบอนุญาตสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง",
+        }));
+        setSubmitting(false);
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "ข้อมูลซ้ำในระบบ",
+          message: "เลขที่ใบอนุญาตสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง",
+        });
+        return;
+      }
+
+      // 2) เช็กชื่อซ้ำ
+      const isDuplicateName = allExisting.some(
         (hub) => String(hub.wellnessHubName || "").trim().toLowerCase() === name.toLowerCase()
       );
       if (isDuplicateName) {
@@ -480,33 +524,51 @@ export default function RequestWellnessHubAccount() {
           wellnessHubName: "ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น",
         }));
         setSubmitting(false);
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "ข้อมูลซ้ำในระบบ",
+          message: "ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น",
+        });
         return;
       }
 
-      // 2) เช็กพิกัด / ลิงก์ Google Maps ซ้ำ
+      // 3) เช็กพิกัด / ลิงก์ Google Maps ซ้ำ
+      const isDuplicateLink = allExisting.some(
+        (hub) => hub.googleMapsLink && String(hub.googleMapsLink).trim().toLowerCase() === gmapsLink.toLowerCase()
+      );
+
+      let isDuplicateCoords = false;
       if (parsedCoords) {
-        const isDuplicateLocation = existingHubs.some((hub) => {
-          const sameLink = hub.googleMapsLink && String(hub.googleMapsLink).trim() === gmapsLink;
+        isDuplicateCoords = allExisting.some((hub) => {
           const hLat = parseFloat(hub.wellnessHubLatitude ?? hub.latitude);
           const hLng = parseFloat(hub.wellnessHubLongitude ?? hub.longitude);
 
-          const sameCoords =
+          return (
             !isNaN(hLat) &&
             !isNaN(hLng) &&
             Math.abs(hLat - parsedCoords.lat) < 0.0001 &&
-            Math.abs(hLng - parsedCoords.lng) < 0.0001;
-
-          return sameLink || sameCoords;
+            Math.abs(hLng - parsedCoords.lng) < 0.0001
+          );
         });
+      }
 
-        if (isDuplicateLocation) {
-          setFormErrors((prev) => ({
-            ...prev,
-            googleMapsLink: "พิกัดแผนที่ หรือลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง",
-          }));
-          setSubmitting(false);
-          return;
-        }
+      if (isDuplicateLink || isDuplicateCoords) {
+        const duplicateMsg = isDuplicateLink
+          ? "ลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง"
+          : "พิกัดแผนที่จาก Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง";
+        setFormErrors((prev) => ({
+          ...prev,
+          googleMapsLink: duplicateMsg,
+        }));
+        setSubmitting(false);
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "ข้อมูลซ้ำในระบบ",
+          message: duplicateMsg,
+        });
+        return;
       }
     } catch (err) {
       console.warn("⚠️ ไม่สามารถเช็กข้อมูลซ้ำล่วงหน้าได้:", err);
@@ -554,12 +616,40 @@ export default function RequestWellnessHubAccount() {
         },
       });
 
-      setShowSuccessModal(true);
+      setStatusModal({
+        isOpen: true,
+        type: "success",
+        title: "ส่งข้อมูลสำเร็จ!!",
+        message: `ระบบได้ส่งคำขอเปิดใช้งานบัญชีเรียบร้อยแล้ว ผลการพิจารณาจะถูกจัดส่งไปยัง ${formData.userEmail}`,
+      });
     } catch (error) {
+      const errorMsg = getErrorMessage(error);
+      const isDuplicate =
+        errorMsg.includes("ซ้ำ") ||
+        errorMsg.includes("มีอยู่แล้ว") ||
+        errorMsg.includes("ถูกใช้งานแล้ว") ||
+        errorMsg.includes("รอตรวจสอบ");
+
+      if (errorMsg.includes("เลขใบอนุญาต") || errorMsg.includes("เลขที่ใบอนุญาต")) {
+        setFormErrors((prev) => ({ ...prev, licenseId: errorMsg }));
+      } else if (errorMsg.includes("ชื่อผู้ใช้") || errorMsg.includes("Username")) {
+        setFormErrors((prev) => ({ ...prev, username: errorMsg }));
+      } else if (errorMsg.includes("ชื่อสถานประกอบการ")) {
+        setFormErrors((prev) => ({ ...prev, wellnessHubName: errorMsg }));
+      } else if (errorMsg.includes("Google Maps") || errorMsg.includes("พิกัด")) {
+        setFormErrors((prev) => ({ ...prev, googleMapsLink: errorMsg }));
+      }
+
       setFormErrors((prev) => ({
         ...prev,
-        submit: getErrorMessage(error),
+        submit: errorMsg,
       }));
+      setStatusModal({
+        isOpen: true,
+        type: isDuplicate ? "warning" : "error",
+        title: isDuplicate ? "ข้อมูลซ้ำในระบบ" : "ไม่สามารถส่งคำขอได้",
+        message: errorMsg,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -1400,42 +1490,23 @@ export default function RequestWellnessHubAccount() {
         </form>
       </div>
 
-      {showSuccessModal && (
-        <div
-          className="request-account-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="request-success-title"
-        >
-          <div className="request-account-modal">
-            <div className="request-account-modal__icon">
-              <CheckCircle2 />
-            </div>
-
-            <p className="request-account-modal__eyebrow">REQUEST RECEIVED</p>
-            <h2 id="request-success-title">ส่งคำขอเรียบร้อยแล้ว</h2>
-
-            <p>
-              ผู้ดูแลระบบจะตรวจสอบข้อมูลและเอกสาร และส่งผลการพิจารณาไปยัง
-              <strong> {formData.userEmail}</strong>
-            </p>
-
-            <div className="request-account-modal__notice">
-              โดยปกติใช้เวลาตรวจสอบประมาณ 1–3 วัน
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowSuccessModal(false);
-                navigate("/");
-              }}
-            >
-              กลับหน้าแรก
-            </button>
-          </div>
-        </div>
-      )}
+      <AdminStatusModal
+        isOpen={statusModal.isOpen}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+        confirmText={statusModal.type === "success" ? "กลับหน้าแรก" : "ตกลง"}
+        onConfirm={() => {
+          const isSuccess = statusModal.type === "success";
+          setStatusModal({ isOpen: false, type: "info", title: "", message: "" });
+          if (isSuccess) {
+            navigate("/");
+          }
+        }}
+        onClose={() =>
+          setStatusModal({ isOpen: false, type: "info", title: "", message: "" })
+        }
+      />
     </main>
   );
 }

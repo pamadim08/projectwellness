@@ -1,7 +1,10 @@
 package com.example.wellness.repository;
 
 import com.example.wellness.model.EmergencyService;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -23,4 +26,14 @@ public interface EmergencyServiceRepository
     boolean existsByUsername(String username);
 
     EmergencyService findByUsername(String username);
+
+
+    @Query("SELECT e FROM EmergencyService e " +
+            "WHERE e.district IS NOT NULL")
+    List<EmergencyService> findAllEmergencyServices();
+
+    @Query("SELECT e FROM EmergencyService e " +
+            "WHERE e.district.districtId IN :districtIds")
+    List<EmergencyService> findByDistrictIds(
+            @Param("districtIds") List<Integer> districtIds);
 }

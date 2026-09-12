@@ -13,6 +13,7 @@ import {
 
 import "./CreateOfficialArticle.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
+import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 
 // กำหนดขนาดไฟล์สูงสุดเป็น 20MB
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
@@ -33,9 +34,13 @@ function CreateOfficialArticle() {
 
   const editorRef = useRef(null);
 
-  // State สำหรับควบคุม Popup เตือน Error
-  const [showErrorPopup, setShowErrorPopup] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  // State สำหรับควบคุม Popup เตือนสถานะสไตล์ทางการ
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
 
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
@@ -112,8 +117,12 @@ function CreateOfficialArticle() {
     const error = validateImage(file);
     if (error) {
       setErrors((prev) => ({ ...prev, cover: error }));
-      setErrorMessage(error);
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: id ? "กรุณากรอกข้อมูลให้ถูกต้องตามเงื่อนไข" : "กรุณากรอกข้อมูลให้ครบถ้วน",
+        message: error,
+      });
       e.target.value = "";
       return;
     }
@@ -130,8 +139,12 @@ function CreateOfficialArticle() {
     if (remainingSlots <= 0) {
       const msg = "เพิ่มรูปภาพประกอบได้สูงสุด 4 รูป (เมื่อรวมรูปปกจะเป็นสูงสุด 5 รูป)";
       setErrors((prev) => ({ ...prev, images: msg }));
-      setErrorMessage(msg);
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: id ? "กรุณากรอกข้อมูลให้ถูกต้องตามเงื่อนไข" : "กรุณากรอกข้อมูลให้ครบถ้วน",
+        message: msg,
+      });
       e.target.value = "";
       return;
     }
@@ -151,8 +164,12 @@ function CreateOfficialArticle() {
     if (invalidMessages.length > 0) {
       const msg = invalidMessages.join(" | ");
       setErrors((prev) => ({ ...prev, images: msg }));
-      setErrorMessage(msg);
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: id ? "กรุณากรอกข้อมูลให้ถูกต้องตามเงื่อนไข" : "กรุณากรอกข้อมูลให้ครบถ้วน",
+        message: msg,
+      });
     }
 
     const filesToAdd = validFiles.slice(0, remainingSlots);
@@ -201,8 +218,21 @@ function CreateOfficialArticle() {
 
     if (Object.keys(err).length > 0) {
       setErrors(err);
-      setErrorMessage("กรุณากรอกข้อมูลให้ครบถ้วน");
-      setShowErrorPopup(true);
+      if (id) {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "กรุณากรอกข้อมูลให้ถูกต้องตามเงื่อนไข",
+          message: "กรุณากรอกข้อมูลให้ถูกต้องตามเงื่อนไข (ชื่อบทความ 10–100 ตัวอักษร, รายละเอียด 50–2,500 ตัวอักษร)",
+        });
+      } else {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "กรุณากรอกข้อมูลให้ครบถ้วน",
+          message: "กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อบทความ 10–100 ตัวอักษร, รายละเอียด 50–2,500 ตัวอักษร)",
+        });
+      }
       return false;
     }
     return true;
@@ -241,24 +271,41 @@ function CreateOfficialArticle() {
 
       if (id) {
         await axios.put(`http://localhost:8080/api/articles/${id}`, payload);
+        setIsSubmitting(false);
+        setStatusModal({
+          isOpen: true,
+          type: "success",
+          title: "แก้ไขข้อมูลบทความสำเร็จ",
+          message: "ระบบได้บันทึกการแก้ไขบทความประชาสัมพันธ์เรียบร้อยแล้ว",
+        });
       } else {
         await axios.post("http://localhost:8080/api/articles", payload);
+        setIsSubmitting(false);
+        setStatusModal({
+          isOpen: true,
+          type: "success",
+          title: "สร้างบทความสำเร็จ",
+          message: "ระบบได้เผยแพร่บทความประชาสัมพันธ์เรียบร้อยแล้ว",
+        });
       }
-
-      navigate("/listOfficialArticle", {
-        state: {
-          showToast: true,
-          toastType: "success",
-          toastMessage: id
-            ? "บันทึกการแก้ไขบทความสำเร็จ"
-            : "เผยแพร่บทความสำเร็จ",
-        },
-      });
     } catch (error) {
       console.error("ไม่สามารถบันทึกบทความได้", error);
       setIsSubmitting(false);
-      setErrorMessage("สร้างบทความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
-      setShowErrorPopup(true);
+      if (id) {
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "ไม่สามารถแก้ไขข้อมูลได้",
+          message: "ไม่สามารถแก้ไขข้อมูลบทความได้ กรุณาลองใหม่อีกครั้ง",
+        });
+      } else {
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "สร้างบทความไม่สำเร็จ",
+          message: "สร้างบทความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+        });
+      }
     }
   };
 
@@ -411,22 +458,25 @@ function CreateOfficialArticle() {
         </div>
       </div>
 
-      {/* 🔴 Popup แจ้งเตือนข้อผิดพลาด (Error Modal) */}
-      {showErrorPopup && (
-        <div className="popup-bg">
-          <div className="popup">
-            <div className="popup-icon error">!</div>
-            <h3>เกิดข้อผิดพลาด</h3>
-            <p>{errorMessage}</p>
-            <button
-              className="confirm-btn"
-              onClick={() => setShowErrorPopup(false)}
-            >
-              ปิด
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 🏛️ ป๊อปอัปแจ้งเตือนสถานะสำหรับแอดมิน (Admin Status Modal) */}
+      <AdminStatusModal
+        isOpen={statusModal.isOpen}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+        confirmText={statusModal.type === "success" ? "กลับสู่หน้ารายการ" : "ตกลง"}
+        cancelText="ปิด"
+        isEdit={!!id}
+        onConfirm={() => {
+          if (statusModal.type === "success") {
+            setStatusModal((prev) => ({ ...prev, isOpen: false }));
+            navigate("/listOfficialArticle");
+          } else {
+            setStatusModal((prev) => ({ ...prev, isOpen: false }));
+          }
+        }}
+        onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

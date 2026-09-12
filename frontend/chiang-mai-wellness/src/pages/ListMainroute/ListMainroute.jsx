@@ -4,6 +4,7 @@ import axiosInstance from "axios";
 
 import "./ListMainroute.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
+import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 
 // 🌟 1. ประกาศตัวแปร In-Memory Cache ไว้นอก Component
 let mainRouteCache = null;
@@ -26,11 +27,12 @@ const ListMainRoute = () => {
   // State สำหรับเก็บชื่อแอดมิน
   const [adminName, setAdminName] = useState("admin02");
 
-  // State จัดการ Toast Alert
-  const [popupAlert, setPopupAlert] = useState({
-    show: false,
+  // Status Modal State
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: "info",
+    title: "",
     message: "",
-    isSuccess: true,
   });
 
   // โหลดข้อมูลแอดมิน
@@ -40,28 +42,6 @@ const ListMainRoute = () => {
       setAdminName(storedAdmin);
     }
   }, []);
-
-  // รับ Toast แจ้งเตือนจากหน้าอื่น (เช่น หลังกด Create / Edit เสร็จ)
-  useEffect(() => {
-    if (location.state?.showToast) {
-      setPopupAlert({
-        show: true,
-        message: location.state.toastMessage,
-        isSuccess: location.state.toastType === "success",
-      });
-
-      // ล้าง state ป้องกัน popup เด้งซ้ำเวลา refresh
-      navigate(location.pathname, { replace: true });
-
-      setTimeout(() => {
-        setPopupAlert({
-          show: false,
-          message: "",
-          isSuccess: true,
-        });
-      }, 3000);
-    }
-  }, [location.state, location.pathname, navigate]);
 
   // 🌟 2. ปรับฟังก์ชันดึงข้อมูลให้รองรับ Cache และ forceRefresh
   const fetchMainRouteList = async (forceRefresh = false) => {
@@ -142,76 +122,29 @@ const ListMainRoute = () => {
       // บังคับดึงข้อมูลใหม่หลังลบสำเร็จ
       await fetchMainRouteList(true);
 
-      setPopupAlert({
-        show: true,
-        message: "ลบข้อมูลเส้นทางสุขภาพเสร็จสิ้น",
-        isSuccess: true,
+      setStatusModal({
+        isOpen: true,
+        type: "success",
+        title: "สำเร็จ",
+        message: "ลบข้อมูลเส้นทางสำเร็จ",
       });
-
-      setTimeout(() => {
-        setPopupAlert({
-          show: false,
-          message: "",
-          isSuccess: true,
-        });
-      }, 3000);
     } catch (err) {
       console.error("เกิดข้อผิดพลาดในการลบเส้นทาง", err);
 
       setShowDeletePopup(false);
       setSelectedRoute(null);
 
-      setPopupAlert({
-        show: true,
-        message: "ไม่สามารถลบข้อมูลเส้นทางสุขภาพได้",
-        isSuccess: false,
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถลบข้อมูลเส้นทางได้ กรุณาลองอีกครั้ง",
       });
-
-      setTimeout(() => {
-        setPopupAlert({
-          show: false,
-          message: "",
-          isSuccess: false,
-        });
-      }, 3000);
     }
   };
 
   return (
     <div className="gov-admin-layout">
-      {/* Toast Alert */}
-      {popupAlert.show && (
-        <div
-          className={`gov-toast-alert ${popupAlert.isSuccess ? "alert-success" : "alert-error"
-            }`}
-        >
-          <div className="toast-content-wrapper">
-            <i
-              className={
-                popupAlert.isSuccess
-                  ? "fa-solid fa-circle-check"
-                  : "fa-solid fa-circle-exclamation"
-              }
-            ></i>
-            <span>{popupAlert.message}</span>
-          </div>
-
-          <button
-            type="button"
-            className="btn-close-toast"
-            onClick={() =>
-              setPopupAlert({
-                show: false,
-                message: "",
-                isSuccess: true,
-              })
-            }
-            aria-label="ปิดข้อความแจ้งเตือน"
-          >
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-      )}
 
       {/* เมนูด้านข้าง (Sidebar) */}
       <AdminSidebar activeMenu="routes" />
@@ -403,6 +336,19 @@ const ListMainRoute = () => {
           </div>
         </div>
       )}
+
+      <AdminStatusModal
+        isOpen={statusModal.isOpen}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+        onClose={() =>
+          setStatusModal((previous) => ({
+            ...previous,
+            isOpen: false,
+          }))
+        }
+      />
     </div>
   );
 };

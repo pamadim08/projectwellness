@@ -9,10 +9,20 @@ import {
   faFilePdf,
   faMapMarkerAlt,
   faSpinner,
+  faEnvelope,
+  faKey,
+  faUserCheck,
+  faCircleExclamation,
+  faEye,
+  faEyeSlash,
+  faChevronDown,
+  faChevronUp,
+  faCircleInfo,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "./ApproveAccountRequest.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
+import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 
 // Helper Functions จัดฟอร์แมตข้อมูล
 
@@ -107,7 +117,21 @@ function ApproveAccountRequest() {
   const [showApprove, setShowApprove] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [reason, setReason] = useState("");
+  const [rejectDetail, setRejectDetail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showApproveEmailPreview, setShowApproveEmailPreview] = useState(false);
+  const [showRejectEmailPreview, setShowRejectEmailPreview] = useState(false);
+
+  // Status Modal State
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: "",
+    onConfirm: null,
+    children: null,
+  });
 
   useEffect(() => {
     fetchRequest();
@@ -118,13 +142,59 @@ function ApproveAccountRequest() {
       const res = await axios.get(
         `http://localhost:8080/api/account-requests/${id}`,
       );
+      if (!res.data) {
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "ไม่พบข้อมูลคำขออนุมัติ",
+          message: "ไม่พบข้อมูลคำขออนุมัติ",
+          onConfirm: null,
+          children: null,
+        });
+      }
       setRequest(res.data);
     } catch (err) {
-      console.log(err);
+      console.error(err);
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: "ไม่พบข้อมูลคำขออนุมัติ",
+        message: "ไม่พบข้อมูลคำขออนุมัติ",
+        onConfirm: null,
+        children: null,
+      });
     }
   };
 
+  // รวมเหตุผลการไม่อนุมัติ (Dropdown + รายละเอียดเพิ่มเติม)
+  const getEffectiveRejectReason = () => {
+    const mainReason = (reason || "").trim();
+    const detail = (rejectDetail || "").trim();
+
+    if (!mainReason) return "";
+    if (mainReason === "อื่นๆ") {
+      return detail || "ไม่ผ่านเกณฑ์การพิจารณา";
+    }
+    if (detail) {
+      return `${mainReason} (${detail})`;
+    }
+    return mainReason;
+  };
+
   const handleApprove = async () => {
+    if (!request) {
+      setShowApprove(false);
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: "ไม่พบข้อมูลคำขออนุมัติ",
+        message: "ไม่พบข้อมูลคำขออนุมัติ",
+        onConfirm: null,
+        children: null,
+      });
+      return;
+    }
+
     if (isSubmitting) return;
     setIsSubmitting(true);
 
@@ -133,27 +203,129 @@ function ApproveAccountRequest() {
         `http://localhost:8080/api/account-requests/${id}/approve`,
       );
 
-      navigate("/listAccountRequest", {
-        state: {
-          showToast: true,
-          toastType: "success",
-          toastMessage: `อนุมัติคำร้องขอสิทธิ์ของ "${
-            request?.wellnessHubName || "สถานประกอบการ"
-          }" เรียบร้อยแล้ว`,
-          updatedRequestId: Number(id),
-          requestStatus: "APPROVED",
+      setShowApprove(false);
+      setStatusModal({
+        isOpen: true,
+        type: "success",
+        title: "อนุมัติคำขอสำเร็จ",
+        message: "ส่งอีเมลแจ้งผลสำเร็จ",
+        children: (
+          <div
+            style={{
+              backgroundColor: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              padding: "14px 16px",
+              marginTop: "12px",
+              marginBottom: "8px",
+              textAlign: "left",
+              fontSize: "13px",
+              lineHeight: "1.6",
+              color: "#166534",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: "bold",
+                borderBottom: "1px solid #dcfce7",
+                paddingBottom: "6px",
+                marginBottom: "8px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span>📧 ข้อมูลการแจ้งผลที่จัดส่ง (Notify Request Result)</span>
+            </div>
+            <div>
+              <strong>สถานประกอบการ:</strong>{" "}
+              {request?.wellnessHubName || "-"}
+            </div>
+            <div>
+              <strong>อีเมลปลายทาง:</strong> {request?.userEmail || "-"}
+            </div>
+            <div
+              style={{
+                marginTop: "8px",
+                padding: "8px 10px",
+                background: "#ffffff",
+                border: "1px solid #86efac",
+                fontFamily: "monospace",
+              }}
+            >
+              <div>
+                <strong>Username:</strong> {request?.username || "-"}
+              </div>
+              <div>
+                <strong>Password:</strong> {request?.password || "-"}
+              </div>
+            </div>
+          </div>
+        ),
+        onConfirm: () => {
+          navigate("/listAccountRequest", {
+            state: {
+              updatedRequestId: Number(id),
+              requestStatus: "APPROVED",
+            },
+          });
         },
       });
     } catch (err) {
-      console.log(err);
-      alert("เกิดข้อผิดพลาดในการอนุมัติ กรุณาลองใหม่อีกครั้ง");
+      console.error(err);
+      setShowApprove(false);
+      const errMsg = err?.response?.data?.message || err?.message || "";
+      if (
+        errMsg.toLowerCase().includes("mail") ||
+        errMsg.includes("อีเมล") ||
+        errMsg.toLowerCase().includes("email")
+      ) {
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "การส่งล้มเหลว",
+          message: "การส่งล้มเหลว",
+          onConfirm: null,
+          children: null,
+        });
+      } else {
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
+          message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง",
+          onConfirm: null,
+          children: null,
+        });
+      }
+    } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleReject = async () => {
-    if (!reason) {
-      alert("กรุณาเลือกเหตุผลการไม่อนุมัติ");
+    if (!request) {
+      setShowReject(false);
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: "ไม่พบข้อมูลคำขออนุมัติ",
+        message: "ไม่พบข้อมูลคำขออนุมัติ",
+        onConfirm: null,
+        children: null,
+      });
+      return;
+    }
+
+    const finalReason = getEffectiveRejectReason();
+    if (!finalReason) {
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณาเลือกเหตุผลที่ไม่อนุมัติ",
+        message: "กรุณาเลือกเหตุผลที่ไม่อนุมัติ",
+        onConfirm: null,
+        children: null,
+      });
       return;
     }
 
@@ -165,25 +337,100 @@ function ApproveAccountRequest() {
         `http://localhost:8080/api/account-requests/${id}/reject`,
         null,
         {
-          params: { reason },
+          params: { reason: finalReason },
         },
       );
 
-      navigate("/listAccountRequest", {
-        state: {
-          showToast: true,
-          toastType: "success",
-          toastMessage: `ไม่อนุมัติคำร้องของ "${
-            request?.wellnessHubName || "สถานประกอบการ"
-          }" เรียบร้อยแล้ว`,
-          updatedRequestId: Number(id),
-          requestStatus: "REJECTED",
-          rejectionReason: reason,
+      setShowReject(false);
+      setStatusModal({
+        isOpen: true,
+        type: "success",
+        title: "บันทึกผลไม่อนุมัติคำขอสำเร็จ",
+        message: "ส่งอีเมลแจ้งผลสำเร็จ",
+        children: (
+          <div
+            style={{
+              backgroundColor: "#fef2f2",
+              border: "1px solid #fecaca",
+              padding: "14px 16px",
+              marginTop: "12px",
+              marginBottom: "8px",
+              textAlign: "left",
+              fontSize: "13px",
+              lineHeight: "1.6",
+              color: "#991b1b",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: "bold",
+                borderBottom: "1px solid #fee2e2",
+                paddingBottom: "6px",
+                marginBottom: "8px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span>📧 ข้อมูลการแจ้งผลที่จัดส่ง (Notify Request Result)</span>
+            </div>
+            <div>
+              <strong>สถานประกอบการ:</strong>{" "}
+              {request?.wellnessHubName || "-"}
+            </div>
+            <div>
+              <strong>อีเมลปลายทาง:</strong> {request?.userEmail || "-"}
+            </div>
+            <div
+              style={{
+                marginTop: "8px",
+                padding: "8px 10px",
+                background: "#ffffff",
+                border: "1px solid #fca5a5",
+              }}
+            >
+              <strong>เหตุผลที่ไม่อนุมัติ:</strong> {finalReason}
+            </div>
+          </div>
+        ),
+        onConfirm: () => {
+          navigate("/listAccountRequest", {
+            state: {
+              updatedRequestId: Number(id),
+              requestStatus: "REJECTED",
+              rejectionReason: finalReason,
+            },
+          });
         },
       });
     } catch (err) {
-      console.log(err);
-      alert("เกิดข้อผิดพลาดในการปฏิเสธคำร้อง กรุณาลองใหม่อีกครั้ง");
+      console.error(err);
+      setShowReject(false);
+      const errMsg = err?.response?.data?.message || err?.message || "";
+      if (
+        errMsg.toLowerCase().includes("mail") ||
+        errMsg.includes("อีเมล") ||
+        errMsg.toLowerCase().includes("email")
+      ) {
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "การส่งล้มเหลว",
+          message: "การส่งล้มเหลว",
+          onConfirm: null,
+          children: null,
+        });
+      } else {
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
+          message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง",
+          onConfirm: null,
+          children: null,
+        });
+      }
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -477,6 +724,16 @@ function ApproveAccountRequest() {
                 )}
               </div>
             </div>
+
+            <div>
+              <label>ละติจูด (Latitude)</label>
+              <p>{request.wellnessHubLatitude ?? "-"}</p>
+            </div>
+
+            <div>
+              <label>ลองจิจูด (Longitude)</label>
+              <p>{request.wellnessHubLongitude ?? "-"}</p>
+            </div>
           </div>
 
           <div className="full-width-detail">
@@ -581,7 +838,11 @@ function ApproveAccountRequest() {
           <div className="action-area" style={{ marginTop: "30px" }}>
             <button
               className="approve-btn"
-              onClick={() => setShowApprove(true)}
+              onClick={() => {
+                setShowPassword(false);
+                setShowApproveEmailPreview(false);
+                setShowApprove(true);
+              }}
               disabled={isSubmitting}
             >
               <FontAwesomeIcon icon={faCheck} /> อนุมัติ
@@ -589,7 +850,12 @@ function ApproveAccountRequest() {
 
             <button
               className="reject-btn"
-              onClick={() => setShowReject(true)}
+              onClick={() => {
+                setReason("");
+                setRejectDetail("");
+                setShowRejectEmailPreview(false);
+                setShowReject(true);
+              }}
               disabled={isSubmitting}
             >
               <FontAwesomeIcon icon={faXmark} /> ไม่อนุมัติ
@@ -598,91 +864,306 @@ function ApproveAccountRequest() {
         </div>
       </div>
 
-      {/* Popup Approve */}
+      {/* Popup Approve Confirmation */}
       {showApprove && (
-        <div className="popup-bg">
-          <div className="popup">
-            <h3>ยืนยันการอนุมัติสิทธิ์?</h3>
-            <p>
-              ระบบจะอนุมัติคำร้องและสร้างบัญชีผู้ใช้งาน  <p>สำหรับสถานประกอบการนี้</p>
-            </p>
+        <div className="popup-bg" role="dialog" aria-modal="true">
+          <div className="popup approve-modal-container">
+            <div className="approve-popup-header">
+              <h3>ยืนยันการอนุมัติสิทธิ์สถานประกอบการ</h3>
+              <p className="popup-subtitle">
+                ตรวจสอบข้อมูลก่อนสร้างบัญชีและส่งอีเมลแจ้งผู้ยื่นคำขอ
+              </p>
+            </div>
 
-            <p>กรุณาตรวจสอบข้อมูลก่อนดำเนินการ</p>
+            {/* ข้อมูลสถานประกอบการและบัญชีผู้ใช้งาน */}
+            <div className="approve-info-card">
+              <div className="approve-info-row">
+                <span className="approve-info-label">สถานประกอบการ:</span>
+                <span className="approve-info-value">{request?.wellnessHubName || "-"}</span>
+              </div>
+              <div className="approve-info-row">
+                <span className="approve-info-label">รหัสใบอนุญาต:</span>
+                <span className="approve-info-value">{request?.licenseId || "-"}</span>
+              </div>
+              <div className="approve-info-row">
+                <span className="approve-info-label">ชื่อผู้ใช้งาน:</span>
+                <span className="approve-info-value credential-badge">{request?.username || "-"}</span>
+              </div>
+              <div className="approve-info-row">
+                <span className="approve-info-label">รหัสผ่าน:</span>
+                <span className="approve-info-value credential-badge credential-password-box">
+                  <span className="password-masked-text">
+                    {showPassword
+                      ? (request?.password || "-")
+                      : (request?.password ? "•".repeat(Math.max(6, Math.min(request.password.length, 12))) : "••••••••")}
+                  </span>
+                  {request?.password && (
+                    <button
+                      type="button"
+                      className="password-toggle-icon-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                      title={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                      aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                    >
+                      <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+                    </button>
+                  )}
+                </span>
+              </div>
+              <div className="approve-info-row">
+                <span className="approve-info-label">อีเมลแจ้งเตือน:</span>
+                <span className="approve-info-value">{request?.userEmail || "-"}</span>
+              </div>
+            </div>
+
+            {/* Collapsible ตัวอย่างรูปแบบอีเมลที่จะส่ง */}
+            <div className="email-preview-accordion-section">
+              <button
+                type="button"
+                className={`email-preview-accordion-btn ${showApproveEmailPreview ? "open" : ""}`}
+                onClick={() => setShowApproveEmailPreview(!showApproveEmailPreview)}
+              >
+                <div className="email-preview-accordion-title">
+                  <FontAwesomeIcon icon={faCircleInfo} className="info-badge-icon" />
+                  <span>ดูตัวอย่างรูปแบบอีเมลที่จะส่ง</span>
+                </div>
+                <FontAwesomeIcon
+                  icon={showApproveEmailPreview ? faChevronUp : faChevronDown}
+                  className="accordion-arrow-icon"
+                />
+              </button>
+
+              {showApproveEmailPreview && (
+                <div className="email-preview-wrapper">
+                  <div className="email-preview-header">
+                    <FontAwesomeIcon icon={faEnvelope} />
+                    <span>ตัวอย่างเนื้อหาอีเมลที่จะจัดส่ง (Email Preview)</span>
+                  </div>
+                  <div className="email-preview-body">
+                    <div className="email-preview-meta">
+                      <div><strong>ถึง:</strong> {request?.userEmail}</div>
+                      <div><strong>หัวข้อ:</strong> ผลการอนุมัติบัญชีสถานประกอบการ</div>
+                    </div>
+                    <div className="email-preview-content">
+                      <p>คำร้องขอสิทธิ์สถานประกอบการได้รับการอนุมัติเรียบร้อยแล้ว ท่านสามารถเข้าสู่ระบบเพื่อจัดการข้อมูลสถานประกอบการด้วยชื่อผู้ใช้งานและรหัสผ่านที่กำหนด</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="popup-buttons">
               <button
+                type="button"
+                className="cancel-btn"
+                onClick={() => {
+                  setShowApprove(false);
+                  setShowPassword(false);
+                  setShowApproveEmailPreview(false);
+                }}
+                disabled={isSubmitting}
+              >
+                ยกเลิก
+              </button>
+
+              <button
+                type="button"
                 className="confirm-btn"
                 onClick={handleApprove}
                 disabled={isSubmitting}
-                style={{
-                  opacity: isSubmitting ? 0.7 : 1,
-                  cursor: isSubmitting ? "not-allowed" : "pointer",
-                }}
               >
                 {isSubmitting ? (
-                  <FontAwesomeIcon icon={faSpinner} spin />
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} spin /> กำลังดำเนินการ...
+                  </>
                 ) : (
-                  "ยืนยัน"
+                  <>
+                    <FontAwesomeIcon icon={faCheck} /> ยืนยันและส่งอีเมล
+                  </>
                 )}
-              </button>
-
-              <button
-                className="cancel-btn"
-                onClick={() => setShowApprove(false)}
-                disabled={isSubmitting}
-              >
-                ยกเลิก
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Popup Reject */}
+      {/* Popup Reject Confirmation */}
       {showReject && (
-        <div className="popup-bg">
-          <div className="popup reject-popup">
-            <h3>ยืนยันการไม่อนุมัติ?</h3>
+        <div className="popup-bg" role="dialog" aria-modal="true">
+          <div className="popup reject-confirm-popup">
+            <div className="reject-popup-header">
+              <h3>ยืนยันการไม่อนุมัติสิทธิ์สถานประกอบการ</h3>
+              <p className="popup-subtitle">
+                ตรวจสอบข้อมูลและระบุเหตุผลก่อนส่งอีเมลแจ้งผู้ยื่นคำขอ
+              </p>
+            </div>
 
-            <select
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={isSubmitting}
-            >
-              <option value="">เลือกเหตุผล</option>
-              <option>เอกสารไม่ครบถ้วน</option>
-              <option>ข้อมูลไม่ถูกต้อง</option>
-              <option>ไม่ผ่านเกณฑ์การพิจารณา</option>
-            </select>
+            {/* ข้อมูลสถานประกอบการและผู้ยื่นคำขอ */}
+            <div className="approve-info-card">
+              <div className="approve-info-row">
+                <span className="approve-info-label">สถานประกอบการ:</span>
+                <span className="approve-info-value">{request?.wellnessHubName || "-"}</span>
+              </div>
+              <div className="approve-info-row">
+                <span className="approve-info-label">รหัสใบอนุญาต:</span>
+                <span className="approve-info-value">{request?.licenseId || "-"}</span>
+              </div>
+              <div className="approve-info-row">
+                <span className="approve-info-label">ผู้ยื่นคำขอ:</span>
+                <span className="approve-info-value">{request?.requesterName || "-"}</span>
+              </div>
+              <div className="approve-info-row">
+                <span className="approve-info-label">อีเมลแจ้งเตือน:</span>
+                <span className="approve-info-value">{request?.userEmail || "-"}</span>
+              </div>
+            </div>
+
+            {/* ฟอร์มระบุเหตุผลไม่อนุมัติ */}
+            <div className="reject-form-section">
+              <div className="reject-form-group">
+                <label htmlFor="reject-reason-select">
+                  เลือกเหตุผลที่ไม่อนุมัติ <span style={{ color: "#dc2626" }}>*</span>
+                </label>
+                <select
+                  id="reject-reason-select"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  disabled={isSubmitting}
+                >
+                  <option value="">-- กรุณาเลือกเหตุผล --</option>
+                  <option value="เอกสารไม่ครบถ้วน">เอกสารไม่ครบถ้วน</option>
+                  <option value="ข้อมูลไม่ถูกต้อง">ข้อมูลไม่ถูกต้อง</option>
+                  <option value="ไม่ผ่านเกณฑ์การพิจารณา">ไม่ผ่านเกณฑ์การพิจารณา</option>
+                  <option value="อื่นๆ">อื่นๆ (ระบุรายละเอียดเพิ่มเติม)</option>
+                </select>
+              </div>
+
+              <div className="reject-form-group" style={{ marginTop: "12px" }}>
+                <label htmlFor="reject-detail-input">
+                  รายละเอียดเหตุผลเพิ่มเติม (ทางเลือก)
+                </label>
+                <textarea
+                  id="reject-detail-input"
+                  rows={3}
+                  value={rejectDetail}
+                  onChange={(e) => setRejectDetail(e.target.value)}
+                  placeholder="ระบุรายละเอียดเพิ่มเติมเพื่อให้ผู้ยื่นคำขอทราบเหตุผลที่ชัดเจน"
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+
+            {/* Collapsible ตัวอย่างรูปแบบอีเมลที่จะส่ง */}
+            <div className="email-preview-accordion-section">
+              <button
+                type="button"
+                className={`email-preview-accordion-btn email-preview-accordion-btn--reject ${showRejectEmailPreview ? "open" : ""}`}
+                onClick={() => setShowRejectEmailPreview(!showRejectEmailPreview)}
+              >
+                <div className="email-preview-accordion-title">
+                  <FontAwesomeIcon icon={faCircleInfo} className="info-badge-icon info-badge-icon--reject" />
+                  <span>ดูตัวอย่างรูปแบบอีเมลที่จะส่ง</span>
+                </div>
+                <FontAwesomeIcon
+                  icon={showRejectEmailPreview ? faChevronUp : faChevronDown}
+                  className="accordion-arrow-icon"
+                />
+              </button>
+
+              {showRejectEmailPreview && (
+                <div className="email-preview-wrapper email-preview-wrapper--reject">
+                  <div className="email-preview-header">
+                    <FontAwesomeIcon icon={faEnvelope} />
+                    <span>ตัวอย่างเนื้อหาอีเมลที่จะจัดส่ง (Email Preview)</span>
+                  </div>
+                  <div className="email-preview-body">
+                    <div className="email-preview-meta">
+                      <div><strong>ถึง:</strong> {request?.userEmail}</div>
+                      <div><strong>หัวข้อ:</strong> ผลการพิจารณาคำร้องขอสิทธิ์สถานประกอบการ</div>
+                    </div>
+                    <div className="email-preview-content">
+                      <p>คำร้องขอสิทธิ์สถานประกอบการไม่ผ่านการอนุมัติ เนื่องจาก:</p>
+                      <p style={{ margin: "6px 0", color: "#b91c1c", fontWeight: "600" }}>
+                        • {getEffectiveRejectReason() || "(ยังไม่ได้ระบุเหตุผล)"}
+                      </p>
+                      <div style={{ marginTop: "10px", padding: "8px 10px", background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: "4px", fontSize: "12.5px", color: "#475569", lineHeight: "1.5" }}>
+                        <strong>คำแนะนำ:</strong> ท่านสามารถตรวจสอบและแก้ไขข้อมูลหรือเอกสารให้ถูกต้อง จากนั้นสามารถดำเนินการยื่นคำร้องขอสิทธิ์เข้ามาใหม่อีกครั้งผ่านทางเว็บไซต์ได้ เมื่อส่งข้อมูลใหม่ระบบจะนำเข้าสู่สถานะ <strong>"รอพิจารณา"</strong> อีกครั้ง
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="popup-buttons">
               <button
-                className="confirm-btn"
-                onClick={handleReject}
-                disabled={isSubmitting}
-                style={{
-                  opacity: isSubmitting ? 0.7 : 1,
-                  cursor: isSubmitting ? "not-allowed" : "pointer",
-                }}
-              >
-                {isSubmitting ? (
-                  <FontAwesomeIcon icon={faSpinner} spin />
-                ) : (
-                  "ยืนยัน"
-                )}
-              </button>
-
-              <button
+                type="button"
                 className="cancel-btn"
-                onClick={() => setShowReject(false)}
+                onClick={() => {
+                  setShowReject(false);
+                  setShowRejectEmailPreview(false);
+                }}
                 disabled={isSubmitting}
               >
                 ยกเลิก
+              </button>
+
+              <button
+                type="button"
+                className="confirm-btn confirm-btn--reject"
+                onClick={handleReject}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} spin /> กำลังดำเนินการ...
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faXmark} /> ยืนยันไม่อนุมัติและส่งอีเมล
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <AdminStatusModal
+        isOpen={statusModal.isOpen}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+        confirmText="ตกลง"
+        onConfirm={() => {
+          if (statusModal.onConfirm) {
+            statusModal.onConfirm();
+          }
+          setStatusModal({
+            isOpen: false,
+            type: "info",
+            title: "",
+            message: "",
+            onConfirm: null,
+            children: null,
+          });
+        }}
+        onClose={() => {
+          if (statusModal.onConfirm) {
+            statusModal.onConfirm();
+          }
+          setStatusModal({
+            isOpen: false,
+            type: "info",
+            title: "",
+            message: "",
+            onConfirm: null,
+            children: null,
+          });
+        }}
+      >
+        {statusModal.children}
+      </AdminStatusModal>
     </div>
   );
 }

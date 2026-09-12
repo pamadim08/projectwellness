@@ -1,27 +1,18 @@
 package com.example.wellness.service;
 
+import com.example.wellness.dto.MainRouteDTO;
 import com.example.wellness.model.Category;
 import com.example.wellness.model.District;
 import com.example.wellness.model.MainRoute;
 import com.example.wellness.model.MainRouteDetail;
-import com.example.wellness.repository.CategoryRepository;
-import com.example.wellness.repository.DistrictRepository;
-import com.example.wellness.repository.EmergencyServiceRepository;
-import com.example.wellness.repository.MainRouteRepository;
-import com.example.wellness.repository.WellnessHubRepository;
+import com.example.wellness.repository.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +26,7 @@ public class MainRouteService {
     private final CategoryRepository categoryRepository;
     private final WellnessHubRepository wellnessHubRepository;
     private final EmergencyServiceRepository emergencyServiceRepository;
+    private final MainRouteDetailRepository mainRouteDetailRepository; // 🆕 เพิ่มบรรทัดนี้
     private final ObjectMapper objectMapper;
 
     public MainRouteService(
@@ -42,12 +34,14 @@ public class MainRouteService {
             DistrictRepository districtRepository,
             CategoryRepository categoryRepository,
             WellnessHubRepository wellnessHubRepository,
-            EmergencyServiceRepository emergencyServiceRepository) {
+            EmergencyServiceRepository emergencyServiceRepository,
+            MainRouteDetailRepository mainRouteDetailRepository) { // 🆕 เพิ่ม parameter นี้
         this.mainRouteRepository = mainRouteRepository;
         this.districtRepository = districtRepository;
         this.categoryRepository = categoryRepository;
         this.wellnessHubRepository = wellnessHubRepository;
         this.emergencyServiceRepository = emergencyServiceRepository;
+        this.mainRouteDetailRepository = mainRouteDetailRepository; // 🆕 เพิ่มบรรทัดนี้
         this.objectMapper = new ObjectMapper();
     }
 
@@ -359,5 +353,70 @@ public class MainRouteService {
         }
 
         return false;
+    }
+
+    /*
+     * ================= MOBILE ====================
+     * 
+     */
+
+    public List<MainRouteDTO> listMainRouteUser() {
+        return mainRouteRepository.findAll()
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public MainRouteDTO getRouteById(Integer routeId) {
+        MainRoute route = mainRouteRepository.findById(routeId)
+                .orElseThrow(() -> new NoSuchElementException("ไม่พบเส้นทาง"));
+        return convertToDTO(route);
+    }
+
+    private MainRouteDTO convertToDTO(MainRoute route) {
+        MainRouteDTO dto = new MainRouteDTO();
+        dto.setRouteId(route.getRouteId());
+        dto.setRouteName(route.getRouteName());
+        dto.setRouteDescription(route.getRouteDescription());
+        dto.setRouteImage(route.getRouteImage());
+        dto.setPinCount(route.getPinCount());
+
+        // parse categoryId JSON array
+        if (route.getCategoryId() != null && !route.getCategoryId().isEmpty()) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                List<String> categoryIds = mapper.readValue(
+                        route.getCategoryId(),
+                        new TypeReference<List<String>>() {
+                        });
+                dto.setCategoryId(categoryIds);
+            } catch (Exception e) {
+                dto.setCategoryId(List.of());
+            }
+        } else {
+            dto.setCategoryId(List.of());
+        }
+
+        // route points เหมือนเดิม
+
+        List<MainRouteDetail> details = mainRouteDetailRepository
+                .findByMainRouteRouteIdOrderByOrderNumberAsc(route.getRouteId());
+
+        List<MainRouteDTO.RoutePointDTO> points = details.stream()
+                .map(detail -> {
+                    MainRouteDTO.RoutePointDTO point = new MainRouteDTO.RoutePointDTO();
+                    point.setOrderNumber(detail.getOrderNumber());
+                    if (detail.getDistrict() != null) {
+                        point.setDistrictId(detail.getDistrict().getDistrictId());
+                        point.setDistrictName(detail.getDistrict().getDistrictName());
+                        point.setLatitude(detail.getDistrict().getLatitude());
+                        point.setLongitude(detail.getDistrict().getLongitude());
+                    }
+                    return point;
+                })
+                .collect(Collectors.toList());
+
+        dto.setRoutePoints(points);
+        return dto;
     }
 }

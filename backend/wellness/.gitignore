@@ -38,3 +38,4 @@ application.yml
 
 # Environment
 .env
+.idea/

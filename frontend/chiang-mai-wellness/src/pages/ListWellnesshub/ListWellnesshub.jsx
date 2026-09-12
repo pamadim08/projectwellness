@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import "./ListWellnesshub.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
+import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSpinner,
@@ -38,8 +39,13 @@ const ListWellnessHub = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
 
-  // State สำหรับควบคุม Toast แจ้งเตือน
-  const [toast, setToast] = useState({ show: false, type: "", message: "" });
+  // Status Modal State
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: "",
+  });
 
   // 2. ฟังก์ชันโหลดข้อมูลพร้อมระบบตรวจสอบ Cache
   const loadData = async (
@@ -103,24 +109,6 @@ const ListWellnessHub = () => {
     const storedName = localStorage.getItem("adminName");
     if (storedName) setAdminName(storedName);
   }, []);
-
-  // แยก useEffect สำหรับตรวจจับ Toast แจ้งเตือนจากการ redirect
-  useEffect(() => {
-    if (location.state?.showToast) {
-      setToast({
-        show: true,
-        type: location.state.toastType,
-        message: location.state.toastMessage,
-      });
-
-      window.history.replaceState({}, document.title);
-
-      const timer = setTimeout(() => {
-        setToast({ show: false, type: "", message: "" });
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [location]);
 
   const handleLogout = () => {
     if (window.confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) {
@@ -196,38 +184,24 @@ const ListWellnessHub = () => {
       wellnessHubCache = null;
       await loadData("", "", "", true);
 
-      setToast({
-        show: true,
+      setStatusModal({
+        isOpen: true,
         type: "success",
-        message: "ลบข้อมูลสถานประกอบการเสร็จสิ้น",
+        title: "สำเร็จ",
+        message: "ลบข้อมูลสถานประกอบการสำเร็จ",
       });
-
-      setTimeout(() => {
-        setToast({
-          show: false,
-          type: "",
-          message: "",
-        });
-      }, 4000);
     } catch (error) {
       console.error("เกิดข้อผิดพลาดในการลบสถานประกอบการ", error);
 
       setShowDeletePopup(false);
       setSelectedHub(null);
 
-      setToast({
-        show: true,
+      setStatusModal({
+        isOpen: true,
         type: "error",
-        message: "ไม่สามารถลบข้อมูลออกจากระบบได้",
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถลบข้อมูลได้ กรุณาลองอีกครั้ง",
       });
-
-      setTimeout(() => {
-        setToast({
-          show: false,
-          type: "",
-          message: "",
-        });
-      }, 4000);
     } finally {
       setIsDeleting(false);
     }
@@ -235,24 +209,6 @@ const ListWellnessHub = () => {
 
   return (
     <div className="admin-layout">
-      {toast.show && (
-        <div className={`gov-toast-alert alert-${toast.type}`}>
-          <div className="toast-content-wrapper">
-            <i
-              className={`fa-solid ${
-                toast.type === "success" ? "fa-circle-check" : "fa-circle-xmark"
-              }`}
-            ></i>
-            <span>{toast.message}</span>
-          </div>
-          <button
-            className="btn-close-toast"
-            onClick={() => setToast({ show: false, type: "", message: "" })}
-          >
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-      )}
 
       <AdminSidebar activeMenu="wellness-hubs" />
 
@@ -527,6 +483,19 @@ const ListWellnessHub = () => {
           </div>
         </div>
       )}
+
+      <AdminStatusModal
+        isOpen={statusModal.isOpen}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+        onClose={() =>
+          setStatusModal((previous) => ({
+            ...previous,
+            isOpen: false,
+          }))
+        }
+      />
     </div>
   );
 };

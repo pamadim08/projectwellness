@@ -6,6 +6,7 @@ import "leaflet-routing-machine";
 import { getCategoryMarkerIcon } from "../../utils/categoryMarkerIcons";
 import "./CreateMainRoute.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
+import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 
 // 🌟 1. ค่าคงที่และ Helper function ด้านนอก Component
 const REQUIRED_EMERGENCY_CATEGORY_IDS = ["EM01", "EM02"];
@@ -77,6 +78,12 @@ const CreateMainRoute = () => {
 
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
 
   // Image upload states
   const [imageFile, setImageFile] = useState(null);
@@ -814,22 +821,46 @@ const CreateMainRoute = () => {
 
     if (isSubmitting) return;
 
-    const newErrors = {};
     const trimmedRouteName = routeName.trim();
     const routeNameRegex = /^[a-zA-Z0-9\u0E00-\u0E7F\s]{10,50}$/;
 
-    // 1. ตรวจสอบชื่อเส้นทาง (ห้ามว่าง, ภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น, 10–50 ตัวอักษร)
-    if (!trimmedRouteName || !routeNameRegex.test(trimmedRouteName)) {
-      newErrors.routeName = "กรุณากรอกข้อมูลให้ครบถ้วน";
-    }
-
-    // 2. ตรวจสอบจำนวนอำเภอ (อย่างน้อย 2 อำเภอ)
+    // 1. ตรวจสอบจำนวนอำเภอ (อย่างน้อย 2 อำเภอ)
     if (orderedRouteDetails.length < 2) {
-      newErrors.orderedDistricts = "กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ";
+      if (!id) {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ",
+          message: "กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ",
+        });
+      } else {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+          message: "กรุณากรอกข้อมูลให้ถูกต้อง (เลือกอำเภออย่างน้อย 2 อำเภอ)",
+        });
+      }
+      return;
     }
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    // 2. ตรวจสอบชื่อเส้นทาง
+    if (!trimmedRouteName || !routeNameRegex.test(trimmedRouteName)) {
+      if (!id) {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "กรุณากรอกข้อมูลให้ครบถ้วน",
+          message: "กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อเส้นทางความยาว 10–50 ตัวอักษร)",
+        });
+      } else {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+          message: "กรุณากรอกข้อมูลให้ถูกต้อง (ชื่อเส้นทางความยาว 10–50 ตัวอักษร)",
+        });
+      }
       return;
     }
 
@@ -852,7 +883,14 @@ const CreateMainRoute = () => {
 
         if (!uploadedFilename) {
           setIsSubmitting(false);
-          setImageError("ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง");
+          setStatusModal({
+            isOpen: true,
+            type: "error",
+            title: id ? "ไม่สามารถแก้ไขข้อมูลได้" : "บันทึกเส้นทางไม่สำเร็จ",
+            message: id
+              ? "ไม่สามารถแก้ไขข้อมูลเส้นทางหลักได้ กรุณาลองใหม่อีกครั้ง"
+              : "บันทึกเส้นทางไม่สำเร็จ กรุณาลองอีกครั้ง",
+          });
           return;
         }
 
@@ -878,12 +916,12 @@ const CreateMainRoute = () => {
           finalPayload,
         );
 
-        navigate("/listMainRoute", {
-          state: {
-            showToast: true,
-            toastType: "success",
-            toastMessage: "แก้ไขและบันทึกรูปภาพเส้นทางสำเร็จ",
-          },
+        setIsSubmitting(false);
+        setStatusModal({
+          isOpen: true,
+          type: "success",
+          title: "แก้ไขข้อมูลเส้นทางสำเร็จ",
+          message: "ระบบได้บันทึกและปรับปรุงข้อมูลเส้นทางเรียบร้อยแล้ว",
         });
         return;
       }
@@ -893,39 +931,33 @@ const CreateMainRoute = () => {
         finalPayload,
       );
 
-      navigate("/listMainRoute", {
-        state: {
-          showToast: true,
-          toastType: "success",
-          toastMessage: "เพิ่มเส้นทางสุขภาพใหม่สำเร็จสิ้น",
-        },
+      setIsSubmitting(false);
+      setStatusModal({
+        isOpen: true,
+        type: "success",
+        title: "บันทึกข้อมูลเส้นทางสำเร็จ",
+        message: "ระบบได้บันทึกข้อมูลเส้นทางใหม่เรียบร้อยแล้ว",
       });
     } catch (err) {
       console.error("❌ ไม่สามารถบันทึกข้อมูลเส้นทางได้", err);
       setIsSubmitting(false);
-      navigate("/listMainRoute", {
-        state: {
-          showToast: true,
-          toastType: "error",
-          toastMessage: id
-            ? "ไม่สามารถแก้ไขข้อมูลเส้นทางได้ กรุณาลองใหม่อีกครั้ง"
-            : "ไม่สามารถเพิ่มข้อมูลเส้นทางได้ กรุณาลองใหม่อีกครั้ง",
-        },
-      });
+      if (id) {
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "ไม่สามารถแก้ไขข้อมูลได้",
+          message: "ไม่สามารถแก้ไขข้อมูลเส้นทางหลักได้ กรุณาลองใหม่อีกครั้ง",
+        });
+      } else {
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "บันทึกเส้นทางไม่สำเร็จ",
+          message: "บันทึกเส้นทางไม่สำเร็จ กรุณาลองอีกครั้ง",
+        });
+      }
     }
   };
-
-  if (isSubmitting) {
-    return (
-      <div className="gov-loading-container">
-        <div className="loading-box">
-          <i className="fa-solid fa-spinner fa-spin"></i>
-          <h3>กำลังบันทึกข้อมูล</h3>
-          <p>กำลังส่งและปรับปรุงข้อมูลเส้นทางในฐานข้อมูลกลาง...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="gov-admin-layout">
@@ -1489,7 +1521,7 @@ const CreateMainRoute = () => {
                   disabled={isSubmitting}
                   style={isSubmitting ? { opacity: 0.7, cursor: "not-allowed" } : {}}
                 >
-                  {isSubmitting ? "กำลังบันทึก..." : "บันทึกข้อมูลและอัปเดต"}
+                  {isSubmitting ? "กำลังบันทึก..." : (id ? "บันทึกการแก้ไข" : "บันทึกข้อมูลเส้นทาง")}
                 </button>
 
                 <Link to="/listMainRoute" className="gov-btn-cancel">
@@ -1500,6 +1532,26 @@ const CreateMainRoute = () => {
           </div>
         </div>
       </main>
+
+      {/* 🏛️ ป๊อปอัปแจ้งเตือนสถานะสำหรับแอดมิน (Admin Status Modal) */}
+      <AdminStatusModal
+        isOpen={statusModal.isOpen}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+        confirmText={statusModal.type === "success" ? "กลับสู่หน้ารายการ" : "ตกลง"}
+        cancelText="ปิด"
+        isEdit={!!id}
+        onConfirm={() => {
+          if (statusModal.type === "success") {
+            setStatusModal((prev) => ({ ...prev, isOpen: false }));
+            navigate("/listMainRoute");
+          } else {
+            setStatusModal((prev) => ({ ...prev, isOpen: false }));
+          }
+        }}
+        onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import axiosInstance from "axios";
 import "./EditWellnesshub.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
+import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 import { clearWellnessHubCache } from "../ListWellnesshub/ListWellnesshub";
 
 const WELLNESS_CERTIFICATE_OPTIONS = [
@@ -100,12 +101,11 @@ const EditWellnessHub = () => {
       } catch (error) {
         console.error("Error loading data:", error);
         setIsLoading(false);
-        navigate("/listWellnesshub", {
-          state: {
-            showToast: true,
-            toastType: "error",
-            toastMessage: "ไม่สามารถดึงข้อมูลสถานประกอบการได้",
-          },
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "ไม่สามารถดึงข้อมูลสถานประกอบการได้",
+          message: "ไม่สามารถดึงข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง",
         });
       }
     };
@@ -116,8 +116,12 @@ const EditWellnessHub = () => {
     if (storedName) setAdminName(storedName);
   }, [id, navigate]);
 
-  const [showErrorPopup, setShowErrorPopup] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -177,7 +181,6 @@ const EditWellnessHub = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isLoading) return;
-    setErrorMessage("");
 
     const name = String(formData.wellnessHubName || "").trim();
     const categoryId = String(formData.categoryId || "").trim();
@@ -188,43 +191,67 @@ const EditWellnessHub = () => {
 
     // 1. ชื่อสถานประกอบการ: 2-100 ตัวอักษร
     if (!name || name.length < 2 || name.length > 100 || !/^[a-zA-Z0-9\u0E00-\u0E7F\s/.\-()&,'#+]+$/.test(name)) {
-      setErrorMessage("กรุณาระบุชื่อสถานประกอบการให้ถูกต้อง (2-100 ตัวอักษร)");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุชื่อสถานประกอบการ 2-100 ตัวอักษร)",
+      });
       return;
     }
 
     // 2. หมวดหมู่ธุรกิจ: ห้ามว่าง
     if (!categoryId) {
-      setErrorMessage("กรุณาเลือกหมวดหมู่ธุรกิจ");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (เลือกหมวดหมู่ธุรกิจ)",
+      });
       return;
     }
 
     // 3. เบอร์โทรศัพท์: ตัวเลข 9-10 หลัก
     if (tel && !/^0\d{8,9}$/.test(tel) && !/^[0-9\-+\s]{9,15}$/.test(tel)) {
-      setErrorMessage("กรุณาระบุเบอร์โทรศัพท์ติดต่อให้ถูกต้อง (เช่น 0812345678)");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุเบอร์โทรศัพท์ติดต่อให้ถูกต้อง เช่น 0812345678)",
+      });
       return;
     }
 
     // 4. ที่อยู่: 5-255 ตัวอักษร
     if (!address || address.length < 5 || address.length > 255) {
-      setErrorMessage("กรุณาระบุรายละเอียดที่อยู่ให้ถูกต้อง (5-255 ตัวอักษร)");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุรายละเอียดที่อยู่ 5-255 ตัวอักษร)",
+      });
       return;
     }
 
     // 5. อำเภอ: ห้ามว่าง
     if (!districtId) {
-      setErrorMessage("กรุณาเลือกอำเภอที่ตั้ง");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (เลือกอำเภอที่ตั้ง)",
+      });
       return;
     }
 
     // 6. Google Maps: ห้ามว่าง ต้องเป็น URL ที่ถูกต้อง
     if (!googleMapsLink || /\s/.test(googleMapsLink) || !/^https?:\/\/.+/i.test(googleMapsLink)) {
-      setErrorMessage("กรุณาระบุลิงก์ Google Maps ให้ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https:// และห้ามมีช่องว่าง)");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุลิงก์ Google Maps ให้ถูกต้อง ขึ้นต้นด้วย http:// หรือ https://)",
+      });
       return;
     }
 
@@ -246,8 +273,12 @@ const EditWellnessHub = () => {
       );
       if (isDuplicateName) {
         setIsLoading(false);
-        setErrorMessage("ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น");
-        setShowErrorPopup(true);
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+          message: "กรุณากรอกข้อมูลให้ถูกต้อง (ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว)",
+        });
         return;
       }
 
@@ -269,8 +300,12 @@ const EditWellnessHub = () => {
 
         if (isDuplicateLocation) {
           setIsLoading(false);
-          setErrorMessage("พิกัดแผนที่ หรือลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง");
-          setShowErrorPopup(true);
+          setStatusModal({
+            isOpen: true,
+            type: "warning",
+            title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+            message: "กรุณากรอกข้อมูลให้ถูกต้อง (พิกัดแผนที่หรือลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว)",
+          });
           return;
         }
       }
@@ -303,19 +338,20 @@ const EditWellnessHub = () => {
       clearWellnessHubCache();
       setIsLoading(false);
 
-      navigate("/listWellnesshub", {
-        state: {
-          showToast: true,
-          toastType: "success",
-          toastMessage: "แก้ไขและลงรับข้อมูลในตารางกลางเสร็จสิ้น",
-        },
+      setStatusModal({
+        isOpen: true,
+        type: "success",
+        title: "แก้ไขข้อมูลสถานประกอบการสำเร็จ",
+        message: "ระบบได้บันทึกและปรับปรุงข้อมูลสถานประกอบการเรียบร้อยแล้ว",
       });
     } catch (error) {
       setIsLoading(false);
-      setErrorMessage(
-        "ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง",
-      );
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: "ไม่สามารถแก้ไขข้อมูลได้",
+        message: "ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง",
+      });
     }
   };
 
@@ -644,22 +680,25 @@ const EditWellnessHub = () => {
         </div>
       </main>
 
-      {/* 🔴 Popup แจ้งเตือนข้อผิดพลาด (Error Modal) */}
-      {showErrorPopup && (
-        <div className="popup-bg">
-          <div className="popup">
-            <div className="popup-icon error">!</div>
-            <h3>เกิดข้อผิดพลาด</h3>
-            <p>{errorMessage}</p>
-            <button
-              className="confirm-btn"
-              onClick={() => setShowErrorPopup(false)}
-            >
-              ปิด
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 🏛️ ป๊อปอัปแจ้งเตือนสถานะสำหรับแอดมิน (Admin Status Modal) */}
+      <AdminStatusModal
+        isOpen={statusModal.isOpen}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+        confirmText={statusModal.type === "success" ? "กลับสู่หน้ารายการ" : "ตกลง"}
+        cancelText="ปิด"
+        isEdit={true}
+        onConfirm={() => {
+          if (statusModal.type === "success") {
+            setStatusModal((prev) => ({ ...prev, isOpen: false }));
+            navigate("/listWellnesshub");
+          } else {
+            setStatusModal((prev) => ({ ...prev, isOpen: false }));
+          }
+        }}
+        onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

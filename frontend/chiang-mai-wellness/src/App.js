@@ -113,6 +113,22 @@ function App() {
             }
           />
           <Route
+            path="/request-account"
+            element={
+              <PublicLayout>
+                <RequestWellnessHubAccount />
+              </PublicLayout>
+            }
+          />
+          <Route
+            path="/request-account/:licenseId"
+            element={
+              <PublicLayout>
+                <RequestWellnessHubAccount />
+              </PublicLayout>
+            }
+          />
+          <Route
             path="/wellness-routes"
             element={
               <PublicLayout>

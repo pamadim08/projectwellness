@@ -42,13 +42,6 @@ function ListAccountRequest() {
 
   const [errorMessage, setErrorMessage] = useState("");
 
-  // 🌟 State สำหรับแสดง Toast ที่ส่งมาจากหน้า Approve
-  const [popupAlert, setPopupAlert] = useState({
-    show: false,
-    message: "",
-    isSuccess: true,
-  });
-
   // 🌟 State สำหรับ Popup ดูเหตุผลที่ไม่อนุมัติ
   const [showRejectReasonPopup, setShowRejectReasonPopup] = useState(false);
 
@@ -106,32 +99,6 @@ function ListAccountRequest() {
     location.state?.requestStatus,
     location.state?.rejectionReason,
   ]);
-
-  // 🌟 รับ Toast จากหน้า Approve หรือหน้าอื่นผ่าน location.state
-  useEffect(() => {
-    if (location.state?.showToast) {
-      setPopupAlert({
-        show: true,
-        message: location.state.toastMessage,
-        isSuccess: location.state.toastType === "success",
-      });
-
-      // ล้าง state เพื่อป้องกัน Toast แสดงซ้ำเมื่อ Refresh
-      navigate(location.pathname, {
-        replace: true,
-      });
-
-      const timer = setTimeout(() => {
-        setPopupAlert({
-          show: false,
-          message: "",
-          isSuccess: true,
-        });
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [location.state, location.pathname, navigate]);
 
   const fetchAccountRequests = async () => {
     try {
@@ -223,6 +190,14 @@ function ListAccountRequest() {
     );
   };
 
+  const getRequesterName = (request) => {
+    return (
+      request.requesterName ??
+      request.contactInformation ??
+      "-"
+    );
+  };
+
   const getTelephone = (request) => {
     return (
       request.telInformation ??
@@ -252,8 +227,8 @@ function ListAccountRequest() {
           request.requestId,
           getLicenseId(request),
           getWellnessHubName(request),
+          getRequesterName(request),
           request.userEmail,
-          request.contactInformation,
           getTelephone(request),
         ]
           .filter((value) => value !== null && value !== undefined)
@@ -331,41 +306,6 @@ function ListAccountRequest() {
 
   return (
     <div className="account-request-page">
-      {/* 🌟 Toast แจ้งผลหลังกลับมาจากหน้า Approve */}
-      {popupAlert.show && (
-        <div
-          className={`gov-toast-alert ${popupAlert.isSuccess ? "alert-success" : "alert-error"
-            }`}
-        >
-          <div className="toast-content-wrapper">
-            <i
-              className={
-                popupAlert.isSuccess
-                  ? "fa-solid fa-circle-check"
-                  : "fa-solid fa-circle-exclamation"
-              }
-            ></i>
-
-            <span>{popupAlert.message}</span>
-          </div>
-
-          <button
-            type="button"
-            className="btn-close-toast"
-            onClick={() =>
-              setPopupAlert({
-                show: false,
-                message: "",
-                isSuccess: true,
-              })
-            }
-            aria-label="ปิดข้อความแจ้งเตือน"
-          >
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-      )}
-
       {/* 🌟 Popup แสดงเหตุผลที่ไม่อนุมัติ */}
       {showRejectReasonPopup && selectedRejectRequest && (
         <div className="popup-bg" onClick={handleCloseRejectReason}>
@@ -429,7 +369,7 @@ function ListAccountRequest() {
             <input
               type="text"
               className="account-request-filter-input"
-              placeholder="ค้นหาชื่อสถานประกอบการ เลขใบอนุญาต หรืออีเมล..."
+              placeholder="ค้นหาชื่อสถานประกอบการ เลขใบอนุญาต ผู้ยื่นคำร้อง หรืออีเมล..."
               value={searchKeyword}
               onChange={(event) => {
                 setSearchKeyword(event.target.value);
@@ -494,7 +434,7 @@ function ListAccountRequest() {
                   <th className="request-column-number">ลำดับ</th>
                   <th className="request-column-license">เลขใบอนุญาต</th>
                   <th className="request-column-name">ชื่อสถานประกอบการ</th>
-                  <th className="request-column-contact">ผู้ติดต่อ</th>
+                  <th className="request-column-contact">ผู้ยื่นคำร้อง</th>
                   <th className="request-column-tel">เบอร์โทรศัพท์</th>
                   <th className="request-column-email">อีเมล</th>
                   <th className="request-column-status">สถานะ</th>
@@ -527,7 +467,7 @@ function ListAccountRequest() {
                         </td>
 
                         <td className="text-center">
-                          {request.contactInformation || "-"}
+                          {getRequesterName(request)}
                         </td>
 
                         <td className="text-center">{getTelephone(request)}</td>

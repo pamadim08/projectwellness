@@ -33,7 +33,7 @@ public class WellnessHub {
     @Column(name = "google_maps_link", columnDefinition = "TEXT", nullable = false)
     private String googleMapsLink;
 
-    @Column(name = "password", length = 16)
+    @Column(name = "password", length = 100)
     private String password;
 
     @Column(name = "tel_information", length = 10)
@@ -42,7 +42,7 @@ public class WellnessHub {
     @Column(name = "username", length = 100)
     private String username;
 
-    @Column(name = "wellness_hub_description", length = 255)
+    @Column(name = "wellness_hub_description", columnDefinition = "TEXT")
     private String wellnessHubDescription;
 
     @Column(name = "wellness_hub_img", columnDefinition = "TEXT")

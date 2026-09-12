@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./AddWellnessHub.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
+import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCircleInfo,
@@ -32,10 +33,13 @@ const AddWellnessHub = () => {
   const [categories, setCategories] = useState([]);
   const [districts, setDistricts] = useState([]);
 
-  // State สำหรับควบคุม Popup Alert
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  const [showErrorPopup, setShowErrorPopup] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  // State สำหรับควบคุม Popup Alert สไตล์ทางการ
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
   const [createdAccountInfo, setCreatedAccountInfo] = useState(null);
 
   // State สำหรับผูกกับอินพุตในฟอร์ม
@@ -195,7 +199,6 @@ const AddWellnessHub = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isLoading) return;
-    setErrorMessage("");
 
     const licenseId = String(formData.licenseId || "").trim();
     const wellnessHubName = String(formData.wellnessHubName || "").trim();
@@ -207,50 +210,78 @@ const AddWellnessHub = () => {
 
     // 1. เลขใบอนุญาต: 2-13 ตัวอักษร ภาษาอังกฤษหรือตัวเลขเท่านั้น ห้ามมีช่องว่าง ห้ามว่าง
     if (!licenseId || !/^[a-zA-Z0-9]{2,13}$/.test(licenseId)) {
-      setErrorMessage("กรุณาระบุเลขใบอนุญาตประกอบกิจการให้ถูกต้อง (ตัวเลขหรือตัวอักษร 2-13 หลัก)");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุเลขใบอนุญาตประกอบกิจการ ตัวเลขหรือตัวอักษร 2-13 หลัก)",
+      });
       return;
     }
 
     // 2. ชื่อสถานประกอบการ: 2-100 ตัวอักษร รองรับภาษาไทย ภาษาอังกฤษ ตัวเลข และเครื่องหมายทั่วไป เช่น / - . ( )
     if (!wellnessHubName || wellnessHubName.length < 2 || wellnessHubName.length > 100 || !/^[a-zA-Z0-9\u0E00-\u0E7F\s/.\-()&,'#+]+$/.test(wellnessHubName)) {
-      setErrorMessage("กรุณาระบุชื่อสถานประกอบการให้ถูกต้อง (2-100 ตัวอักษร)");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุชื่อสถานประกอบการ 2-100 ตัวอักษร)",
+      });
       return;
     }
 
     // 3. หมวดหมู่ธุรกิจ: ห้ามว่าง
     if (!categoryId) {
-      setErrorMessage("กรุณาเลือกหมวดหมู่ธุรกิจ");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (เลือกหมวดหมู่ธุรกิจ)",
+      });
       return;
     }
 
     // 4. อำเภอที่ตั้ง: ห้ามว่าง
     if (!districtId) {
-      setErrorMessage("กรุณาเลือกอำเภอที่ตั้ง");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (เลือกอำเภอที่ตั้ง)",
+      });
       return;
     }
 
     // 5. ที่อยู่: 5-255 ตัวอักษร
     if (!address || address.length < 5 || address.length > 255) {
-      setErrorMessage("กรุณาระบุรายละเอียดที่อยู่ให้ถูกต้อง (5-255 ตัวอักษร)");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุรายละเอียดที่อยู่ 5-255 ตัวอักษร)",
+      });
       return;
     }
 
     // 6. เบอร์โทรศัพท์ (ถ้ามี): 9-10 หลัก
     if (tel && !/^0\d{8,9}$/.test(tel) && !/^[0-9\-+\s]{9,15}$/.test(tel)) {
-      setErrorMessage("กรุณาระบุเบอร์โทรศัพท์ติดต่อให้ถูกต้อง (เช่น 0812345678)");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุเบอร์โทรศัพท์ติดต่อให้ถูกต้อง เช่น 0812345678)",
+      });
       return;
     }
 
     // 7. Google Maps: ต้องเป็น URL ที่ถูกต้อง
     if (!googleMapsLink || /\s/.test(googleMapsLink) || !/^https?:\/\/.+/i.test(googleMapsLink)) {
-      setErrorMessage("กรุณาระบุลิงก์ Google Maps ให้ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https:// และห้ามมีช่องว่าง)");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุลิงก์ Google Maps ให้ถูกต้อง ขึ้นต้นด้วย http:// หรือ https://)",
+      });
       return;
     }
 
@@ -268,12 +299,16 @@ const AddWellnessHub = () => {
       );
       if (isDuplicateName) {
         setIsLoading(false);
-        setErrorMessage("ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น");
-        setShowErrorPopup(true);
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+          message: "กรุณากรอกข้อมูลให้ถูกต้อง (ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว)",
+        });
         return;
       }
 
-      // 2) เช็กพิกัด / ลิงก์ Google Maps ซ้ำ (ถ้าเป็นลิงก์เดียวกัน หรือมีพิกัดที่สกัดได้ตรงกัน)
+      // 2) เช็กพิกัด / ลิงก์ Google Maps ซ้ำ
       const isDuplicateLocation = existingHubs.some((hub) => {
         const sameLink = hub.googleMapsLink && String(hub.googleMapsLink).trim() === googleMapsLink;
         if (sameLink) return true;
@@ -293,8 +328,12 @@ const AddWellnessHub = () => {
 
       if (isDuplicateLocation) {
         setIsLoading(false);
-        setErrorMessage("พิกัดแผนที่ หรือลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง");
-        setShowErrorPopup(true);
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+          message: "กรุณากรอกข้อมูลให้ถูกต้อง (พิกัดแผนที่หรือลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว)",
+        });
         return;
       }
     } catch (err) {
@@ -325,12 +364,20 @@ const AddWellnessHub = () => {
         username: res.data?.username || payload.username,
         wellnessHubName: res.data?.wellnessHubName || wellnessHubName,
       });
-      setShowSuccessPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "success",
+        title: "บันทึกข้อมูลสถานประกอบการสำเร็จ",
+        message: "ระบบได้เพิ่มสถานประกอบการและสร้างบัญชีผู้ใช้เรียบร้อยแล้ว",
+      });
     } catch (error) {
       console.error("Error saving establishment:", error);
-      const serverMsg = error.response?.data?.message || (typeof error.response?.data === "string" ? error.response.data : "");
-      setErrorMessage(serverMsg || "ไม่สามารถบันทึกข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง");
-      setShowErrorPopup(true);
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: "ไม่สามารถบันทึกข้อมูลได้",
+        message: "ไม่สามารถบันทึกข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -660,65 +707,49 @@ const AddWellnessHub = () => {
         </div>
       </div>
 
-      {/* 🟢 Popup สำเร็จ */}
-      {showSuccessPopup && (
-        <div className="popup-bg">
-          <div className="popup">
-            <div className="popup-icon success">✓</div>
-            <h3>บันทึกข้อมูลสำเร็จ</h3>
-            <p style={{ marginBottom: "12px" }}>ระบบได้เพิ่มสถานประกอบการและสร้างบัญชีผู้ใช้เรียบร้อยแล้ว</p>
-            {createdAccountInfo && (
-              <div
-                style={{
-                  backgroundColor: "#f4f9f4",
-                  border: "1px solid #c8e6c9",
-                  padding: "10px 14px",
-                  marginBottom: "20px",
-                  textAlign: "left",
-                  fontSize: "13.5px",
-                  lineHeight: "1.6",
-                }}
-              >
-                <div>
-                  <strong>รหัสสถานประกอบการ:</strong> {createdAccountInfo.licenseId}
-                </div>
-                <div>
-                  <strong>ชื่อผู้ใช้งาน (Username):</strong> {createdAccountInfo.username}
-                </div>
-                <div>
-                  <strong>สถานะ:</strong> <span style={{ color: "#1c7430", fontWeight: "bold" }}>ACTIVE</span>
-                </div>
-              </div>
-            )}
-            <button
-              className="confirm-btn"
-              onClick={() => {
-                setShowSuccessPopup(false);
-                navigate("/listWellnesshub");
-              }}
-            >
-              ตกลง
-            </button>
+      {/* 🏛️ ป๊อปอัปแจ้งเตือนสถานะสำหรับแอดมิน (Admin Status Modal) */}
+      <AdminStatusModal
+        isOpen={statusModal.isOpen}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+        confirmText={statusModal.type === "success" ? "กลับสู่หน้ารายการ" : "ตกลง"}
+        cancelText="ปิด"
+        onConfirm={() => {
+          if (statusModal.type === "success") {
+            setStatusModal((prev) => ({ ...prev, isOpen: false }));
+            navigate("/listWellnesshub");
+          } else {
+            setStatusModal((prev) => ({ ...prev, isOpen: false }));
+          }
+        }}
+        onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
+      >
+        {statusModal.type === "success" && createdAccountInfo && (
+          <div
+            style={{
+              backgroundColor: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              padding: "12px 14px",
+              marginBottom: "8px",
+              textAlign: "left",
+              fontSize: "13.5px",
+              lineHeight: "1.6",
+            }}
+          >
+            <div>
+              <strong>รหัสสถานประกอบการ:</strong> {createdAccountInfo.licenseId}
+            </div>
+            <div>
+              <strong>ชื่อผู้ใช้งาน (Username):</strong> {createdAccountInfo.username}
+            </div>
+            <div>
+              <strong>สถานะ:</strong>{" "}
+              <span style={{ color: "#16a34a", fontWeight: "bold" }}>ACTIVE</span>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* 🔴 Popup ผิดพลาด */}
-      {showErrorPopup && (
-        <div className="popup-bg">
-          <div className="popup">
-            <div className="popup-icon error">!</div>
-            <h3>ไม่สามารถบันทึกข้อมูลได้</h3>
-            <p>{errorMessage}</p>
-            <button
-              className="confirm-btn"
-              onClick={() => setShowErrorPopup(false)}
-            >
-              ปิด
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </AdminStatusModal>
     </div>
   );
 };

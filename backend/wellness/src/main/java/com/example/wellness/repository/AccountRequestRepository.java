@@ -37,6 +37,10 @@ public interface AccountRequestRepository
                         Integer licenseId,
                         String requestStatus);
 
+        List<AccountRequest> findByLicenseIdAndRequestStatusOrderByRequestIdDesc(
+                        Integer licenseId,
+                        String requestStatus);
+
         long deleteByLicenseIdAndRequestStatus(
                         Integer licenseId,
                         String requestStatus);
