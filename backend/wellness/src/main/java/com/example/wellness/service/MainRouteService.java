@@ -183,21 +183,39 @@ public class MainRouteService {
         long wellnessHubCount = wellnessHubRepository.findByDistrict_DistrictIdInAndCategory_CategoryIdIn(
                         districtIds, distinctCategoryIds)
                 .stream()
-                .filter(h -> isValidCoordinate(
-                        h.getWellnessHubLatitude(),
-                        h.getWellnessHubLongitude()))
+                .filter(this::isValidHubForPinCount)
                 .count();
 
         long emergencyServiceCount = emergencyServiceRepository.findByDistrict_DistrictIdInAndCategory_CategoryIdIn(
                         districtIds, distinctCategoryIds)
                 .stream()
-                .filter(e -> isValidCoordinate(
-                        e.getWellnessHubLatitude(),
-                        e.getWellnessHubLongitude()))
+                .filter(this::isValidEmergencyForPinCount)
                 .count();
 
         route.setPinCount(
                 (int) (wellnessHubCount + emergencyServiceCount));
+    }
+
+    private boolean isValidHubForPinCount(com.example.wellness.model.WellnessHub hub) {
+        if (hub == null) return false;
+        if (hub.getStatus() != null && !hub.getStatus().trim().isEmpty() && !"ACTIVE".equalsIgnoreCase(hub.getStatus().trim())) {
+            return false;
+        }
+        if (hub.getGoogleMapsLink() == null || hub.getGoogleMapsLink().trim().isEmpty()) {
+            return false;
+        }
+        return isValidCoordinate(hub.getWellnessHubLatitude(), hub.getWellnessHubLongitude());
+    }
+
+    private boolean isValidEmergencyForPinCount(com.example.wellness.model.EmergencyService emergency) {
+        if (emergency == null) return false;
+        if (emergency.getStatus() != null && !emergency.getStatus().trim().isEmpty() && !"ACTIVE".equalsIgnoreCase(emergency.getStatus().trim())) {
+            return false;
+        }
+        if (emergency.getGoogleMapsLink() == null || emergency.getGoogleMapsLink().trim().isEmpty()) {
+            return false;
+        }
+        return isValidCoordinate(emergency.getWellnessHubLatitude(), emergency.getWellnessHubLongitude());
     }
 
     private boolean isValidCoordinate(
@@ -205,6 +223,9 @@ public class MainRouteService {
             Double longitude) {
         return latitude != null
                 && longitude != null
+                && !latitude.isNaN()
+                && !longitude.isNaN()
+                && !(latitude == 0.0 && longitude == 0.0)
                 && latitude >= -90
                 && latitude <= 90
                 && longitude >= -180

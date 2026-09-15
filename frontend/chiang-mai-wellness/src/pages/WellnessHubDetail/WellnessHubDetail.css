@@ -107,21 +107,23 @@
   align-items: center;
   gap: 8px;
   min-height: 38px;
-  padding: 0 14px;
+  padding: 0 16px;
   color: rgba(255, 253, 238, 0.9);
-  background: rgba(255, 253, 238, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
   font: inherit;
   font-size: 13.5px;
   font-weight: 700;
   cursor: pointer;
   transition: all 200ms ease;
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .hub-detail-back:hover {
-  background: rgba(255, 253, 238, 0.2);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
   transform: translateX(-3px);
   color: #ffffff;
 }
@@ -560,22 +562,60 @@
   opacity: 1;
 }
 
+.hub-detail-gallery-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 36px 20px;
+  text-align: center;
+  background: #f8faf8;
+  border: 1.5px dashed var(--hub-border);
+  border-radius: 16px;
+  color: var(--hub-text-muted);
+}
+
+.hub-detail-gallery-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #edf4ef;
+  color: var(--hub-green-600);
+}
+
+.hub-detail-gallery-empty p {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--hub-text-muted);
+}
+
 /* ==========================================================================
    MAP & LOCATION CARD
    ========================================================================== */
 
 .hub-detail-map-box {
   width: 100%;
-  height: 380px;
-  border-radius: 16px;
+  height: 400px;
+  border-radius: 20px;
   overflow: hidden;
-  border: 1px solid var(--hub-border-medium);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05);
+  background: #f4f6f4;
+  border: 1.5px solid rgba(6, 35, 29, 0.12);
+  box-shadow: 0 12px 32px rgba(6, 35, 29, 0.08);
 }
 
 .hub-detail-leaflet-map {
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
+  background: #f4f6f4;
+  border-radius: 20px !important;
+}
+
+.hub-detail-leaflet-map .leaflet-tile-container img {
+  filter: saturate(72%) brightness(102%) contrast(95%);
 }
 
 .hub-detail-map-btn {
@@ -675,28 +715,206 @@
   font-size: 14px;
 }
 
-.hub-map-popup {
+/* ==========================================================================
+   WELLNESS HUB POPUP — ROUTE DETAIL STYLE
+   ========================================================================== */
+
+.route-hub-leaflet-popup .leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: #ffffff;
+  border: 1px solid rgba(6, 35, 29, 0.1);
+  border-radius: 16px !important;
+  box-shadow: 0 14px 34px rgba(6, 35, 29, 0.16);
+}
+
+.route-hub-leaflet-popup .leaflet-popup-content {
+  width: 286px !important;
+  margin: 0 !important;
+  line-height: normal !important;
   font-family: "Sarabun", sans-serif;
-  min-width: 160px;
+}
+
+.route-hub-leaflet-popup .leaflet-popup-tip {
+  background: #ffffff;
+}
+
+.route-hub-leaflet-popup .leaflet-popup-close-button {
+  top: 7px !important;
+  right: 7px !important;
+  z-index: 20;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 27px !important;
+  height: 27px !important;
+  padding: 0 !important;
+  color: #0c342c !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(6, 35, 29, 0.09) !important;
+  border-radius: 50% !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  box-shadow: 0 3px 9px rgba(6, 35, 29, 0.1);
+}
+
+.route-hub-popup {
+  width: 100%;
+  color: #06231d;
+  background: #ffffff;
+}
+
+.route-hub-popup__image {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+  background: #f5f7f5;
+}
+
+.route-hub-popup__image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.route-hub-popup__image-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--popup-category-color, #076653);
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      var(--popup-category-background, rgba(7, 102, 83, 0.1)) 0%,
+      rgba(255, 255, 255, 0) 72%
+    ),
+    #f8faf8;
+}
+
+.route-hub-popup__image-fallback-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 43px;
+  height: 43px;
+  flex: 0 0 43px;
+  color: #ffffff;
+  background: var(--popup-category-color, #076653);
+  border-radius: 13px;
+  font-size: 18px;
+  box-shadow: 0 6px 14px rgba(6, 35, 29, 0.1);
+}
+
+.route-hub-popup__image-fallback-text {
+  max-width: 155px;
+  overflow: hidden;
+  color: var(--popup-category-color, #076653);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-hub-popup__content {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px 13px;
+}
+
+.route-hub-popup__category {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-bottom: 4px;
+  color: #4e594f;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.route-hub-popup__category-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+}
+
+.route-hub-popup__title {
+  margin: 0;
+  color: #06231d;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.route-hub-popup__meta {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(6, 35, 29, 0.07);
 }
 
-.hub-map-popup strong {
-  font-size: 13.5px;
-  color: var(--hub-ink-900);
+.route-hub-popup__meta-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+  color: #4e594f;
+  font-size: 11.5px;
+  line-height: 1.45;
 }
 
-.hub-map-popup span {
+.route-hub-popup__meta-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--hub-green-600, #076653);
+}
+
+.route-hub-popup__meta-row--address > span:last-child {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.route-hub-popup__button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  width: 100%;
+  min-height: 36px;
+  margin-top: 10px;
+  padding: 0 12px;
+  color: #ffffff !important;
+  background: var(--hub-green-600, #076653);
+  border: 0;
+  border-radius: 9px;
+  font-family: "Sarabun", sans-serif;
   font-size: 12px;
-  color: var(--hub-text-muted);
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms ease;
 }
 
-.hub-map-popup small {
-  font-size: 11px;
-  color: var(--hub-green-600);
-  font-weight: 700;
+.route-hub-popup__button:hover {
+  background: #0c342c;
 }
 
 /* ==========================================================================
@@ -877,30 +1095,56 @@
   font-weight: 800 !important;
 }
 
-/* CERTIFICATES CARD */
+/* CERTIFICATES CARD — NO EMOJIS, HIGH LEGIBILITY, 1 ITEM PER ROW */
 .hub-detail-cert-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
 }
 
-.hub-detail-cert-badge {
+.hub-detail-cert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 3.5px solid var(--hub-green-600, #076653);
+  border-radius: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 180ms ease;
+}
+
+.hub-detail-cert-item:hover {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  border-left-color: var(--hub-green-600, #076653);
+  transform: translateX(2px);
+}
+
+.hub-detail-cert-bullet {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: #fefce8;
-  border: 1px solid #fef08a;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #854d0e;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  margin-top: 1px;
+  color: #ffffff;
+  background: var(--hub-green-600, #076653);
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(7, 102, 83, 0.18);
 }
 
-.hub-detail-cert-badge__icon {
-  color: #ca8a04;
-  display: grid;
-  place-items: center;
+.hub-detail-cert-text {
+  flex: 1;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 /* CATEGORY CARD */

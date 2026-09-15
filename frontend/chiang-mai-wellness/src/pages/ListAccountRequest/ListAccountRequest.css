@@ -77,7 +77,7 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.account-request-user-profile > svg {
+.account-request-user-profile>svg {
   color: var(--request-green);
   font-size: 25px;
 }
@@ -233,46 +233,51 @@
   margin-bottom: 20px;
   padding: 15px;
 
-  display: grid;
-  grid-template-columns:
-    minmax(260px, 1fr)
-    minmax(200px, 280px)
-    120px
-    120px;
+  display: flex;
   gap: 10px;
+  align-items: center;
 
   background: #ffffff;
-  border: 1px solid #555555;
-  border-radius: 0;
+  border: 1px solid var(--request-border);
+  border-radius: 0px !important;
   box-sizing: border-box;
 }
 
 .account-request-filter-input,
 .account-request-filter-select {
-  width: 100%;
-  height: 42px;
-  padding: 0 12px;
+  height: 40px;
+  padding: 10px 12px;
 
-  color: #222222;
+  color: #111111;
   background: #ffffff;
-  border: 1px solid #777777;
-  border-radius: 0;
+  border: 1px solid var(--request-border);
+  border-radius: 0px !important;
 
-  font-family: inherit;
+  font-family: "Sarabun", sans-serif;
   font-size: 14px;
   box-sizing: border-box;
+  outline: none;
+}
+
+.account-request-filter-input {
+  flex: 2;
+}
+
+.account-request-filter-select {
+  flex: 1;
+  min-width: 180px;
+  cursor: pointer;
 }
 
 .account-request-filter-input:focus,
 .account-request-filter-select:focus {
-  outline: 0;
-  border-color: var(--request-green);
+  border: 2px solid var(--request-green-dark);
 }
 
 .account-request-search-button,
 .account-request-reset-button {
-  height: 42px;
-  padding: 0 15px;
+  height: 40px;
+  padding: 0 25px;
 
   display: inline-flex;
   align-items: center;
@@ -280,26 +285,29 @@
   gap: 8px;
 
   color: #ffffff;
-  border-radius: 0;
+  border-radius: 0px !important;
 
-  font-family: inherit;
+  font-family: "Sarabun", sans-serif;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: bold;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .account-request-search-button {
   background: var(--request-green);
-  border: 1px solid #1e7e34;
+  border: 1px solid var(--request-border);
 }
 
 .account-request-search-button:hover {
-  background: #218838;
+  background: var(--request-green-dark);
 }
 
 .account-request-reset-button {
   background: #6c757d;
-  border: 1px solid #545b62;
+  border: 1px solid var(--request-border);
 }
 
 .account-request-reset-button:hover {
@@ -590,6 +598,7 @@
   font-size: 14px;
   font-weight: 700;
 }
+
 /* =====================================================
    POPUP
 ===================================================== */
@@ -611,129 +620,140 @@
   box-sizing: border-box;
 }
 
-.popup {
+.account-request-page .popup {
   width: 100%;
-  max-width: 430px;
-  padding: 28px;
+  max-width: 440px;
+  padding: 30px 24px 24px;
 
   background: #ffffff;
   border: 1px solid #cbd5e1;
-  border-radius: 10px;
+  border-top: 5px solid #16a34a;
+  border-radius: 0px !important;
 
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.35);
   text-align: center;
 
   box-sizing: border-box;
 }
 
-.popup h3 {
+.account-request-page .popup.reject-popup {
+  border-top-color: #dc2626;
+}
+
+.account-request-page .popup.logout-confirm-popup {
+  border-top-color: #dc2626;
+}
+
+.account-request-page .popup h3 {
   margin: 0 0 10px;
 
-  color: #1e293b;
-  font-size: 20px;
+  color: #0f172a;
+  font-size: 19px;
   font-weight: 800;
+  text-align: center;
 }
 
-.popup p {
+.account-request-page .popup p {
   margin: 0;
 
-  color: #64748b;
-  font-size: 14px;
-  line-height: 1.7;
+  color: #475569;
+  font-size: 14.5px;
+  line-height: 1.6;
+  text-align: center;
 }
 
-.popup-icon {
-  width: 62px;
-  height: 62px;
-  margin: 0 auto 18px;
+.account-request-page .popup-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 16px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  border-radius: 50%;
-  font-size: 25px;
+  border-radius: 0px !important;
+  font-size: 24px;
+  box-sizing: border-box;
 }
 
-.popup-icon.error {
-  color: #c82333;
-  background: #fde8ea;
+.account-request-page .popup-icon.error {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
 }
 
-.popup-icon.logout {
-  color: #b52b24;
-  background: #fde8e7;
+.account-request-page .popup-icon.logout {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
 }
 
-.popup-buttons {
+.account-request-page .popup-buttons {
   margin-top: 24px;
 
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.confirm-btn,
-.cancel-btn,
-.logout-confirm-btn {
-  min-width: 120px;
-  min-height: 40px;
+.account-request-page .confirm-btn,
+.account-request-page .cancel-btn,
+.account-request-page .logout-confirm-btn {
+  flex: 1;
+  min-height: 42px;
   padding: 8px 18px;
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
 
-  border-radius: 4px;
+  border-radius: 0px !important;
 
   font-family: inherit;
   font-size: 14px;
   font-weight: 800;
 
   cursor: pointer;
+  box-sizing: border-box;
 
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
+  transition: all 0.15s ease;
 }
 
-.confirm-btn {
+.account-request-page .confirm-btn {
   color: #ffffff;
-  background: var(--request-green);
-  border: 1px solid #1e7e34;
+  background: #16a34a;
+  border: 1px solid #15803d;
 }
 
-.confirm-btn:hover {
-  background: #218838;
+.account-request-page .confirm-btn:hover {
+  background: #15803d;
 }
 
-.cancel-btn {
+.account-request-page .cancel-btn {
   color: #475569;
-  background: #ffffff;
-  border: 1px solid #94a3b8;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
 }
 
-.cancel-btn:hover {
-  color: #1e293b;
-  background: #f1f5f9;
-  border-color: #64748b;
+.account-request-page .cancel-btn:hover {
+  color: #0f172a;
+  background: #e2e8f0;
 }
 
-.logout-confirm-popup {
+.account-request-page .logout-confirm-popup {
   max-width: 420px;
 }
 
-.logout-confirm-btn {
+.account-request-page .logout-confirm-btn {
   color: #ffffff;
-  background: #b52b24;
-  border: 1px solid #99231e;
+  background: #dc2626;
+  border: 1px solid #b91c1c;
 }
 
-.logout-confirm-btn:hover {
-  background: #99231e;
+.account-request-page .logout-confirm-btn:hover {
+  background: #b91c1c;
 }
 
 /* =====================================================
@@ -742,7 +762,7 @@
 
 @media (max-width: 1100px) {
   .account-request-filter-bar {
-    grid-template-columns: 1fr 1fr;
+    flex-wrap: wrap;
   }
 
   .account-request-main {
@@ -768,6 +788,14 @@
   }
 
   .account-request-filter-bar {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
   }
-}
+
+  .account-request-filter-input,
+  .account-request-filter-select,
+  .account-request-search-button,
+  .account-request-reset-button {
+    width: 100%;
+  }
+}

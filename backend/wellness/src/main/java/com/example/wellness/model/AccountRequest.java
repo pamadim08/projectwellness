@@ -60,9 +60,9 @@ public class AccountRequest {
     @Column(name = "wellness_hub_description", columnDefinition = "TEXT")
     private String wellnessHubDescription;
 
-    @Column(name = "wellness_hub_img", columnDefinition = "TEXT")
+    @Column(name = "wellness_hub_img", columnDefinition = "LONGTEXT")
     private String wellnessHubImg;
-    @Column(name = "wellness_hub_gallery", columnDefinition = "TEXT")
+    @Column(name = "wellness_hub_gallery", columnDefinition = "LONGTEXT")
     private String wellnessHubGallery;
 
     @Column(name = "wellness_hub_latitude")
@@ -82,7 +82,7 @@ public class AccountRequest {
     // ============================
     @Column(name = "verification_document_name", columnDefinition = "TEXT")
     private String verificationDocumentName;
-    @Column(name = "verification_documents", columnDefinition = "TEXT")
+    @Column(name = "verification_documents", columnDefinition = "LONGTEXT")
     private String verificationDocuments;
 
     // ============================

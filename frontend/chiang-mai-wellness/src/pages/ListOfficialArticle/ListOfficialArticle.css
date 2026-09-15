@@ -82,7 +82,7 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.official-article-page .user-profile-box > svg {
+.official-article-page .user-profile-box>svg {
   color: var(--article-green);
   font-size: 25px;
 }
@@ -276,10 +276,7 @@
 
   display: grid;
   grid-template-columns:
-    minmax(260px, 1fr)
-    minmax(200px, 280px)
-    120px
-    120px;
+    minmax(260px, 1fr) minmax(200px, 280px) 120px 120px;
   gap: 10px;
 
   background: #ffffff;
@@ -688,6 +685,7 @@
     padding: 25px;
   }
 }
+
 /* =====================================================
    DELETE CONFIRMATION POPUP
    ป๊อปอัปยืนยันการลบบทความตรงกลางหน้าจอ
@@ -710,44 +708,50 @@
 
 .article-delete-popup {
   width: 100%;
-  max-width: 430px;
+  max-width: 440px;
 
-  padding: 30px;
+  padding: 30px 24px 24px;
 
   background-color: #ffffff;
-  border: 2px solid var(--article-border);
-  border-radius: 0;
+  border: 1px solid #cbd5e1;
+  border-top: 5px solid #dc2626;
+  border-radius: 0px !important;
 
   box-sizing: border-box;
   text-align: center;
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.35);
 
   animation: articleDeletePopupOpen 0.2s ease-out;
 }
 
 .article-delete-popup-icon {
-  width: 68px;
-  height: 68px;
+  width: 54px;
+  height: 54px;
 
-  margin: 0 auto 18px;
+  margin: 0 auto 16px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  background-color: var(--article-red);
-  color: #ffffff;
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 2px solid #fecaca;
 
-  border-radius: 50%;
+  border-radius: 0px !important;
 
-  font-size: 28px;
+  font-size: 24px;
+  font-weight: 800;
+  box-sizing: border-box;
 }
 
 .article-delete-popup h3 {
   margin: 0 0 12px;
 
-  color: #111111;
-  font-size: 21px;
+  color: #0f172a;
+  font-size: 20px;
   font-weight: 800;
+  text-align: center;
 }
 
 .article-delete-popup p {
@@ -760,27 +764,28 @@
 
 .article-delete-name {
   display: block;
-
-  margin: 10px 0;
-  padding: 10px 12px;
-
-  color: var(--article-green-dark);
-  background-color: #f1f8f2;
-  border-left: 4px solid var(--article-green);
-
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px 14px;
+  color: #0f172a;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #dc2626;
+  border-radius: 0px !important;
   font-size: 16px;
   font-weight: 800;
   line-height: 1.5;
-
+  text-align: center;
+  box-sizing: border-box;
   overflow-wrap: anywhere;
 }
 
 .article-delete-popup .article-delete-warning {
-  margin-top: 12px;
-
-  color: var(--article-red);
-  font-size: 12px;
+  margin: 10px 0 0 0;
+  color: #dc2626;
+  font-size: 13px;
   font-weight: 700;
+  text-align: center;
 }
 
 .article-delete-popup-actions {
@@ -815,21 +820,25 @@
 }
 
 .btn-cancel-delete-article {
-  background-color: #6c757d;
-  border: 1px solid #545b62;
+  background-color: #f8fafc;
+  color: #475569;
+  border: 1px solid #cbd5e1;
 }
 
 .btn-cancel-delete-article:hover:not(:disabled) {
-  background-color: #5a6268;
+  background-color: #e2e8f0;
+  color: #0f172a;
 }
 
 .btn-confirm-delete-article {
-  background-color: var(--article-red);
-  border: 1px solid #a71d2a;
+  background-color: #dc2626;
+  color: #ffffff;
+  border: 1px solid #b91c1c;
 }
 
 .btn-confirm-delete-article:hover:not(:disabled) {
-  background-color: #a71d2a;
+  background-color: #b91c1c;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
 }
 
 .btn-cancel-delete-article:disabled,

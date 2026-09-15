@@ -1184,6 +1184,22 @@
   font-weight: 650;
 }
 
+.provider-dashboard-field-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.provider-dashboard-char-count {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
 .provider-dashboard-input-icon {
   position: relative;
   display: flex;
@@ -1788,3 +1804,389 @@
     align-items: flex-start;
   }
 }
+
+/* ==========================================================================
+   DYNAMIC CERTIFICATE INPUTS & DISPLAY
+   ========================================================================== */
+
+.provider-dashboard-field-full {
+  grid-column: 1 / -1;
+}
+
+.provider-dashboard-cert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.provider-dashboard-cert-header label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--provider-text-primary);
+  margin: 0;
+}
+
+.provider-dashboard-btn-add-cert {
+  background-color: var(--provider-green-600);
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: var(--provider-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.provider-dashboard-btn-add-cert:hover {
+  background-color: var(--provider-green-700);
+  transform: translateY(-1px);
+}
+
+.provider-dashboard-cert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.provider-dashboard-cert-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.provider-dashboard-cert-row input {
+  flex: 1;
+  width: 100%;
+  border: 1px solid var(--provider-border-soft);
+  padding: 10px 14px;
+  border-radius: var(--provider-radius-sm);
+  font-size: 14px;
+  background-color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.provider-dashboard-cert-row input:focus {
+  border-color: var(--provider-green-500);
+}
+
+.provider-dashboard-btn-del-cert {
+  background-color: var(--provider-danger-soft);
+  color: var(--provider-danger);
+  border: 1px solid var(--provider-danger-border);
+  padding: 8px 14px;
+  border-radius: var(--provider-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.provider-dashboard-btn-del-cert:hover {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.provider-dashboard-cert-view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.provider-dashboard-cert-view-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: #14532d;
+  line-height: 1.4;
+  padding: 6px 14px;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 3px solid var(--provider-green-500);
+  border-radius: var(--provider-radius-sm);
+  width: fit-content;
+}
+
+.provider-dashboard-cert-view-item svg {
+  color: var(--provider-green-600);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   ENHANCED UX/UI ELEMENTS: PREVIEW, HOURS TABLE, LIGHTBOX & ZOOM
+   ========================================================================== */
+
+/* Topbar Preview Button */
+.provider-dashboard-button--preview {
+  color: #076653 !important;
+  background: #f0fdf4 !important;
+  border: 1.5px solid #86efac !important;
+  box-shadow: 0 2px 6px rgba(7, 102, 83, 0.08);
+}
+
+.provider-dashboard-button--preview:hover:not(:disabled) {
+  background: #dcfce7 !important;
+  border-color: #4ade80 !important;
+  color: #054c3e !important;
+  transform: translateY(-1px);
+}
+
+/* Sidebar Media Action */
+.provider-dashboard-media-action {
+  padding: 10px 14px;
+  background: #f8faf9;
+  border-top: 1px solid var(--provider-border);
+}
+
+.provider-dashboard-media-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--provider-green-600);
+  font-size: 12.5px;
+  font-weight: 750;
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: var(--provider-radius-sm);
+  background: #ffffff;
+  border: 1px solid #e2e8e4;
+  transition: all 0.2s ease;
+}
+
+.provider-dashboard-media-link:hover {
+  background: #f0fdf4;
+  border-color: var(--provider-green-500);
+  color: var(--provider-green-700);
+}
+
+/* Coordinates Badge */
+.provider-dashboard-coord-badge {
+  padding: 12px 14px;
+  background: #f8faf9;
+  border: 1px solid #eef3f0;
+  border-radius: var(--provider-radius-md);
+  display: flex;
+  flex-direction: column;
+}
+
+.provider-dashboard-coord-badge span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--provider-text-muted);
+  margin-bottom: 2px;
+}
+
+.provider-dashboard-coord-badge strong {
+  font-size: 13px;
+  color: var(--provider-green-700);
+  font-family: monospace;
+}
+
+/* Clickable Phone Link */
+.provider-dashboard-tel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--provider-green-700);
+  text-decoration: none;
+  font-weight: 750;
+  transition: color 0.2s;
+}
+
+.provider-dashboard-tel-link:hover {
+  color: var(--provider-green-500);
+  text-decoration: underline;
+}
+
+/* View Mode Real DB Tag */
+.provider-dashboard-view-mode-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 99px;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Hours Table (7-day grid in View Mode) */
+.provider-dashboard-hours-table {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.provider-dashboard-hours-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #fbfdfc;
+  border: 1px solid #edf3ef;
+  border-radius: var(--provider-radius-md);
+  transition: all 0.2s ease;
+}
+
+.provider-dashboard-hours-item--open {
+  border-color: #d1fae5;
+  background: #f8fdfa;
+}
+
+.provider-dashboard-hours-item--closed {
+  opacity: 0.75;
+  background: #f9fafb;
+}
+
+.provider-dashboard-hours-day {
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--provider-ink-900);
+}
+
+.provider-dashboard-status-tag {
+  font-size: 11px;
+  font-weight: 750;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.provider-dashboard-status-tag--open {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.provider-dashboard-status-tag--closed {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.provider-dashboard-hours-time {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--provider-green-700);
+}
+
+.provider-dashboard-hours-item--closed .provider-dashboard-hours-time {
+  color: #94a3b8;
+}
+
+/* Image Zoom & Hover Effects */
+.provider-dashboard-image-zoom-hint {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 23, 19, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  backdrop-filter: blur(2px);
+}
+
+.provider-dashboard-image-frame:hover .provider-dashboard-image-zoom-hint,
+.provider-dashboard-view-image-frame:hover .provider-dashboard-image-zoom-hint {
+  opacity: 1;
+}
+
+.provider-dashboard-view-image-frame {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--provider-radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--provider-border);
+  cursor: pointer;
+}
+
+.provider-dashboard-view-image-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.provider-dashboard-gallery-zoom-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 23, 19, 0.45);
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.provider-dashboard-gallery-item:hover .provider-dashboard-gallery-zoom-overlay {
+  opacity: 1;
+}
+
+/* Image Lightbox Modal */
+.provider-dashboard-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(4, 23, 19, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: grid;
+  place-items: center;
+  padding: 30px;
+  animation: providerFadeIn 0.25s ease;
+}
+
+.provider-dashboard-lightbox-content {
+  position: relative;
+  max-width: min(92vw, 1100px);
+  max-height: min(90vh, 800px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.provider-dashboard-lightbox-content img {
+  max-width: 100%;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: var(--provider-radius-md);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.provider-dashboard-lightbox-close {
+  position: absolute;
+  top: -44px;
+  right: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.provider-dashboard-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.1);
+}

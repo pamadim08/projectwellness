@@ -459,6 +459,41 @@
 .btn-cancel:hover {
   background: #5a6268;
 }
+.cover-box-container {
+  position: relative;
+  width: 100%;
+}
+
+.btn-remove-cover-image {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #dc2626;
+  color: #ffffff;
+  border: 1px solid #b91c1c;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.btn-remove-cover-image:hover {
+  background-color: #b91c1c;
+  transform: scale(1.05);
+}
+
+.btn-remove-cover-image svg {
+  color: #ffffff !important;
+  font-size: 16px;
+  margin: 0 !important;
+}
+
 .gallery-box {
   position: relative;
   overflow: hidden;
@@ -488,19 +523,33 @@
   top: 5px;
   right: 5px;
 
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
+  background-color: #dc2626;
   color: #ffffff;
   
-  border: 1px solid #222222;
-  border-radius: 0;
+  border: 1px solid #b91c1c;
+  border-radius: 4px;
 
   cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.btn-remove-article-image:hover {
+  background-color: #b91c1c;
+  transform: scale(1.05);
+}
+
+.btn-remove-article-image svg {
+  color: #ffffff !important;
+  font-size: 14px;
 }
 
 

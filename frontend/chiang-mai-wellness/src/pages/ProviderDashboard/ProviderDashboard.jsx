@@ -1,16 +1,17 @@
 // src/pages/ProviderDashboard/ProviderDashboard.jsx
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-
 import axios from "axios";
 
 import {
   AlertCircle,
   ArrowUpRight,
   Building2,
+  Calendar,
   CheckCircle2,
   Clock3,
   Edit3,
+  ExternalLink,
   Eye,
   ImageIcon,
   KeyRound,
@@ -28,6 +29,7 @@ import {
   Upload,
   UserRound,
   X,
+  ZoomIn,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
@@ -67,16 +69,6 @@ const DAYS = [
   },
 ];
 
-const CERTIFICATE_OPTIONS = [
-  "ศูนย์เวลเนสประเภทสปาเพื่อสุขภาพ (Wellness Spa)",
-  "ศูนย์เวลเนสประเภทนวดเพื่อสุขภาพ (Wellness Massage)",
-  "ศูนย์เวลเนสประเภทสถานพยาบาล (Wellness Clinic)",
-  "ศูนย์เวลเนสประเภทที่พักนักท่องเที่ยว (Wellness Accommodation)",
-  "ศูนย์เวลเนสประเภทภัตตาคารและร้านอาหาร (Wellness Restaurant)",
-  "ศูนย์เวลเนสแหล่งท่องเที่ยวเชิงสุขภาพ (Wellness Tourism)",
-  "Thainess Wellness Destination",
-];
-
 function createEmptyOperatingHours() {
   return DAYS.reduce((result, day) => {
     result[day.key] = {
@@ -107,6 +99,25 @@ function displayValue(value) {
   return hasValue(value) ? String(value) : "-";
 }
 
+function formatThaiDateTime(dateString) {
+  if (!dateString) return "-";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "-";
+    return (
+      date.toLocaleDateString("th-TH", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }) + " น."
+    );
+  } catch (error) {
+    return "-";
+  }
+}
+
 function normalizeCertificate(value) {
   if (!hasValue(value)) {
     return "";
@@ -129,6 +140,36 @@ function normalizeCertificate(value) {
   } catch (error) {
     return normalizedValue;
   }
+}
+
+function normalizeCertificateList(value) {
+  if (!hasValue(value)) {
+    return [];
+  }
+
+  let parsed = value;
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (e) {
+      if (trimmed.includes(",")) {
+        parsed = trimmed
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      } else {
+        parsed = [trimmed];
+      }
+    }
+  }
+
+  if (!Array.isArray(parsed)) {
+    parsed = [parsed];
+  }
+
+  return parsed.map((item) => String(item).trim()).filter(Boolean);
 }
 
 function parseOperatingHours(value) {
@@ -246,7 +287,10 @@ function normalizeGalleryImages(galleryValue) {
       parsed = JSON.parse(trimmed);
     } catch (e) {
       if (trimmed.includes(",")) {
-        parsed = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+        parsed = trimmed
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
       } else {
         parsed = [trimmed];
       }
@@ -306,6 +350,84 @@ function isGoogleMapsUrl(value) {
   }
 }
 
+function parseLatLngFromGoogleMapsLink(url) {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+
+  const atMatch = trimmed.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  if (atMatch) {
+    const lat = parseFloat(atMatch[1]);
+    const lng = parseFloat(atMatch[2]);
+    if (
+      !isNaN(lat) &&
+      !isNaN(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
+    ) {
+      return { lat, lng };
+    }
+  }
+
+  const placeMatch = trimmed.match(
+    /!3d(-?\d+(?:\.\d+)?)(?:.*)!4d(-?\d+(?:\.\d+)?)/,
+  );
+  if (placeMatch) {
+    const lat = parseFloat(placeMatch[1]);
+    const lng = parseFloat(placeMatch[2]);
+    if (
+      !isNaN(lat) &&
+      !isNaN(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
+    ) {
+      return { lat, lng };
+    }
+  }
+
+  const qMatch = trimmed.match(
+    /[?&](?:q|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
+  );
+  if (qMatch) {
+    const lat = parseFloat(qMatch[1]);
+    const lng = parseFloat(qMatch[2]);
+    if (
+      !isNaN(lat) &&
+      !isNaN(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
+    ) {
+      return { lat, lng };
+    }
+  }
+
+  const dirMatch =
+    trimmed.match(
+      /\/(?:dir|search)\/[^/]*\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
+    ) || trimmed.match(/\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  if (dirMatch) {
+    const lat = parseFloat(dirMatch[1]);
+    const lng = parseFloat(dirMatch[2]);
+    if (
+      !isNaN(lat) &&
+      !isNaN(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
+    ) {
+      return { lat, lng };
+    }
+  }
+
+  return null;
+}
+
 function getErrorMessage(error) {
   if (error.code === "ECONNABORTED") {
     return "ระบบใช้เวลาตอบสนองนานเกินไป กรุณาลองใหม่อีกครั้ง";
@@ -347,6 +469,28 @@ export default function ProviderDashboard() {
     wellnessHubGallery: [],
   });
 
+  // State สำหรับจัดการรายการใบรับรอง 1 ใบต่อ 1 ช่อง
+  const [certificateList, setCertificateList] = useState([""]);
+
+  const handleCertChange = (index, value) => {
+    setCertificateList((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const addCertField = () => {
+    setCertificateList((prev) => [...prev, ""]);
+  };
+
+  const removeCertField = (index) => {
+    setCertificateList((prev) => {
+      if (prev.length <= 1) return [""];
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   const [is24Hours, setIs24Hours] = useState(false);
   const [operatingHours, setOperatingHours] = useState(
     createEmptyOperatingHours(),
@@ -364,6 +508,9 @@ export default function ProviderDashboard() {
 
   const [toast, setToast] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Lightbox modal state สำหรับขยายดูรูป
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   const licenseId = useMemo(() => {
     const storedLicenseId =
@@ -393,16 +540,6 @@ export default function ProviderDashboard() {
 
   const districtName =
     selectedDistrict?.districtName || hub?.district?.districtName || "-";
-
-  const certificateOptions = useMemo(() => {
-    const currentValue = formData.certificateType;
-
-    if (hasValue(currentValue) && !CERTIFICATE_OPTIONS.includes(currentValue)) {
-      return [currentValue, ...CERTIFICATE_OPTIONS];
-    }
-
-    return CERTIFICATE_OPTIONS;
-  }, [formData.certificateType]);
 
   const activeOperatingDays = useMemo(() => {
     return DAYS.filter((day) => operatingHours[day.key]?.active);
@@ -465,6 +602,9 @@ export default function ProviderDashboard() {
   const mapHubToForm = useCallback((hubData) => {
     const gallery = normalizeGalleryImages(hubData.wellnessHubGallery);
     const mainImg = normalizeImageSource(hubData.wellnessHubImg);
+    const certList = normalizeCertificateList(hubData.certificateType);
+
+    setCertificateList(certList.length > 0 ? certList : [""]);
 
     setFormData({
       wellnessHubName: hubData.wellnessHubName || "",
@@ -517,6 +657,7 @@ export default function ProviderDashboard() {
         await Promise.all([
           axios.get(`${API_BASE_URL}/wellness-hubs/${licenseId}`, {
             timeout: 30000,
+            withCredentials: true,
           }),
 
           axios.get(`${API_BASE_URL}/categories`, {
@@ -635,12 +776,12 @@ export default function ProviderDashboard() {
       return;
     }
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
 
     if (!allowedTypes.includes(selectedFile.type)) {
       setFormErrors((previousErrors) => ({
         ...previousErrors,
-        wellnessHubImg: "รองรับเฉพาะไฟล์ JPG, JPEG และ PNG",
+        wellnessHubImg: "รองรับเฉพาะไฟล์ JPG, JPEG, PNG และ WEBP",
       }));
 
       return;
@@ -717,7 +858,7 @@ export default function ProviderDashboard() {
       if (file.size > 5 * 1024 * 1024) {
         setFormErrors((previousErrors) => ({
           ...previousErrors,
-          wellnessHubGallery: "รูปภาพต้องมีขนาดไม่เกิน 5 MB",
+          wellnessHubGallery: "รูปภาพต้องมีขนาดไม่เกิน 5 MB ต่อรูป",
         }));
 
         continue;
@@ -775,45 +916,69 @@ export default function ProviderDashboard() {
   const validateForm = () => {
     const errors = {};
 
-    const normalizedTelephone = formData.telInformation.trim();
-    const normalizedAddress = formData.address.trim();
-    const normalizedMapsLink = formData.googleMapsLink.trim();
-    const normalizedContact = formData.contactInformation ? formData.contactInformation.trim() : "";
-    const normalizedDesc = formData.wellnessHubDescription ? formData.wellnessHubDescription.trim() : "";
+    const normalizedName = formData.wellnessHubName
+      ? formData.wellnessHubName.trim()
+      : "";
+    const normalizedTelephone = formData.telInformation
+      ? formData.telInformation.trim()
+      : "";
+    const normalizedAddress = formData.address ? formData.address.trim() : "";
+    const normalizedMapsLink = formData.googleMapsLink
+      ? formData.googleMapsLink.trim()
+      : "";
+    const normalizedContact = formData.contactInformation
+      ? formData.contactInformation.trim()
+      : "";
+    const normalizedDesc = formData.wellnessHubDescription
+      ? formData.wellnessHubDescription.trim()
+      : "";
+
+    // 0. wellnessHubName: required, 5–100 ตัว
+    if (!normalizedName) {
+      errors.wellnessHubName = "ชื่อสถานประกอบการ: กรุณากรอกชื่อสถานประกอบการ";
+    } else if (normalizedName.length < 5 || normalizedName.length > 100) {
+      errors.wellnessHubName = `ชื่อสถานประกอบการ: ต้องมีความยาว 5–100 ตัวอักษร (ปัจจุบัน ${normalizedName.length} ตัวอักษร)`;
+    } else if (!/^[a-zA-Z0-9\u0E00-\u0E7F\s]+$/.test(normalizedName)) {
+      errors.wellnessHubName =
+        "ชื่อสถานประกอบการ: ต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น";
+    }
 
     // 1. address: required, 10–255 ตัว
     if (!normalizedAddress) {
-      errors.address = "กรุณากรอกรายละเอียดที่อยู่";
+      errors.address = "ที่อยู่: กรุณากรอกรายละเอียดที่อยู่";
     } else if (normalizedAddress.length < 10 || normalizedAddress.length > 255) {
-      errors.address = "ที่อยู่ต้องมีความยาว 10–255 ตัวอักษร";
+      errors.address = `ที่อยู่: ต้องมีความยาว 10–255 ตัวอักษร (ปัจจุบัน ${normalizedAddress.length} ตัวอักษร)`;
     }
 
     // 2. telInformation: required, ตัวเลข 9-10 หลัก ไม่มีช่องว่าง
     if (!normalizedTelephone) {
-      errors.telInformation = "กรุณากรอกเบอร์โทรศัพท์";
+      errors.telInformation = "เบอร์โทรศัพท์: กรุณากรอกเบอร์โทรศัพท์ติดต่อ";
     } else if (!/^[0-9]{9,10}$/.test(normalizedTelephone)) {
-      errors.telInformation = "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก และไม่มีช่องว่าง";
+      errors.telInformation =
+        "เบอร์โทรศัพท์: ต้องเป็นตัวเลข 9–10 หลัก และไม่มีช่องว่าง";
     }
 
     // 3. contactInformation: optional, ถ้ามี 3–255 ตัว
-    if (normalizedContact && (normalizedContact.length < 3 || normalizedContact.length > 255)) {
-      errors.contactInformation = "ช่องทางติดต่อต้องมีความยาว 3–255 ตัวอักษร";
+    if (
+      normalizedContact &&
+      (normalizedContact.length < 3 || normalizedContact.length > 255)
+    ) {
+      errors.contactInformation = `ช่องทางติดต่อเพิ่มเติม: ต้องมีความยาว 3–255 ตัวอักษร (ปัจจุบัน ${normalizedContact.length} ตัวอักษร)`;
     }
 
-    // 4. wellnessHubDescription: required, 10–1000 ตัว
-    if (!normalizedDesc) {
-      errors.wellnessHubDescription = "กรุณากรอกคำอธิบายสถานประกอบการ";
-    } else if (normalizedDesc.length < 10 || normalizedDesc.length > 1000) {
-      errors.wellnessHubDescription = "คำอธิบายสถานประกอบการต้องมีความยาว 10–1000 ตัวอักษร";
+    // 4. wellnessHubDescription: optional, if provided max 255 chars
+    if (normalizedDesc && normalizedDesc.length > 255) {
+      errors.wellnessHubDescription = `รายละเอียดสถานประกอบการ: ต้องมีความยาวไม่เกิน 255 ตัวอักษร (ปัจจุบัน ${normalizedDesc.length} ตัวอักษร)`;
     }
 
     // 5. googleMapsLink: required, valid Google Maps URL, no whitespace
     if (!normalizedMapsLink) {
-      errors.googleMapsLink = "กรุณากรอกลิงก์ Google Maps";
+      errors.googleMapsLink = "ลิงก์ Google Maps: กรุณากรอกลิงก์ Google Maps";
     } else if (/\s/.test(normalizedMapsLink)) {
-      errors.googleMapsLink = "ลิงก์ Google Maps ต้องไม่มีช่องว่าง";
+      errors.googleMapsLink = "ลิงก์ Google Maps: ต้องไม่มีช่องว่าง (Whitespace)";
     } else if (!isGoogleMapsUrl(normalizedMapsLink)) {
-      errors.googleMapsLink = "กรุณาระบุลิงก์จาก Google Maps ที่ถูกต้อง";
+      errors.googleMapsLink =
+        "ลิงก์ Google Maps: กรุณาระบุลิงก์จาก Google Maps ที่ถูกต้อง";
     }
 
     // 6. Operating Hours: จันทร์–อาทิตย์
@@ -827,24 +992,39 @@ export default function ProviderDashboard() {
         }
 
         if (!detail.open || !detail.close) {
-          errors.operatingHours = `กรุณาระบุเวลาเปิดและเวลาปิดของ${day.label}`;
+          errors.operatingHours = `เวลาทำการ: กรุณาระบุเวลาเปิดและเวลาปิดของ${day.label}`;
           return;
         }
 
         if (!timePattern.test(detail.open) || !timePattern.test(detail.close)) {
-          errors.operatingHours = `รูปแบบเวลาเปิดและเวลาปิดของ${day.label}ต้องเป็น HH:mm`;
+          errors.operatingHours = `เวลาทำการ: รูปแบบเวลาเปิด/ปิดของ${day.label}ต้องเป็น HH:mm`;
         }
       });
     }
 
     setFormErrors(errors);
 
-    return Object.keys(errors).length === 0;
+    return errors;
   };
 
   const requestSave = () => {
-    if (!validateForm()) {
-      showToast("error", "กรุณากรอกข้อมูลให้ถูกต้อง");
+    const errors = validateForm();
+    const errorKeys = Object.keys(errors);
+
+    if (errorKeys.length > 0) {
+      const firstKey = errorKeys[0];
+      const firstErrorMessage = errors[firstKey];
+
+      showToast("error", firstErrorMessage || "กรุณากรอกข้อมูลให้ถูกต้อง");
+
+      const element =
+        document.getElementById(firstKey) ||
+        document.querySelector(`[name="${firstKey}"]`);
+
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.focus?.();
+      }
 
       return;
     }
@@ -860,26 +1040,96 @@ export default function ProviderDashboard() {
     setSaving(true);
 
     try {
+      let galleryValue = null;
+      if (Array.isArray(formData.wellnessHubGallery)) {
+        galleryValue = JSON.stringify(formData.wellnessHubGallery);
+      } else if (typeof formData.wellnessHubGallery === "string") {
+        galleryValue = formData.wellnessHubGallery;
+      }
+
+      const certTypePayload = certificateList
+        .map((c) => c.trim())
+        .filter(Boolean)
+        .join(", ");
+
+      const gmapsLink = formData.googleMapsLink
+        ? formData.googleMapsLink.trim()
+        : "";
+      const parsedCoords = parseLatLngFromGoogleMapsLink(gmapsLink);
+
+      let latVal =
+        hub?.wellnessHubLatitude ??
+        (formData.wellnessHubLatitude !== ""
+          ? Number(formData.wellnessHubLatitude)
+          : null);
+      let lngVal =
+        hub?.wellnessHubLongitude ??
+        (formData.wellnessHubLongitude !== ""
+          ? Number(formData.wellnessHubLongitude)
+          : null);
+
+      if (parsedCoords) {
+        latVal = parsedCoords.lat;
+        lngVal = parsedCoords.lng;
+      }
+
       const payload = {
+        licenseId: licenseId,
+
+        wellnessHubName: formData.wellnessHubName
+          ? formData.wellnessHubName.trim()
+          : hub?.wellnessHubName || null,
+
+        categoryId: formData.categoryId || hub?.category?.categoryId || null,
+
+        category:
+          formData.categoryId || hub?.category?.categoryId
+            ? {
+                categoryId: String(
+                  formData.categoryId || hub?.category?.categoryId,
+                )
+                  .trim()
+                  .toUpperCase(),
+              }
+            : null,
+
+        districtId: formData.districtId || hub?.district?.districtId || null,
+
+        district:
+          formData.districtId || hub?.district?.districtId
+            ? {
+                districtId: parseInt(
+                  formData.districtId || hub?.district?.districtId,
+                  10,
+                ),
+              }
+            : null,
+
         address: formData.address.trim(),
 
         telInformation: formData.telInformation.trim(),
 
-        contactInformation: formData.contactInformation ? formData.contactInformation.trim() || null : null,
+        certificateType: certTypePayload || null,
 
-        wellnessHubDescription: formData.wellnessHubDescription ? formData.wellnessHubDescription.trim() : null,
+        contactInformation: formData.contactInformation
+          ? formData.contactInformation.trim() || null
+          : null,
 
-        googleMapsLink: formData.googleMapsLink.trim(),
+        wellnessHubDescription: formData.wellnessHubDescription
+          ? formData.wellnessHubDescription.trim()
+          : null,
 
-        wellnessHubLatitude:
-          hub?.wellnessHubLatitude ?? (formData.wellnessHubLatitude !== "" ? Number(formData.wellnessHubLatitude) : null),
+        googleMapsLink: gmapsLink,
 
-        wellnessHubLongitude:
-          hub?.wellnessHubLongitude ?? (formData.wellnessHubLongitude !== "" ? Number(formData.wellnessHubLongitude) : null),
+        wellnessHubLatitude: latVal,
+
+        wellnessHubLongitude: lngVal,
 
         operatingHours: JSON.stringify(operatingHours),
 
         wellnessHubImg: formData.wellnessHubImg || null,
+
+        wellnessHubGallery: galleryValue,
       };
 
       const response = await axios.put(
@@ -887,6 +1137,7 @@ export default function ProviderDashboard() {
         payload,
         {
           timeout: 60000,
+          withCredentials: true,
           headers: {
             "Content-Type": "application/json",
           },
@@ -929,7 +1180,83 @@ export default function ProviderDashboard() {
 
       setShowConfirmModal(false);
 
-      showToast("error", getErrorMessage(error));
+      if (error.response?.status === 401) {
+        showToast(
+          "error",
+          "เซสชันการเข้าสู่ระบบหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง",
+        );
+        setTimeout(() => {
+          clearProviderSession();
+          navigate("/provider/login");
+        }, 2000);
+        return;
+      }
+
+      const errorMsg = getErrorMessage(error);
+
+      // ระบุฟิลด์ที่มีปัญหาให้ขึ้นสีแดงและแจ้งเตือนอย่างชัดเจน
+      const lower = errorMsg.toLowerCase();
+      let fieldTarget = null;
+      if (lower.includes("ที่อยู่") || lower.includes("address")) {
+        setFormErrors((prev) => ({ ...prev, address: errorMsg }));
+        fieldTarget = "address";
+      } else if (lower.includes("โทรศัพท์") || lower.includes("tel")) {
+        setFormErrors((prev) => ({ ...prev, telInformation: errorMsg }));
+        fieldTarget = "telInformation";
+      } else if (
+        lower.includes("google") ||
+        lower.includes("พิกัด") ||
+        lower.includes("ละติจูด") ||
+        lower.includes("ลองจิจูด") ||
+        lower.includes("maps")
+      ) {
+        setFormErrors((prev) => ({ ...prev, googleMapsLink: errorMsg }));
+        fieldTarget = "googleMapsLink";
+      } else if (
+        lower.includes("คำอธิบาย") ||
+        lower.includes("รายละเอียด") ||
+        lower.includes("description")
+      ) {
+        setFormErrors((prev) => ({
+          ...prev,
+          wellnessHubDescription: errorMsg,
+        }));
+        fieldTarget = "wellnessHubDescription";
+      } else if (
+        lower.includes("เวลา") ||
+        lower.includes("ชั่วโมง") ||
+        lower.includes("hours")
+      ) {
+        setFormErrors((prev) => ({ ...prev, operatingHours: errorMsg }));
+        fieldTarget = "operatingHours";
+      } else if (
+        lower.includes("ภาพ") ||
+        lower.includes("รูป") ||
+        lower.includes("image")
+      ) {
+        setFormErrors((prev) => ({ ...prev, wellnessHubImg: errorMsg }));
+        fieldTarget = "wellnessHubImg";
+      } else if (
+        lower.includes("ใบรับรอง") ||
+        lower.includes("certificate")
+      ) {
+        setFormErrors((prev) => ({ ...prev, certificateType: errorMsg }));
+        fieldTarget = "certificateType";
+      }
+
+      showToast("error", errorMsg);
+
+      if (fieldTarget) {
+        setTimeout(() => {
+          const el =
+            document.getElementById(fieldTarget) ||
+            document.querySelector(`[name="${fieldTarget}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.focus?.();
+          }
+        }, 100);
+      }
     } finally {
       setSaving(false);
     }
@@ -1015,6 +1342,7 @@ export default function ProviderDashboard() {
         </div>
       )}
 
+      {/* Header Topbar */}
       <header className="provider-dashboard-topbar">
         <div className="provider-dashboard-container provider-dashboard-topbar__inner">
           <div className="provider-dashboard-brand">
@@ -1029,6 +1357,19 @@ export default function ProviderDashboard() {
           </div>
 
           <div className="provider-dashboard-topbar__actions">
+            {/* Direct Public Preview Link */}
+            <a
+              href={`/wellness-hubs/${hub.licenseId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="provider-dashboard-button provider-dashboard-button--preview"
+              title="เปิดดูหน้าสถานประกอบการบนมุมมองของผู้ใช้ทั่วไป"
+            >
+              <Eye />
+              <span>ดูหน้าร้านจริง</span>
+              <ExternalLink size={14} />
+            </a>
+
             {!editing ? (
               <button
                 type="button"
@@ -1076,11 +1417,12 @@ export default function ProviderDashboard() {
       </header>
 
       <div className="provider-dashboard-container provider-dashboard-content">
+        {/* Profile Hero Header */}
         <section className="provider-dashboard-profile-header">
           <div className="provider-dashboard-profile-header__main">
             <div className="provider-dashboard-profile-header__label">
               <Building2 />
-              <span>สถานประกอบการของคุณ</span>
+              <span>สถานประกอบการที่ได้รับสิทธิ์</span>
             </div>
 
             <h1>{displayValue(hub.wellnessHubName)}</h1>
@@ -1104,33 +1446,58 @@ export default function ProviderDashboard() {
                 }
               >
                 <i />
-                {isActive ? "บัญชีพร้อมใช้งาน" : "บัญชีถูกระงับ"}
+                {isActive ? "บัญชีพร้อมให้บริการ" : "บัญชีถูกระงับ"}
               </span>
             </div>
           </div>
 
           <div className="provider-dashboard-profile-header__summary">
             <div>
-              <span>เลขใบอนุญาต</span>
+              <span>เลขใบอนุญาต (License ID)</span>
               <strong>{displayValue(hub.licenseId)}</strong>
             </div>
 
             <div>
-              <span>เปิดให้บริการ</span>
-              <strong>{activeOperatingDays.length} วัน / สัปดาห์</strong>
+              <span>เวลาให้บริการ</span>
+              <strong>
+                {is24Hours
+                  ? "เปิด 24 ชม. ทุกวัน"
+                  : activeOperatingDays.length > 0
+                    ? `เปิด ${activeOperatingDays.length} วัน / สัปดาห์`
+                    : "ยังไม่ได้ระบุเวลา"}
+              </strong>
+            </div>
+
+            <div>
+              <span>อัปเดตข้อมูลล่าสุด</span>
+              <strong>
+                {formatThaiDateTime(hub.updatedAt || hub.createdAt)}
+              </strong>
             </div>
           </div>
         </section>
 
         <div className="provider-dashboard-layout">
+          {/* Left Sticky Sidebar */}
           <aside className="provider-dashboard-sidebar">
             <section className="provider-dashboard-profile-media">
-              <div className="provider-dashboard-image-frame">
+              <div
+                className="provider-dashboard-image-frame"
+                onClick={() => imagePreview && setLightboxImage(imagePreview)}
+                style={{ cursor: imagePreview ? "pointer" : "default" }}
+                title={imagePreview ? "คลิกเพื่อดูรูปภาพขนาดใหญ่" : ""}
+              >
                 {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt={hub.wellnessHubName || "สถานประกอบการ"}
-                  />
+                  <>
+                    <img
+                      src={imagePreview}
+                      alt={hub.wellnessHubName || "สถานประกอบการ"}
+                    />
+                    <div className="provider-dashboard-image-zoom-hint">
+                      <ZoomIn size={16} />
+                      <span>ขยายรูปภาพ</span>
+                    </div>
+                  </>
                 ) : (
                   <div className="provider-dashboard-image-empty">
                     <ImageIcon />
@@ -1143,8 +1510,23 @@ export default function ProviderDashboard() {
                   รูปภาพหลัก
                 </span>
               </div>
+
+              {/* Sidebar Quick Action to Public View */}
+              <div className="provider-dashboard-media-action">
+                <a
+                  href={`/wellness-hubs/${hub.licenseId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="provider-dashboard-media-link"
+                >
+                  <Eye size={15} />
+                  เปิดดูหน้าร้านจริงบนเว็บไซต์
+                  <ArrowUpRight size={15} />
+                </a>
+              </div>
             </section>
 
+            {/* Account Card */}
             <section className="provider-dashboard-account-card">
               <div className="provider-dashboard-sidebar-heading">
                 <UserRound />
@@ -1157,12 +1539,12 @@ export default function ProviderDashboard() {
 
               <dl className="provider-dashboard-account-list">
                 <div>
-                  <dt>ชื่อผู้ใช้</dt>
+                  <dt>ชื่อผู้ใช้ (Username)</dt>
                   <dd>{displayValue(hub.username)}</dd>
                 </div>
 
                 <div>
-                  <dt>สถานะ</dt>
+                  <dt>สถานะบัญชี</dt>
 
                   <dd
                     className={
@@ -1172,7 +1554,7 @@ export default function ProviderDashboard() {
                     }
                   >
                     <i />
-                    {isActive ? "กำลังใช้งาน" : "ระงับการใช้งาน"}
+                    {isActive ? "พร้อมใช้งาน (ACTIVE)" : "ระงับการใช้งาน"}
                   </dd>
                 </div>
               </dl>
@@ -1182,11 +1564,13 @@ export default function ProviderDashboard() {
               <ShieldCheck />
 
               <p>
-                ข้อมูลที่บันทึกจากหน้านี้จะถูกนำไปแสดงในหน้าสถานประกอบการสำหรับผู้ใช้งานทั่วไป
+                ข้อมูลที่บันทึกจากหน้านี้จะถูกนำไปแสดงในหน้าสถานประกอบการสำหรับผู้ใช้งานทั่วไปบนแพลตฟอร์ม
+                Chiang Mai Wellness
               </p>
             </div>
           </aside>
 
+          {/* Right Main Content */}
           <section className="provider-dashboard-main">
             <div className="provider-dashboard-main__header">
               <div className="provider-dashboard-main__heading">
@@ -1205,11 +1589,71 @@ export default function ProviderDashboard() {
                 </div>
               </div>
 
-              {!editing && <p>ตรวจสอบข้อมูลที่กำลังเผยแพร่ต่อผู้ใช้งาน</p>}
+              {!editing && (
+                <div className="provider-dashboard-view-mode-tag">
+                  <span>✓ ข้อมูลดึงจากฐานข้อมูลจริง</span>
+                </div>
+              )}
             </div>
 
             {editing ? (
+              /* ======================= EDIT MODE ======================= */
               <div className="provider-dashboard-edit">
+                {Object.keys(formErrors).filter((k) => formErrors[k]).length >
+                  0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "12px",
+                      padding: "16px 20px",
+                      background: "#fef2f2",
+                      border: "1.5px solid #f87171",
+                      borderRadius: "12px",
+                      marginBottom: "24px",
+                      color: "#991b1b",
+                    }}
+                    role="alert"
+                  >
+                    <AlertCircle
+                      style={{
+                        width: "22px",
+                        height: "22px",
+                        flexShrink: 0,
+                        marginTop: "2px",
+                        color: "#dc2626",
+                      }}
+                    />
+                    <div>
+                      <strong
+                        style={{
+                          fontSize: "15px",
+                          fontWeight: "700",
+                          display: "block",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        พบข้อผิดพลาด กรุณาตรวจสอบและแก้ไขข้อมูล:
+                      </strong>
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingLeft: "18px",
+                          fontSize: "13.5px",
+                          lineHeight: "1.6",
+                        }}
+                      >
+                        {Object.entries(formErrors)
+                          .filter(([_, msg]) => Boolean(msg))
+                          .map(([key, msg]) => (
+                            <li key={key}>{msg}</li>
+                          ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 1: General Info */}
                 <section className="provider-dashboard-form-section">
                   <div className="provider-dashboard-form-section__title">
                     <span>01</span>
@@ -1304,25 +1748,45 @@ export default function ProviderDashboard() {
                       )}
                     </div>
 
-                    <div className="provider-dashboard-field">
-                      <label htmlFor="certificateType">
-                        ประเภทใบรับรองศูนย์เวลเนส
-                      </label>
-
-                      <select
-                        id="certificateType"
-                        name="certificateType"
-                        value={formData.certificateType}
-                        onChange={handleInputChange}
-                      >
-                        <option value="">ยังไม่ได้ระบุใบรับรอง</option>
-
-                        {certificateOptions.map((certificate) => (
-                          <option key={certificate} value={certificate}>
-                            {certificate}
-                          </option>
+                    <div className="provider-dashboard-field provider-dashboard-field-full">
+                      <div className="provider-dashboard-cert-header">
+                        <label>ประเภทใบรับรอง / มาตรฐาน (1 ใบต่อ 1 ช่อง)</label>
+                        <button
+                          type="button"
+                          className="provider-dashboard-btn-add-cert"
+                          onClick={addCertField}
+                        >
+                          + เพิ่มใบรับรอง
+                        </button>
+                      </div>
+                      <div className="provider-dashboard-cert-list">
+                        {certificateList.map((cert, index) => (
+                          <div
+                            key={index}
+                            className="provider-dashboard-cert-row"
+                          >
+                            <input
+                              type="text"
+                              placeholder={`ระบุชื่อใบรับรอง / มาตรฐานที่ ${index + 1} (เช่น ศูนย์เวลเนสประเภทสปาเพื่อสุขภาพ)`}
+                              value={cert}
+                              maxLength={150}
+                              onChange={(e) =>
+                                handleCertChange(index, e.target.value)
+                              }
+                            />
+                            {certificateList.length > 1 && (
+                              <button
+                                type="button"
+                                className="provider-dashboard-btn-del-cert"
+                                onClick={() => removeCertField(index)}
+                                title="ลบช่องใบรับรองนี้"
+                              >
+                                ✕ ลบ
+                              </button>
+                            )}
+                          </div>
                         ))}
-                      </select>
+                      </div>
                     </div>
 
                     <div className="provider-dashboard-field">
@@ -1338,6 +1802,7 @@ export default function ProviderDashboard() {
                           id="telInformation"
                           name="telInformation"
                           type="tel"
+                          maxLength={10}
                           value={formData.telInformation}
                           onChange={handleInputChange}
                           placeholder="เช่น 0812345678"
@@ -1349,11 +1814,18 @@ export default function ProviderDashboard() {
                         />
                       </div>
 
-                      {formErrors.telInformation && (
-                        <small className="provider-dashboard-error">
-                          {formErrors.telInformation}
-                        </small>
-                      )}
+                      <div className="provider-dashboard-field-footer">
+                        {formErrors.telInformation ? (
+                          <small className="provider-dashboard-error">
+                            {formErrors.telInformation}
+                          </small>
+                        ) : (
+                          <span />
+                        )}
+                        <span className="provider-dashboard-char-count">
+                          {formData.telInformation?.length || 0}/10
+                        </span>
+                      </div>
                     </div>
 
                     <div className="provider-dashboard-field">
@@ -1368,6 +1840,7 @@ export default function ProviderDashboard() {
                           id="contactInformation"
                           name="contactInformation"
                           type="text"
+                          maxLength={255}
                           value={formData.contactInformation}
                           onChange={handleInputChange}
                           placeholder="เช่น Facebook, LINE หรือ Email"
@@ -1379,11 +1852,18 @@ export default function ProviderDashboard() {
                         />
                       </div>
 
-                      {formErrors.contactInformation && (
-                        <small className="provider-dashboard-error">
-                          {formErrors.contactInformation}
-                        </small>
-                      )}
+                      <div className="provider-dashboard-field-footer">
+                        {formErrors.contactInformation ? (
+                          <small className="provider-dashboard-error">
+                            {formErrors.contactInformation}
+                          </small>
+                        ) : (
+                          <span />
+                        )}
+                        <span className="provider-dashboard-char-count">
+                          {formData.contactInformation?.length || 0}/255
+                        </span>
+                      </div>
                     </div>
 
                     <div className="provider-dashboard-field provider-dashboard-field--full">
@@ -1395,21 +1875,41 @@ export default function ProviderDashboard() {
                         id="wellnessHubDescription"
                         name="wellnessHubDescription"
                         rows={5}
+                        maxLength={255}
                         value={formData.wellnessHubDescription}
                         onChange={handleInputChange}
-                        placeholder="กรอกรายละเอียดบริการ จุดเด่น และข้อมูลที่ต้องการแสดงต่อผู้ใช้"
+                        placeholder="กรอกรายละเอียดบริการ จุดเด่น และข้อมูลที่ต้องการแสดงต่อผู้ใช้ (สูงสุด 255 ตัวอักษร)"
+                        className={
+                          formErrors.wellnessHubDescription
+                            ? "provider-dashboard-field-error-input"
+                            : ""
+                        }
                       />
+
+                      <div className="provider-dashboard-field-footer">
+                        {formErrors.wellnessHubDescription ? (
+                          <small className="provider-dashboard-error">
+                            {formErrors.wellnessHubDescription}
+                          </small>
+                        ) : (
+                          <span />
+                        )}
+                        <span className="provider-dashboard-char-count">
+                          {formData.wellnessHubDescription?.length || 0}/255
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </section>
 
+                {/* Section 2: Location */}
                 <section className="provider-dashboard-form-section">
                   <div className="provider-dashboard-form-section__title">
                     <span>02</span>
 
                     <div>
                       <h3>สถานที่ตั้ง</h3>
-                      <p>ที่อยู่ อำเภอ Google Maps และพิกัด</p>
+                      <p>ที่อยู่ อำเภอ และลิงก์ Google Maps</p>
                     </div>
                   </div>
 
@@ -1424,6 +1924,7 @@ export default function ProviderDashboard() {
                         id="address"
                         name="address"
                         rows={4}
+                        maxLength={255}
                         value={formData.address}
                         onChange={handleInputChange}
                         placeholder="กรอกบ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด และรหัสไปรษณีย์"
@@ -1434,11 +1935,18 @@ export default function ProviderDashboard() {
                         }
                       />
 
-                      {formErrors.address && (
-                        <small className="provider-dashboard-error">
-                          {formErrors.address}
-                        </small>
-                      )}
+                      <div className="provider-dashboard-field-footer">
+                        {formErrors.address ? (
+                          <small className="provider-dashboard-error">
+                            {formErrors.address}
+                          </small>
+                        ) : (
+                          <span />
+                        )}
+                        <span className="provider-dashboard-char-count">
+                          {formData.address?.length || 0}/255
+                        </span>
+                      </div>
                     </div>
 
                     <div className="provider-dashboard-field">
@@ -1521,10 +2029,10 @@ export default function ProviderDashboard() {
                           </a>
                         )}
                     </div>
-
                   </div>
                 </section>
 
+                {/* Section 3: Operating Hours */}
                 <section className="provider-dashboard-form-section">
                   <div className="provider-dashboard-form-section__title">
                     <span>03</span>
@@ -1545,7 +2053,7 @@ export default function ProviderDashboard() {
                         <Clock3 size={18} /> เปิดให้บริการตลอด 24 ชั่วโมง (ทุกวัน)
                       </span>
                       <p className="provider-dashboard-24hours-desc">
-                        สำหรับสถานพยาบาล โรงพยาบาล หรือหน่วยบริการกู้ภัยฉุกเฉิน
+                        สำหรับสถานพยาบาล โรงพยาบาล หรือหน่วยบริการกู้ชีพฉุกเฉิน
                       </p>
                     </div>
                     <label
@@ -1639,6 +2147,7 @@ export default function ProviderDashboard() {
                   )}
                 </section>
 
+                {/* Section 4: Main Image */}
                 <section className="provider-dashboard-form-section">
                   <div className="provider-dashboard-form-section__title">
                     <span>04</span>
@@ -1670,7 +2179,7 @@ export default function ProviderDashboard() {
                         <h4>ภาพหน้าปกสถานประกอบการ</h4>
 
                         <p>
-                          แนะนำภาพแนวนอน JPG, PNG หรือ WEBP ขนาดไม่เกิน 5 MB
+                          แนะนำภาพแนวนอน JPG, PNG หรือ WEBP ขนาดไม่เกิน 20 MB
                         </p>
                       </div>
 
@@ -1713,20 +2222,21 @@ export default function ProviderDashboard() {
                   </div>
                 </section>
 
+                {/* Section 5: Gallery Images */}
                 <section className="provider-dashboard-form-section">
                   <div className="provider-dashboard-form-section__title">
                     <span>05</span>
 
                     <div>
                       <h3>ภาพภายในสถานประกอบการ</h3>
-                      <p>รูปภาพภายในสถานประกอบการ (แกลเลอรี)</p>
+                      <p>รูปภาพบรรยากาศและบริการภายในสถานประกอบการ (แกลเลอรี)</p>
                     </div>
                   </div>
 
                   <div className="provider-dashboard-gallery-editor">
                     <div className="provider-dashboard-gallery-preview">
                       {Array.isArray(formData.wellnessHubGallery) &&
-                        formData.wellnessHubGallery.length > 0 ? (
+                      formData.wellnessHubGallery.length > 0 ? (
                         <div className="provider-dashboard-gallery-grid">
                           {formData.wellnessHubGallery.map((src, idx) => (
                             <div
@@ -1741,6 +2251,7 @@ export default function ProviderDashboard() {
                                 type="button"
                                 className="provider-dashboard-gallery-remove"
                                 onClick={() => removeGalleryImage(idx)}
+                                title="ลบรูปภาพนี้"
                               >
                                 <Trash2 />
                               </button>
@@ -1751,7 +2262,7 @@ export default function ProviderDashboard() {
                         <div className="provider-dashboard-image-empty">
                           <ImageIcon />
                           <strong>ยังไม่มีรูปภาพภายใน</strong>
-                          <span>เพิ่มรูปภาพได้จากปุ่มอัปโหลด</span>
+                          <span>เพิ่มรูปภาพได้จากปุ่มอัปโหลดด้านล่าง</span>
                         </div>
                       )}
                     </div>
@@ -1784,14 +2295,16 @@ export default function ProviderDashboard() {
                 </section>
               </div>
             ) : (
+              /* ======================= VIEW MODE ======================= */
               <div className="provider-dashboard-view">
+                {/* View Section 1: General Info */}
                 <section className="provider-dashboard-view-section">
                   <div className="provider-dashboard-view-section__heading">
                     <Building2 />
 
                     <div>
                       <h3>ข้อมูลทั่วไป</h3>
-                      <p>ข้อมูลธุรกิจและช่องทางติดต่อ</p>
+                      <p>ข้อมูลธุรกิจ ใบรับรอง และช่องทางติดต่อ</p>
                     </div>
                   </div>
 
@@ -1802,44 +2315,72 @@ export default function ProviderDashboard() {
                     </div>
 
                     <div className="provider-dashboard-info-row">
-                      <span>ประเภทใบรับรอง</span>
-                      <strong>
-                        {displayValue(
-                          normalizeCertificate(hub.certificateType),
+                      <span>ประเภทใบรับรอง / มาตรฐาน</span>
+                      <div className="provider-dashboard-cert-view-list">
+                        {normalizeCertificateList(hub.certificateType).length >
+                        0 ? (
+                          normalizeCertificateList(hub.certificateType).map(
+                            (cert, index) => (
+                              <div
+                                key={index}
+                                className="provider-dashboard-cert-view-item"
+                              >
+                                <ShieldCheck size={14} />
+                                <span>{cert}</span>
+                              </div>
+                            ),
+                          )
+                        ) : (
+                          <strong className="provider-dashboard-empty-dash">
+                            -
+                          </strong>
                         )}
-                      </strong>
+                      </div>
                     </div>
 
                     <div className="provider-dashboard-info-row">
-                      <span>เบอร์โทรศัพท์</span>
+                      <span>เบอร์โทรศัพท์ติดต่อ</span>
                       <strong>
-                        {displayValue(
-                          hub.telInformation || hub.tellInformation,
+                        {hub.telInformation || hub.tellInformation ? (
+                          <a
+                            href={`tel:${hub.telInformation || hub.tellInformation}`}
+                            className="provider-dashboard-tel-link"
+                          >
+                            <Phone size={14} />
+                            {displayValue(
+                              hub.telInformation || hub.tellInformation,
+                            )}
+                          </a>
+                        ) : (
+                          "-"
                         )}
                       </strong>
                     </div>
 
                     <div className="provider-dashboard-info-row">
                       <span>ช่องทางติดต่อเพิ่มเติม</span>
-                      <strong>{displayValue(hub.contactInformation)}</strong>
+                      <strong>
+                        {displayValue(hub.contactInformation)}
+                      </strong>
                     </div>
 
                     <div className="provider-dashboard-info-row provider-dashboard-info-row--description">
-                      <span>รายละเอียด</span>
-                      <strong>
+                      <span>รายละเอียดสถานประกอบการ</span>
+                      <strong style={{ whiteSpace: "pre-line" }}>
                         {displayValue(hub.wellnessHubDescription)}
                       </strong>
                     </div>
                   </div>
                 </section>
 
+                {/* View Section 2: Location */}
                 <section className="provider-dashboard-view-section">
                   <div className="provider-dashboard-view-section__heading">
                     <MapPin />
 
                     <div>
                       <h3>สถานที่ตั้ง</h3>
-                      <p>ที่อยู่และตำแหน่งบนแผนที่</p>
+                      <p>ที่อยู่ อำเภอ และตำแหน่งบนแผนที่</p>
                     </div>
                   </div>
 
@@ -1852,7 +2393,7 @@ export default function ProviderDashboard() {
 
                     <div className="provider-dashboard-location-meta">
                       <div>
-                        <span>อำเภอ</span>
+                        <span>อำเภอที่ตั้ง</span>
                         <strong>{displayValue(districtName)}</strong>
                       </div>
                     </div>
@@ -1872,62 +2413,87 @@ export default function ProviderDashboard() {
                   </div>
                 </section>
 
+                {/* View Section 3: Operating Hours */}
                 <section className="provider-dashboard-view-section">
                   <div className="provider-dashboard-view-section__heading">
                     <Clock3 />
 
                     <div>
                       <h3>วันและเวลาให้บริการ</h3>
-                      <p>เวลาที่แสดงต่อผู้ใช้งาน</p>
+                      <p>เวลาเปิดให้บริการที่แสดงต่อผู้ใช้งานบนระบบ</p>
                     </div>
                   </div>
 
                   {checkIs24Hours(operatingHours) ? (
                     <div className="provider-dashboard-24hours-badge">
-                      <span>✓ เปิดให้บริการตลอด 24 ชั่วโมงทุกวัน</span>
+                      <span>
+                        ✓ เปิดให้บริการตลอด 24 ชั่วโมงทุกวัน (จันทร์ - อาทิตย์)
+                      </span>
                     </div>
-                  ) : activeOperatingDays.length > 0 ? (
-                    <div className="provider-dashboard-hours-display">
-                      {activeOperatingDays.map((day) => {
+                  ) : (
+                    <div className="provider-dashboard-hours-table">
+                      {DAYS.map((day) => {
                         const detail = operatingHours[day.key];
+                        const isOpen = detail && Boolean(detail.active);
 
                         return (
-                          <div key={day.key}>
-                            <strong>{day.label}</strong>
-
-                            <span>
-                              {displayValue(detail.open)}
-                              {" – "}
-                              {displayValue(detail.close)}
-                              {" น."}
+                          <div
+                            key={day.key}
+                            className={`provider-dashboard-hours-item ${isOpen ? "provider-dashboard-hours-item--open" : "provider-dashboard-hours-item--closed"}`}
+                          >
+                            <span className="provider-dashboard-hours-day">
+                              {day.label}
+                            </span>
+                            <span className="provider-dashboard-hours-status">
+                              {isOpen ? (
+                                <span className="provider-dashboard-status-tag provider-dashboard-status-tag--open">
+                                  เปิดบริการ
+                                </span>
+                              ) : (
+                                <span className="provider-dashboard-status-tag provider-dashboard-status-tag--closed">
+                                  ปิดทำการ
+                                </span>
+                              )}
+                            </span>
+                            <span className="provider-dashboard-hours-time">
+                              {isOpen
+                                ? `${displayValue(detail.open)} – ${displayValue(detail.close)} น.`
+                                : "—"}
                             </span>
                           </div>
                         );
                       })}
                     </div>
-                  ) : (
-                    <div className="provider-dashboard-empty-value">
-                      ยังไม่ได้กำหนดเวลาให้บริการ
-                    </div>
                   )}
                 </section>
 
+                {/* View Section 4: Main Cover Image */}
                 <section className="provider-dashboard-view-section">
                   <div className="provider-dashboard-view-section__heading">
                     <ImageIcon />
 
                     <div>
-                      <h3>รูปภาพสถานประกอบการ</h3>
-                      <p>ภาพหลักที่กำลังเผยแพร่</p>
+                      <h3>รูปภาพหน้าปกสถานประกอบการ</h3>
+                      <p>ภาพหลักที่กำลังเผยแพร่บนระบบ</p>
                     </div>
                   </div>
 
                   <div className="provider-dashboard-view-image">
                     {imagePreview ? (
-                      <img
-                        src={imagePreview}
-                        alt={hub?.wellnessHubName || "สถานประกอบการ"}
-                      />
+                      <div
+                        className="provider-dashboard-view-image-frame"
+                        onClick={() => setLightboxImage(imagePreview)}
+                        title="คลิกเพื่อดูรูปภาพขนาดใหญ่"
+                      >
+                        <img
+                          src={imagePreview}
+                          alt={hub?.wellnessHubName || "สถานประกอบการ"}
+                        />
+                        <div className="provider-dashboard-image-zoom-hint">
+                          <ZoomIn size={16} />
+                          <span>ขยายรูปภาพ</span>
+                        </div>
+                      </div>
                     ) : (
                       <div className="provider-dashboard-image-empty">
                         <ImageIcon />
@@ -1937,6 +2503,7 @@ export default function ProviderDashboard() {
                   </div>
                 </section>
 
+                {/* View Section 5: Gallery */}
                 <section className="provider-dashboard-view-section">
                   <div className="provider-dashboard-view-section__heading">
                     <ImageIcon />
@@ -1954,17 +2521,25 @@ export default function ProviderDashboard() {
                   </div>
 
                   {Array.isArray(formData.wellnessHubGallery) &&
-                    formData.wellnessHubGallery.length > 0 ? (
+                  formData.wellnessHubGallery.length > 0 ? (
                     <div className="provider-dashboard-gallery-grid">
                       {formData.wellnessHubGallery.map((src, idx) => (
                         <div
                           className="provider-dashboard-gallery-item"
                           key={idx}
+                          onClick={() =>
+                            setLightboxImage(normalizeImageSource(src))
+                          }
+                          title="คลิกเพื่อดูรูปภาพขนาดใหญ่"
+                          style={{ cursor: "pointer" }}
                         >
                           <img
                             src={normalizeImageSource(src)}
                             alt={`Gallery ${idx + 1}`}
                           />
+                          <div className="provider-dashboard-gallery-zoom-overlay">
+                            <ZoomIn size={18} />
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1980,6 +2555,7 @@ export default function ProviderDashboard() {
         </div>
       </div>
 
+      {/* Confirmation Save Modal */}
       {showConfirmModal && (
         <div
           className="provider-dashboard-modal-overlay"
@@ -1994,7 +2570,7 @@ export default function ProviderDashboard() {
             <h2>ยืนยันการบันทึกข้อมูล?</h2>
 
             <p>
-              ข้อมูลที่แก้ไขจะถูกนำไปแสดงในหน้าสถานประกอบการ
+              ข้อมูลที่แก้ไขจะถูกนำไปแสดงในหน้าสถานประกอบการบนระบบ
               กรุณาตรวจสอบความถูกต้องก่อนยืนยัน
             </p>
 
@@ -2030,6 +2606,32 @@ export default function ProviderDashboard() {
           </div>
         </div>
       )}
+
+      {/* Image Lightbox Modal */}
+      {lightboxImage && (
+        <div
+          className="provider-dashboard-lightbox-overlay"
+          onClick={() => setLightboxImage(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="provider-dashboard-lightbox-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="provider-dashboard-lightbox-close"
+              onClick={() => setLightboxImage(null)}
+              aria-label="ปิดรูปภาพ"
+            >
+              <X size={22} />
+            </button>
+            <img src={lightboxImage} alt="รูปภาพขนาดใหญ่" />
+          </div>
+        </div>
+      )}
     </main>
   );
 }
+

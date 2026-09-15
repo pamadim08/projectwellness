@@ -155,8 +155,8 @@ public class AccountRequestService {
                 if (username.contains(" ") || username.matches(".*\\s+.*")) {
                         throw new RuntimeException("Username ต้องไม่มีช่องว่าง");
                 }
-                if (username.length() < 4 || username.length() > 10) {
-                        throw new RuntimeException("Username ต้องมีความยาว 4–10 ตัวอักษร");
+                if (username.length() < 4 || username.length() > 20) {
+                        throw new RuntimeException("Username ต้องมีความยาว 4–20 ตัวอักษร");
                 }
 
                 if (repository.existsByUsernameIgnoreCaseAndRequestStatus(username, STATUS_PENDING)) {
@@ -194,10 +194,9 @@ public class AccountRequestService {
                         throw new RuntimeException("ช่องทางติดต่อเพิ่มเติมต้องมีความยาว 3–255 ตัวอักษร");
                 }
 
-                String wellnessHubDescription = getRequiredString(payload, "wellnessHubDescription",
-                                "กรุณาระบุรายละเอียดบริการ");
-                if (wellnessHubDescription.length() < 10 || wellnessHubDescription.length() > 255) {
-                        throw new RuntimeException("รายละเอียดบริการต้องมีความยาว 10–255 ตัวอักษร");
+                String wellnessHubDescription = getOptionalString(payload, "wellnessHubDescription");
+                if (wellnessHubDescription != null && wellnessHubDescription.length() > 255) {
+                        throw new RuntimeException("รายละเอียดสถานประกอบการต้องมีความยาวไม่เกิน 255 ตัวอักษร");
                 }
 
                 String verificationDocuments = getRequiredString(payload, "verificationDocuments",
@@ -554,8 +553,8 @@ public class AccountRequestService {
                 }
 
                 String normalizedUsername = username.trim();
-                if (normalizedUsername.length() < 4 || normalizedUsername.length() > 10) {
-                        throw new RuntimeException("กรุณากรอกชื่อผู้ใช้งาน (Username)");
+                if (normalizedUsername.length() < 4 || normalizedUsername.length() > 20) {
+                        throw new RuntimeException("กรุณากรอกชื่อผู้ใช้งาน (Username) 4–20 ตัวอักษร");
                 }
 
                 return repository.findByUsernameIgnoreCaseOrderByRequestIdDesc(normalizedUsername);

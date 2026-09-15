@@ -18,19 +18,25 @@ import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 const API_URL = "http://localhost:8080/api/account-requests";
 const ROWS_PER_PAGE = 10;
 
+// In-Memory Cache for Account Requests
+let accountRequestsCache = null;
+export const clearAccountRequestsCache = () => {
+  accountRequestsCache = null;
+};
+
 function ListAccountRequest() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [accountRequests, setAccountRequests] = useState([]);
+  const [accountRequests, setAccountRequests] = useState(() => accountRequestsCache || []);
   const [adminName, setAdminName] = useState("Admin");
 
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("PENDING");
 
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !accountRequestsCache);
   const [errorMessage, setErrorMessage] = useState("");
 
   // 🌟 State สำหรับ Popup ดูเหตุผลที่ไม่อนุมัติ
@@ -46,7 +52,7 @@ function ListAccountRequest() {
       setAdminName(storedAdminName);
     }
 
-    fetchAccountRequests("", "");
+    fetchAccountRequests("", "PENDING", false);
   }, []);
 
   // 🌟 รับข้อมูลสถานะที่เปลี่ยนจากหน้าพิจารณา
@@ -56,6 +62,7 @@ function ListAccountRequest() {
       return;
     }
 
+    accountRequestsCache = null;
     const updatedRequestId = Number(location.state.updatedRequestId);
     const requestStatus = normalizeStatus(location.state.requestStatus);
 
@@ -81,7 +88,19 @@ function ListAccountRequest() {
     location.state?.rejectionReason,
   ]);
 
-  const fetchAccountRequests = async (keyword = searchKeyword, status = statusFilter) => {
+  const fetchAccountRequests = async (
+    keyword = searchKeyword,
+    status = statusFilter,
+    forceRefresh = false,
+  ) => {
+    const isDefault = !keyword && status === "PENDING";
+
+    if (accountRequestsCache && isDefault && !forceRefresh) {
+      setAccountRequests(accountRequestsCache);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setErrorMessage("");
@@ -97,6 +116,11 @@ function ListAccountRequest() {
       const response = await axios.get(API_URL, { params });
       const data = response.data;
       const normalizedData = Array.isArray(data) ? data : [];
+
+      if (isDefault) {
+        accountRequestsCache = normalizedData;
+      }
+
       setAccountRequests(normalizedData);
     } catch (error) {
       console.error("เกิดข้อผิดพลาดในการโหลดคำร้อง:", error);
@@ -228,9 +252,9 @@ function ListAccountRequest() {
 
   const handleResetFilter = () => {
     setSearchKeyword("");
-    setStatusFilter("");
+    setStatusFilter("PENDING");
     setCurrentPage(1);
-    fetchAccountRequests("", "");
+    fetchAccountRequests("", "PENDING");
   };
 
   const handleApproveRequest = (requestId) => {

@@ -10,6 +10,10 @@ import {
   faMagnifyingGlass,
   faRotate,
   faCircleExclamation,
+  faPenToSquare,
+  faTrashCan,
+  faBan,
+  faCircleCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
 // 1. ตัวแปรเก็บ Cache และฟังก์ชัน Clear Cache สำหรับ export ไปใช้หน้าอื่น (Add/Edit)
@@ -19,19 +23,19 @@ export const clearWellnessHubCache = () => {
 };
 
 const ListWellnessHub = () => {
-  const [listwellnesshub, setListWellnessHub] = useState([]);
+  const [listwellnesshub, setListWellnessHub] = useState(() => wellnessHubCache || []);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !wellnessHubCache);
   const [adminName, setAdminName] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 50;
   const navigate = useNavigate();
   const location = useLocation();
 
-  // State สำหรับจัดการ Popup ยืนยันการลบ
-  const [showDeletePopup, setShowDeletePopup] = useState(false);
+  // State สำหรับจัดการ Popup ยืนยันการระงับ/เปิดใช้งานสถานประกอบการ
+  const [showStatusPopup, setShowStatusPopup] = useState(false);
   const [selectedHub, setSelectedHub] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // State ตัวเลือกและค่าการกรอง
   const [categories, setCategories] = useState([]);
@@ -178,44 +182,52 @@ const ListWellnessHub = () => {
   const currentRows = filteredData.slice(indexOfFirstRow, indexOfLastRow);
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
 
-  // 4. ฟังก์ชันยืนยันการลบสถานประกอบการ พร้อมล้าง Cache และ Force Refresh
-  const confirmDeleteHub = async () => {
-    if (!selectedHub || isDeleting) return;
+  // 4. ฟังก์ชันยืนยันการระงับ / เปิดใช้งานสถานประกอบการ พร้อมล้าง Cache และ Force Refresh
+  const confirmToggleStatusHub = async () => {
+    if (!selectedHub || isUpdatingStatus) return;
+
+    const currentlyActive = isStatusActive(selectedHub.status);
+    const targetStatus = currentlyActive ? "SUSPENDED" : "ACTIVE";
 
     try {
-      setIsDeleting(true);
+      setIsUpdatingStatus(true);
 
-      await axios.delete(
-        `http://localhost:8080/api/wellness-hubs/${selectedHub.licenseId}`,
+      await axios.put(
+        `http://localhost:8080/api/wellness-hubs/${selectedHub.licenseId}/status`,
+        { status: targetStatus }
       );
 
-      setShowDeletePopup(false);
+      setShowStatusPopup(false);
       setSelectedHub(null);
 
       // ล้าง Cache และโหลดใหม่แบบ forceRefresh
       wellnessHubCache = null;
-      await loadData("", "", "", true);
+      await loadData(searchQuery, selectedCategory, selectedDistrict, true);
 
       setStatusModal({
         isOpen: true,
         type: "success",
         title: "สำเร็จ",
-        message: "ลบข้อมูลสถานประกอบการสำเร็จ",
+        message: currentlyActive
+          ? "ระงับการใช้งานสถานประกอบการเรียบร้อยแล้ว"
+          : "เปิดใช้งานสถานประกอบการเรียบร้อยแล้ว",
       });
     } catch (error) {
-      console.error("เกิดข้อผิดพลาดในการลบสถานประกอบการ", error);
+      console.error("เกิดข้อผิดพลาดในการเปลี่ยนสถานะสถานประกอบการ", error);
 
-      setShowDeletePopup(false);
+      setShowStatusPopup(false);
       setSelectedHub(null);
 
       setStatusModal({
         isOpen: true,
         type: "error",
         title: "เกิดข้อผิดพลาด",
-        message: "ไม่สามารถลบข้อมูลได้ กรุณาลองอีกครั้ง",
+        message:
+          error.response?.data?.message ||
+          "ไม่สามารถเปลี่ยนสถานะได้ กรุณาลองอีกครั้ง",
       });
     } finally {
-      setIsDeleting(false);
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -391,18 +403,34 @@ const ListWellnessHub = () => {
                               navigate(`/listWellnesshub/edit/${hub.licenseId}`)
                             }
                           >
+                            <FontAwesomeIcon icon={faPenToSquare} />
                             แก้ไข
                           </button>
-                          <button
-                            type="button"
-                            className="btn-delete"
-                            onClick={() => {
-                              setSelectedHub(hub);
-                              setShowDeletePopup(true);
-                            }}
-                          >
-                            ลบ
-                          </button>
+                          {isStatusActive(hub.status) ? (
+                            <button
+                              type="button"
+                              className="btn-delete btn-suspend"
+                              onClick={() => {
+                                setSelectedHub(hub);
+                                setShowStatusPopup(true);
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faBan} />
+                              ระงับ
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-activate"
+                              onClick={() => {
+                                setSelectedHub(hub);
+                                setShowStatusPopup(true);
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faCircleCheck} />
+                              เปิดใช้งาน
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -470,31 +498,42 @@ const ListWellnessHub = () => {
         </div>
       </div>
 
-      {showDeletePopup && (
-        <div className="popup-bg">
-          <div className="popup">
-            <div className="popup-icon error">!</div>
+      {showStatusPopup && selectedHub && (
+        <div className="hub-delete-modal-overlay" role="dialog" aria-modal="true">
+          <div className={`hub-delete-modal ${!isStatusActive(selectedHub.status) ? "hub-delete-modal--activate" : ""}`}>
+            <div className={`hub-delete-icon ${!isStatusActive(selectedHub.status) ? "hub-delete-icon--activate" : ""}`}>
+              <FontAwesomeIcon icon={isStatusActive(selectedHub.status) ? faBan : faCircleCheck} />
+            </div>
 
-            <h3>ยืนยันการลบข้อมูล</h3>
+            <h3 className="hub-delete-title">
+              {isStatusActive(selectedHub.status)
+                ? "ยืนยันการระงับสถานประกอบการ"
+                : "ยืนยันการเปิดใช้งานสถานประกอบการ"}
+            </h3>
 
-            <p>
-              คุณต้องการลบสถานประกอบการ
-              <span className="popup-route-name">
-                {selectedHub?.wellnessHubName}
-              </span>
-              ใช่หรือไม่?
-              <span className="popup-warning-text">
-                การดำเนินการนี้ไม่สามารถย้อนกลับได้
-              </span>
-            </p>
+            <div className="hub-delete-body">
+              <p className="hub-delete-desc">
+                {isStatusActive(selectedHub.status)
+                  ? "คุณต้องการระงับการใช้งานสถานประกอบการ"
+                  : "คุณต้องการเปิดใช้งานสถานประกอบการ"}
+              </p>
+              <div className={`hub-delete-name-card ${!isStatusActive(selectedHub.status) ? "hub-delete-name-card--activate" : ""}`}>
+                {selectedHub.wellnessHubName || "-"}
+              </div>
+              <p className={`hub-delete-warning-note ${!isStatusActive(selectedHub.status) ? "hub-delete-warning-note--activate" : ""}`}>
+                {isStatusActive(selectedHub.status)
+                  ? "สถานประกอบการที่ถูกระงับจะไม่แสดงบนแผนที่และเส้นทางท่องเที่ยว"
+                  : "สถานประกอบการจะกลับมาแสดงบนแผนที่และเส้นทางท่องเที่ยวตามปกติ"}
+              </p>
+            </div>
 
-            <div className="popup-buttons">
+            <div className="hub-delete-actions">
               <button
                 type="button"
-                className="cancel-btn"
-                disabled={isDeleting}
+                className="btn-hub-delete-cancel"
+                disabled={isUpdatingStatus}
                 onClick={() => {
-                  setShowDeletePopup(false);
+                  setShowStatusPopup(false);
                   setSelectedHub(null);
                 }}
               >
@@ -503,11 +542,19 @@ const ListWellnessHub = () => {
 
               <button
                 type="button"
-                className="delete-btn"
-                disabled={isDeleting}
-                onClick={confirmDeleteHub}
+                className={isStatusActive(selectedHub.status) ? "btn-hub-delete-confirm" : "btn-hub-activate-confirm"}
+                disabled={isUpdatingStatus}
+                onClick={confirmToggleStatusHub}
               >
-                {isDeleting ? "กำลังลบ..." : "ยืนยันลบ"}
+                {isUpdatingStatus ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} spin /> กำลังดำเนินการ...
+                  </>
+                ) : isStatusActive(selectedHub.status) ? (
+                  "ยืนยันระงับ"
+                ) : (
+                  "ยืนยันเปิดใช้งาน"
+                )}
               </button>
             </div>
           </div>

@@ -95,8 +95,8 @@ export default function TrackAccountRequest() {
     const rawUsername = searchUsername || "";
     const normalizedUsername = rawUsername.trim();
 
-    if (!normalizedUsername || /\s/.test(rawUsername) || normalizedUsername.length < 4 || normalizedUsername.length > 10) {
-      setError("กรุณากรอกชื่อผู้ใช้งาน (Username)");
+    if (!normalizedUsername || /\s/.test(rawUsername) || normalizedUsername.length < 4 || normalizedUsername.length > 20) {
+      setError("กรุณากรอกชื่อผู้ใช้งาน (Username) 4–20 ตัวอักษร ไม่มีช่องว่าง");
       setResults([]);
       setSearched(false);
       return;
@@ -165,7 +165,7 @@ export default function TrackAccountRequest() {
             <div>
               <h2>ค้นหาคำขอด้วย Username</h2>
 
-              <p>ระบุชื่อผู้ใช้งาน (Username) ความยาว 4–10 ตัวอักษร ไม่มีช่องว่าง</p>
+              <p>ระบุชื่อผู้ใช้งาน (Username) ความยาว 4–20 ตัวอักษร ไม่มีช่องว่าง</p>
             </div>
           </div>
 
@@ -181,11 +181,15 @@ export default function TrackAccountRequest() {
                 type="text"
                 value={username}
                 onChange={handleUsernameChange}
-                placeholder="ระบุชื่อผู้ใช้งาน (Username) 4–10 ตัวอักษร"
+                placeholder="ระบุชื่อผู้ใช้งาน (Username) 4–20 ตัวอักษร"
                 aria-label="ระบุชื่อผู้ใช้งาน (Username)"
                 autoComplete="off"
-                maxLength={10}
+                maxLength={20}
               />
+
+              <span className="track-request-search-char-count">
+                {username.length}/20
+              </span>
             </div>
 
             <button type="submit" disabled={loading}>

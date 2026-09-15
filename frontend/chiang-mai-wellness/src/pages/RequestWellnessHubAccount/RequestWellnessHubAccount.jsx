@@ -1,28 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import {
-  ArrowLeft,
+  AlertTriangle,
+  ArrowRight,
   Building2,
   CheckCircle2,
   CircleAlert,
   Clock3,
+  Eye,
+  EyeOff,
   FileCheck2,
   FileText,
+  Home,
   ImagePlus,
   LoaderCircle,
   LockKeyhole,
   Mail,
   MapPin,
   Phone,
+  Plus,
+  Search,
   Send,
   ShieldCheck,
+  Sparkles,
   Trash2,
   Upload,
   UserRound,
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 import "./RequestWellnessHubAccount.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
@@ -78,15 +84,16 @@ export default function RequestWellnessHubAccount() {
   const galleryInputRef = useRef(null);
   const documentInputRef = useRef(null);
 
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusModal, setStatusModal] = useState({
     isOpen: false,
     type: "success",
     title: "",
     message: "",
+    hubName: "",
+    email: "",
   });
 
   const [coverFile, setCoverFile] = useState(null);
@@ -155,6 +162,27 @@ export default function RequestWellnessHubAccount() {
 
     fetchMasterData();
   }, []);
+
+  const [certificateList, setCertificateList] = useState([""]);
+
+  const handleCertChange = (index, value) => {
+    setCertificateList((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const addCertField = () => {
+    setCertificateList((prev) => [...prev, ""]);
+  };
+
+  const removeCertField = (index) => {
+    setCertificateList((prev) => {
+      if (prev.length <= 1) return [""];
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -360,8 +388,8 @@ export default function RequestWellnessHubAccount() {
       errors.username = "กรุณาระบุชื่อผู้ใช้ (Username)";
     } else if (/\s/.test(formData.username)) {
       errors.username = "ชื่อผู้ใช้ต้องไม่มีช่องว่าง";
-    } else if (username.length < 4 || username.length > 10) {
-      errors.username = "ชื่อผู้ใช้ต้องมีความยาว 4–10 ตัวอักษร";
+    } else if (username.length < 4 || username.length > 20) {
+      errors.username = "ชื่อผู้ใช้ต้องมีความยาว 4–20 ตัวอักษร";
     }
 
     const password = formData.password;
@@ -419,10 +447,8 @@ export default function RequestWellnessHubAccount() {
     }
 
     const hubDescription = formData.wellnessHubDescription.trim();
-    if (!hubDescription) {
-      errors.wellnessHubDescription = "กรุณาระบุรายละเอียดบริการ";
-    } else if (hubDescription.length < 10 || hubDescription.length > 255) {
-      errors.wellnessHubDescription = "รายละเอียดบริการต้องมีความยาว 10–255 ตัวอักษร";
+    if (hubDescription && hubDescription.length > 255) {
+      errors.wellnessHubDescription = "รายละเอียดสถานประกอบการต้องมีความยาวไม่เกิน 255 ตัวอักษร";
     }
 
     if (!verificationDocument) {
@@ -640,7 +666,10 @@ export default function RequestWellnessHubAccount() {
         wellnessHubImg: coverImage || "",
         wellnessHubGallery: JSON.stringify(galleryImageValues),
 
-        certificateType: formData.certificateType.trim(),
+        certificateType: certificateList
+          .map((c) => c.trim())
+          .filter(Boolean)
+          .join(", "),
 
         verificationDocuments: documentValue,
         verificationDocumentName: verificationDocument.name,
@@ -656,8 +685,10 @@ export default function RequestWellnessHubAccount() {
       setStatusModal({
         isOpen: true,
         type: "success",
-        title: "ส่งข้อมูลสำเร็จ!!",
-        message: `ระบบได้ส่งคำขอเปิดใช้งานบัญชีเรียบร้อยแล้ว ผลการพิจารณาจะถูกจัดส่งไปยัง ${formData.userEmail}`,
+        title: "นำส่งเอกสารคำขอสำเร็จ!",
+        message: `ระบบได้นำส่งเอกสารคำร้องขอเปิดใช้งานสำหรับ "${name}" ไปยังเจ้าหน้าที่เรียบร้อยแล้ว`,
+        hubName: name,
+        email: formData.userEmail.trim(),
       });
     } catch (error) {
       const errorMsg = getErrorMessage(error);
@@ -696,15 +727,6 @@ export default function RequestWellnessHubAccount() {
     <main className="request-account-page">
       <header className="request-account-hero">
         <div className="request-account-container">
-          <button
-            type="button"
-            className="request-account-back"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft />
-            กลับหน้าก่อนหน้า
-          </button>
-
           <div className="request-account-hero__layout">
             <div>
               <p className="request-account-eyebrow">WELLNESS HUB OWNERSHIP</p>
@@ -847,11 +869,18 @@ export default function RequestWellnessHubAccount() {
                         : ""
                     }
                   />
-                  {formErrors.wellnessHubName && (
-                    <p className="request-account-field-error">
-                      {formErrors.wellnessHubName}
-                    </p>
-                  )}
+                  <div className="request-account-field-footer">
+                    {formErrors.wellnessHubName ? (
+                      <p className="request-account-field-error">
+                        {formErrors.wellnessHubName}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="request-account-char-count">
+                      {(formData.wellnessHubName || "").length}/100
+                    </span>
+                  </div>
                 </div>
 
                 <div className="request-account-field">
@@ -870,11 +899,18 @@ export default function RequestWellnessHubAccount() {
                       formErrors.licenseId ? "request-account-input--error" : ""
                     }
                   />
-                  {formErrors.licenseId && (
-                    <p className="request-account-field-error">
-                      {formErrors.licenseId}
-                    </p>
-                  )}
+                  <div className="request-account-field-footer">
+                    {formErrors.licenseId ? (
+                      <p className="request-account-field-error">
+                        {formErrors.licenseId}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="request-account-char-count">
+                      {(formData.licenseId || "").length}/13
+                    </span>
+                  </div>
                 </div>
 
                 <div className="request-account-field">
@@ -942,17 +978,43 @@ export default function RequestWellnessHubAccount() {
                 </div>
 
                 <div className="request-account-field request-account-field--full">
-                  <label htmlFor="certificateType">
-                    ประเภทใบรับรอง / มาตรฐาน
-                  </label>
-                  <input
-                    id="certificateType"
-                    name="certificateType"
-                    type="text"
-                    value={formData.certificateType}
-                    onChange={handleInputChange}
-                    placeholder="เช่น มาตรฐาน SHA Plus, นวดเพื่อสุขภาพ (สบส.)"
-                  />
+                  <div className="request-account-cert-header">
+                    <label>
+                      ประเภทใบรับรอง / มาตรฐาน (1 ใบต่อ 1 ช่อง)
+                    </label>
+                    <button
+                      type="button"
+                      className="request-account-btn-add-cert"
+                      onClick={addCertField}
+                    >
+                      <Plus size={14} />
+                      เพิ่มใบรับรอง
+                    </button>
+                  </div>
+
+                  <div className="request-account-cert-list">
+                    {certificateList.map((cert, index) => (
+                      <div key={index} className="request-account-cert-row">
+                        <input
+                          type="text"
+                          value={cert}
+                          onChange={(e) => handleCertChange(index, e.target.value)}
+                          placeholder={`เช่น ใบรับรองที่ ${index + 1} (เช่น มาตรฐาน SHA Plus, นวดเพื่อสุขภาพ สบส.)`}
+                        />
+                        {certificateList.length > 1 && (
+                          <button
+                            type="button"
+                            className="request-account-btn-del-cert"
+                            onClick={() => removeCertField(index)}
+                            title="ลบใบรับรองนี้"
+                            aria-label={`ลบใบรับรองที่ ${index + 1}`}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </section>
@@ -1086,17 +1148,25 @@ export default function RequestWellnessHubAccount() {
                     id="address"
                     name="address"
                     rows={3}
+                    maxLength={255}
                     value={formData.address}
                     onChange={handleInputChange}
                     className={
                       formErrors.address ? "request-account-input--error" : ""
                     }
                   />
-                  {formErrors.address && (
-                    <p className="request-account-field-error">
-                      {formErrors.address}
-                    </p>
-                  )}
+                  <div className="request-account-field-footer">
+                    {formErrors.address ? (
+                      <p className="request-account-field-error">
+                        {formErrors.address}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="request-account-char-count">
+                      {(formData.address || "").length}/255
+                    </span>
+                  </div>
                 </div>
 
                 <div className="request-account-field request-account-field--full">
@@ -1147,11 +1217,18 @@ export default function RequestWellnessHubAccount() {
                       }
                     />
                   </div>
-                  {formErrors.tellInformation && (
-                    <p className="request-account-field-error">
-                      {formErrors.tellInformation}
-                    </p>
-                  )}
+                  <div className="request-account-field-footer">
+                    {formErrors.tellInformation ? (
+                      <p className="request-account-field-error">
+                        {formErrors.tellInformation}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="request-account-char-count">
+                      {(formData.tellInformation || "").length}/10
+                    </span>
+                  </div>
                 </div>
 
                 <div className="request-account-field">
@@ -1160,34 +1237,55 @@ export default function RequestWellnessHubAccount() {
                     id="contactInformation"
                     name="contactInformation"
                     type="text"
+                    maxLength={255}
                     value={formData.contactInformation}
                     onChange={handleInputChange}
                     placeholder="ช่องทางติดต่อเพิ่มเติม"
                   />
+                  <div className="request-account-field-footer">
+                    {formErrors.contactInformation ? (
+                      <p className="request-account-field-error">
+                        {formErrors.contactInformation}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="request-account-char-count">
+                      {(formData.contactInformation || "").length}/255
+                    </span>
+                  </div>
                 </div>
 
                 <div className="request-account-field request-account-field--full">
                   <label htmlFor="wellnessHubDescription">
-                    รายละเอียดบริการ <em>*</em>
+                    รายละเอียดสถานประกอบการ / บริการ
                   </label>
                   <textarea
                     id="wellnessHubDescription"
                     name="wellnessHubDescription"
                     rows={5}
+                    maxLength={255}
                     value={formData.wellnessHubDescription}
                     onChange={handleInputChange}
-                    placeholder="อธิบายบริการ จุดเด่น และข้อมูลสำคัญของสถานประกอบการ"
+                    placeholder="อธิบายบริการ จุดเด่น และข้อมูลสำคัญของสถานประกอบการ (ไม่บังคับกรอก สูงสุด 255 ตัวอักษร)"
                     className={
                       formErrors.wellnessHubDescription
                         ? "request-account-input--error"
                         : ""
                     }
                   />
-                  {formErrors.wellnessHubDescription && (
-                    <p className="request-account-field-error">
-                      {formErrors.wellnessHubDescription}
-                    </p>
-                  )}
+                  <div className="request-account-field-footer">
+                    {formErrors.wellnessHubDescription ? (
+                      <p className="request-account-field-error">
+                        {formErrors.wellnessHubDescription}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="request-account-char-count">
+                      {(formData.wellnessHubDescription || "").length}/255
+                    </span>
+                  </div>
                 </div>
               </div>
             </section>
@@ -1327,6 +1425,7 @@ export default function RequestWellnessHubAccount() {
                       id="requesterName"
                       name="requesterName"
                       type="text"
+                      maxLength={255}
                       value={formData.requesterName}
                       onChange={handleInputChange}
                       placeholder="ระบุชื่อและนามสกุลจริง"
@@ -1337,11 +1436,18 @@ export default function RequestWellnessHubAccount() {
                       }
                     />
                   </div>
-                  {formErrors.requesterName && (
-                    <p className="request-account-field-error">
-                      {formErrors.requesterName}
-                    </p>
-                  )}
+                  <div className="request-account-field-footer">
+                    {formErrors.requesterName ? (
+                      <p className="request-account-field-error">
+                        {formErrors.requesterName}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="request-account-char-count">
+                      {(formData.requesterName || "").length}/255
+                    </span>
+                  </div>
                 </div>
 
                 <div className="request-account-field">
@@ -1381,10 +1487,10 @@ export default function RequestWellnessHubAccount() {
                       id="username"
                       name="username"
                       type="text"
-                      maxLength={10}
+                      maxLength={20}
                       value={formData.username}
                       onChange={handleInputChange}
-                      placeholder="กำหนดชื่อผู้ใช้ (ความยาว 4–10 ตัวอักษร ไม่มีช่องว่าง)"
+                      placeholder="กำหนดชื่อผู้ใช้ (ความยาว 4–20 ตัวอักษร ไม่มีช่องว่าง)"
                       className={
                         formErrors.username
                           ? "request-account-input--error"
@@ -1392,23 +1498,30 @@ export default function RequestWellnessHubAccount() {
                       }
                     />
                   </div>
-                  {formErrors.username && (
-                    <p className="request-account-field-error">
-                      {formErrors.username}
-                    </p>
-                  )}
+                  <div className="request-account-field-footer">
+                    {formErrors.username ? (
+                      <p className="request-account-field-error">
+                        {formErrors.username}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="request-account-char-count">
+                      {(formData.username || "").length}/20
+                    </span>
+                  </div>
                 </div>
 
                 <div className="request-account-field">
                   <label htmlFor="password">
                     รหัสผ่าน (Password) <em>*</em>
                   </label>
-                  <div className="request-account-input-icon">
+                  <div className="request-account-input-icon request-account-password-wrapper">
                     <LockKeyhole />
                     <input
                       id="password"
                       name="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={handleInputChange}
                       placeholder="กำหนดรหัสผ่านเข้าสู่ระบบ (8 ตัวอักษร)"
@@ -1419,12 +1532,28 @@ export default function RequestWellnessHubAccount() {
                           : ""
                       }
                     />
+                    <button
+                      type="button"
+                      className="request-account-password-toggle"
+                      onClick={() => setShowPassword(!showPassword)}
+                      title={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                      aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
-                  {formErrors.password && (
-                    <p className="request-account-field-error">
-                      {formErrors.password}
-                    </p>
-                  )}
+                  <div className="request-account-field-footer">
+                    {formErrors.password ? (
+                      <p className="request-account-field-error">
+                        {formErrors.password}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="request-account-char-count">
+                      {(formData.password || "").length}/8
+                    </span>
+                  </div>
                 </div>
 
                 <div className="request-account-field request-account-field--full">
@@ -1530,23 +1659,261 @@ export default function RequestWellnessHubAccount() {
         </form>
       </div>
 
-      <AdminStatusModal
+      <UserSubmissionModal
         isOpen={statusModal.isOpen}
         type={statusModal.type}
         title={statusModal.title}
         message={statusModal.message}
-        confirmText={statusModal.type === "success" ? "กลับหน้าแรก" : "ตกลง"}
-        onConfirm={() => {
-          const isSuccess = statusModal.type === "success";
-          setStatusModal({ isOpen: false, type: "info", title: "", message: "" });
-          if (isSuccess) {
-            navigate("/");
-          }
-        }}
+        hubName={statusModal.hubName || formData.wellnessHubName}
+        userEmail={statusModal.email || formData.userEmail}
         onClose={() =>
-          setStatusModal({ isOpen: false, type: "info", title: "", message: "" })
+          setStatusModal({
+            isOpen: false,
+            type: "info",
+            title: "",
+            message: "",
+            hubName: "",
+            email: "",
+          })
         }
+        onHome={() => {
+          setStatusModal({
+            isOpen: false,
+            type: "info",
+            title: "",
+            message: "",
+            hubName: "",
+            email: "",
+          });
+          navigate("/");
+        }}
+        onTrack={() => {
+          setStatusModal({
+            isOpen: false,
+            type: "info",
+            title: "",
+            message: "",
+            hubName: "",
+            email: "",
+          });
+          navigate("/track-status");
+        }}
       />
     </main>
+  );
+}
+
+function UserSubmissionModal({
+  isOpen,
+  type = "info",
+  title,
+  message,
+  hubName,
+  userEmail,
+  onClose,
+  onHome,
+  onTrack,
+}) {
+  if (!isOpen) return null;
+
+  const isSuccess = type === "success";
+  const isWarning = type === "warning";
+  const isError = type === "error";
+
+  return (
+    <div
+      className="user-submit-modal-overlay"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className={`user-submit-modal-card user-submit-modal-card--${type}`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="user-submit-modal-close"
+          onClick={onClose}
+          aria-label="ปิดหน้าต่าง"
+        >
+          <X size={18} />
+        </button>
+
+        {isSuccess ? (
+          <>
+            {/* Animated Document Sending Illustration */}
+            <div className="user-submit-doc-stage">
+              <div className="user-submit-ambient-glow" />
+              <div className="user-submit-pulse-ring ring-1" />
+              <div className="user-submit-pulse-ring ring-2" />
+
+              {/* Floating animated sparkles */}
+              <div className="user-submit-sparkle sparkle-1">
+                <Sparkles size={16} />
+              </div>
+              <div className="user-submit-sparkle sparkle-2">
+                <Sparkles size={14} />
+              </div>
+
+              {/* Main Document Visual */}
+              <div className="user-submit-paper-doc">
+                <div className="user-submit-doc-header">
+                  <FileText size={20} className="doc-icon" />
+                  <div className="doc-lines">
+                    <span className="doc-line l1" />
+                    <span className="doc-line l2" />
+                  </div>
+                </div>
+                <div className="user-submit-doc-body">
+                  <span className="doc-line l3" />
+                  <span className="doc-line l4" />
+                </div>
+                <div className="user-submit-stamp">
+                  <CheckCircle2 size={13} />
+                  <span>SENT</span>
+                </div>
+              </div>
+
+              {/* Flying paper plane with trail */}
+              <div className="user-submit-plane-wrap">
+                <svg
+                  className="user-submit-flight-trail"
+                  viewBox="0 0 100 60"
+                  fill="none"
+                >
+                  <path
+                    d="M10 50 C 30 50, 45 35, 75 18"
+                    stroke="rgba(16, 185, 129, 0.45)"
+                    strokeWidth="2.5"
+                    strokeDasharray="4 4"
+                  />
+                </svg>
+                <div className="user-submit-paper-plane">
+                  <Send size={22} />
+                </div>
+              </div>
+            </div>
+
+            {/* Header & Title */}
+            <div className="user-submit-badge">
+              <Sparkles size={13} />
+              <span>ส่งเอกสารคำขอสำเร็จ</span>
+            </div>
+
+            <h3 className="user-submit-title">
+              {title || "นำส่งเอกสารคำขอสำเร็จ!"}
+            </h3>
+            <p className="user-submit-desc">
+              {message ||
+                "ระบบได้นำส่งเอกสารและข้อมูลสถานประกอบการไปยังเจ้าหน้าที่ สสจ. เชียงใหม่ เรียบร้อยแล้ว"}
+            </p>
+
+            {/* Summary Details Box */}
+            <div className="user-submit-info-box">
+              <div className="user-submit-info-row">
+                <Building2 size={16} className="info-icon" />
+                <div className="info-content">
+                  <span className="info-label">สถานประกอบการ</span>
+                  <strong className="info-val">
+                    {hubName || "สถานประกอบการของคุณ"}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="user-submit-info-row">
+                <Mail size={16} className="info-icon" />
+                <div className="info-content">
+                  <span className="info-label">แจ้งผลการอนุมัติไปที่</span>
+                  <strong className="info-val">
+                    {userEmail || "อีเมลที่ลงทะเบียน"}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="user-submit-info-row">
+                <Clock3 size={16} className="info-icon" />
+                <div className="info-content">
+                  <span className="info-label">ระยะเวลาพิจารณา</span>
+                  <strong className="info-val text-emerald">
+                    ประมาณ 1 - 3 วันทำการ
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="user-submit-actions">
+              <button
+                type="button"
+                className="user-submit-btn user-submit-btn--primary"
+                onClick={onTrack}
+              >
+                <Search size={16} />
+                ติดตามสถานะคำร้อง
+              </button>
+              <button
+                type="button"
+                className="user-submit-btn user-submit-btn--secondary"
+                onClick={onHome}
+              >
+                <Home size={16} />
+                กลับสู่หน้าหลัก
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Warning or Error State */}
+            <div
+              className={`user-submit-icon-banner user-submit-icon-banner--${type}`}
+            >
+              <div className="user-submit-ambient-glow" />
+              {isWarning ? (
+                <div className="user-submit-status-icon warning">
+                  <AlertTriangle size={36} />
+                </div>
+              ) : (
+                <div className="user-submit-status-icon error">
+                  <CircleAlert size={36} />
+                </div>
+              )}
+            </div>
+
+            <div className={`user-submit-badge user-submit-badge--${type}`}>
+              {isWarning ? (
+                <AlertTriangle size={13} />
+              ) : (
+                <CircleAlert size={13} />
+              )}
+              <span>
+                {isWarning ? "ตรวจสอบข้อมูลที่ระบุ" : "เกิดข้อผิดพลาด"}
+              </span>
+            </div>
+
+            <h3 className="user-submit-title">
+              {title ||
+                (isWarning
+                  ? "ข้อมูลไม่ถูกต้องหรือซ้ำซ้อน"
+                  : "เกิดข้อผิดพลาด")}
+            </h3>
+
+            <div className="user-submit-message-card">
+              <p>{message || "กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง"}</p>
+            </div>
+
+            <div className="user-submit-actions">
+              <button
+                type="button"
+                className="user-submit-btn user-submit-btn--primary"
+                onClick={onClose}
+              >
+                {isWarning ? "กลับไปตรวจสอบและแก้ไขข้อมูล" : "ตกลง"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

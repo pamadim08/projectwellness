@@ -31,13 +31,19 @@ const SYSTEM_CATEGORIES = [
   "บทความสุขภาพ",
 ];
 
+// In-Memory Cache for Official Articles
+let officialArticlesCache = null;
+export const clearOfficialArticlesCache = () => {
+  officialArticlesCache = null;
+};
+
 function ListOfficialArticle() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [articles, setArticles] = useState([]);
+  const [articles, setArticles] = useState(() => officialArticlesCache || []);
   const [adminName, setAdminName] = useState("Admin");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !officialArticlesCache);
 
   // State สำหรับ Popup ยืนยันลบ
   const [deletingId, setDeletingId] = useState(null);
@@ -63,10 +69,22 @@ function ListOfficialArticle() {
       setAdminName(storedAdminName);
     }
 
-    loadArticles("", "");
+    loadArticles("", "", false);
   }, []);
 
-  const loadArticles = async (keyword = searchQuery, category = selectedCategory) => {
+  const loadArticles = async (
+    keyword = searchQuery,
+    category = selectedCategory,
+    forceRefresh = false,
+  ) => {
+    const isDefault = !keyword && !category;
+
+    if (officialArticlesCache && isDefault && !forceRefresh) {
+      setArticles(officialArticlesCache);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -79,8 +97,13 @@ function ListOfficialArticle() {
       }
 
       const response = await axios.get(API_URL, { params });
+      const data = Array.isArray(response.data) ? response.data : [];
 
-      setArticles(Array.isArray(response.data) ? response.data : []);
+      if (isDefault) {
+        officialArticlesCache = data;
+      }
+
+      setArticles(data);
     } catch (error) {
       console.error("ไม่สามารถโหลดรายการบทความได้", error);
       setArticles([]);
@@ -134,6 +157,7 @@ function ListOfficialArticle() {
     try {
       await axios.delete(`${API_URL}/${selectedArticle.articleId}`);
 
+      officialArticlesCache = null;
       setArticles((previousArticles) =>
         previousArticles.filter(
           (item) => item.articleId !== selectedArticle.articleId,

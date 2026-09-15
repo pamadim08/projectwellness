@@ -260,8 +260,7 @@ public class HomeService {
                                                         districtIds,
                                                         categoryIds)
                                         .stream()
-                                        .filter(hub -> hub.getWellnessHubLatitude() != null &&
-                                                        hub.getWellnessHubLongitude() != null)
+                                        .filter(this::isValidForMap)
                                         .toList();
 
                         List<WellnessHub> emergencyResults = emergencyServiceRepository
@@ -269,8 +268,7 @@ public class HomeService {
                                                         districtIds,
                                                         categoryIds)
                                         .stream()
-                                        .filter(emergencyService -> emergencyService.getWellnessHubLatitude() != null &&
-                                                        emergencyService.getWellnessHubLongitude() != null)
+                                        .filter(this::isValidForMapEmergency)
                                         .map(this::convertEmergencyToWellnessHub)
                                         .toList();
 
@@ -365,7 +363,7 @@ public class HomeService {
 
                 WellnessHub wellnessHub = wellnessHubRepository
                                 .findByIdWithCategoryAndDistrict(cleanId)
-                                .orElse(null);
+                                .orElseGet(() -> wellnessHubRepository.findById(cleanId).orElse(null));
 
                 if (wellnessHub != null) {
                         return convertWellnessHubToMap(wellnessHub);
@@ -373,7 +371,7 @@ public class HomeService {
 
                 EmergencyService emergencyService = emergencyServiceRepository
                                 .findByIdWithCategoryAndDistrict(cleanId)
-                                .orElse(null);
+                                .orElseGet(() -> emergencyServiceRepository.findById(cleanId).orElse(null));
 
                 if (emergencyService != null) {
                         return convertWellnessHubToMap(
@@ -456,6 +454,7 @@ public class HomeService {
                         allResults.addAll(emergencyList);
 
                         wellnessHubResults = allResults.stream()
+                                        .filter(hub -> hub.getStatus() == null || hub.getStatus().trim().isEmpty() || "ACTIVE".equalsIgnoreCase(hub.getStatus().trim()))
                                         .map(this::convertWellnessHubToSearchResult)
                                         .toList();
                 }
@@ -644,6 +643,8 @@ public class HomeService {
                 putIfNotBlank(map, "telInformation", wellnessHub.getTelInformation());
                 putIfNotBlank(map, "googleMapsLink", wellnessHub.getGoogleMapsLink());
                 putIfNotBlank(map, "wellnessHubImg", wellnessHub.getWellnessHubImg());
+                putIfNotBlank(map, "img", wellnessHub.getWellnessHubImg());
+                putIfNotBlank(map, "coverImage", wellnessHub.getWellnessHubImg());
                 putIfNotBlank(map, "wellnessHubGallery", wellnessHub.getWellnessHubGallery());
                 putIfNotBlank(map, "certificateType", wellnessHub.getCertificateType());
                 putIfNotBlank(map, "operatingHours", wellnessHub.getOperatingHours());
@@ -690,6 +691,52 @@ public class HomeService {
                 wellnessHub.setStatus(emergencyService.getStatus());
 
                 return wellnessHub;
+        }
+
+        private boolean isValidForMap(WellnessHub hub) {
+                if (hub == null) return false;
+                // 1. สถานะต้องเปิดทำการ (ACTIVE) เท่านั้น
+                String status = hub.getStatus();
+                if (status != null && !status.trim().isEmpty() && !"ACTIVE".equalsIgnoreCase(status.trim())) {
+                        return false;
+                }
+                // 2. ต้องมีลิงก์ Google Maps
+                if (hub.getGoogleMapsLink() == null || hub.getGoogleMapsLink().trim().isEmpty()) {
+                        return false;
+                }
+                // 3. ต้องมีพิกัด ละติจูด และ ลองติจูด ที่ถูกต้อง
+                Double lat = hub.getWellnessHubLatitude();
+                Double lng = hub.getWellnessHubLongitude();
+                if (lat == null || lng == null) {
+                        return false;
+                }
+                if (lat.isNaN() || lng.isNaN() || (lat == 0.0 && lng == 0.0)) {
+                        return false;
+                }
+                return lat >= -90.0 && lat <= 90.0 && lng >= -180.0 && lng <= 180.0;
+        }
+
+        private boolean isValidForMapEmergency(EmergencyService emergency) {
+                if (emergency == null) return false;
+                // 1. สถานะต้องเปิดทำการ (ACTIVE) เท่านั้น
+                String status = emergency.getStatus();
+                if (status != null && !status.trim().isEmpty() && !"ACTIVE".equalsIgnoreCase(status.trim())) {
+                        return false;
+                }
+                // 2. ต้องมีลิงก์ Google Maps
+                if (emergency.getGoogleMapsLink() == null || emergency.getGoogleMapsLink().trim().isEmpty()) {
+                        return false;
+                }
+                // 3. ต้องมีพิกัด ละติจูด และ ลองติจูด ที่ถูกต้อง
+                Double lat = emergency.getWellnessHubLatitude();
+                Double lng = emergency.getWellnessHubLongitude();
+                if (lat == null || lng == null) {
+                        return false;
+                }
+                if (lat.isNaN() || lng.isNaN() || (lat == 0.0 && lng == 0.0)) {
+                        return false;
+                }
+                return lat >= -90.0 && lat <= 90.0 && lng >= -180.0 && lng <= 180.0;
         }
 
         private void putIfNotBlank(

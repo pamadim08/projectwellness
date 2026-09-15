@@ -14,6 +14,7 @@ import {
 import "./CreateOfficialArticle.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
+import { clearOfficialArticlesCache } from "../ListOfficialArticle/ListOfficialArticle";
 
 // กำหนดขนาดไฟล์สูงสุดเป็น 20MB
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
@@ -51,13 +52,45 @@ function CreateOfficialArticle() {
     });
   };
 
+  const normalizeImageSource = (value) => {
+    if (!value) return "";
+    if (value instanceof File) return URL.createObjectURL(value);
+    if (typeof value !== "string") return "";
+    const trimmed = value.trim();
+    if (
+      trimmed.startsWith("data:image/") ||
+      trimmed.startsWith("http://") ||
+      trimmed.startsWith("https://") ||
+      trimmed.startsWith("blob:")
+    ) {
+      return trimmed;
+    }
+    if (/^[A-Za-z0-9+/=\s]+$/.test(trimmed) && trimmed.length > 50) {
+      return `data:image/jpeg;base64,${trimmed}`;
+    }
+    return trimmed;
+  };
+
   useEffect(() => {
     if (id) {
       loadArticle();
     }
   }, [id]);
 
+  useEffect(() => {
+    if (editorRef.current && articleDetail && !editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = articleDetail;
+    }
+  }, [articleDetail]);
+
   const loadArticle = async () => {
+    setStatusModal({
+      isOpen: true,
+      type: "loading",
+      title: "กำลังโหลดข้อมูลบทความ...",
+      message: "กรุณารอสักครู่ ระบบกำลังดึงข้อมูลบทความ",
+    });
+
     try {
       const res = await axios.get(`http://localhost:8080/api/articles/${id}`);
       const data = res.data;
@@ -80,11 +113,15 @@ function CreateOfficialArticle() {
             typeof data.articleImages === "string"
               ? JSON.parse(data.articleImages)
               : data.articleImages;
-          setArticleImages(parsedImages);
+          setArticleImages(Array.isArray(parsedImages) ? parsedImages : []);
         } catch (e) {
           console.error("Error parsing article images", e);
+          setArticleImages([]);
         }
       }
+
+      // ปิด Loading Popup เมื่อโหลดข้อมูลสำเร็จ
+      setStatusModal((prev) => ({ ...prev, isOpen: false }));
     } catch (err) {
       console.error("เกิดข้อผิดพลาดในการโหลดข้อมูลบทความ:", err);
       const is404 = err.response && err.response.status === 404;
@@ -253,6 +290,12 @@ function CreateOfficialArticle() {
     if (!validateForm()) return;
 
     setIsSubmitting(true);
+    setStatusModal({
+      isOpen: true,
+      type: "loading",
+      title: id ? "กำลังบันทึกการแก้ไข..." : "กำลังบันทึกข้อมูล...",
+      message: "กรุณารอสักครู่ ระบบกำลังประมวลผลข้อมูลบทความ",
+    });
 
     try {
       let coverBase64 = "";
@@ -281,6 +324,7 @@ function CreateOfficialArticle() {
 
       if (id) {
         await axios.put(`http://localhost:8080/api/articles/${id}`, payload);
+        clearOfficialArticlesCache();
         setIsSubmitting(false);
         setStatusModal({
           isOpen: true,
@@ -290,6 +334,7 @@ function CreateOfficialArticle() {
         });
       } else {
         await axios.post("http://localhost:8080/api/articles", payload);
+        clearOfficialArticlesCache();
         setIsSubmitting(false);
         setStatusModal({
           isOpen: true,
@@ -327,11 +372,7 @@ function CreateOfficialArticle() {
   };
 
   const renderImageSrc = (imgData) => {
-    if (!imgData) return "";
-    if (imgData instanceof File) {
-      return URL.createObjectURL(imgData);
-    }
-    return imgData;
+    return normalizeImageSource(imgData);
   };
 
   return (
@@ -351,22 +392,39 @@ function CreateOfficialArticle() {
         <div className="article-card">
           {/* Cover */}
           <label>รูปภาพหน้าปกบทความ (ว่างได้ ไม่เกิน 20MB)</label>
-          <label className="cover-box">
-            {coverImage ? (
-              <img src={renderImageSrc(coverImage)} alt="Cover Preview" />
-            ) : (
-              <>
-                <span>คลิกเพื่ออัปโหลดรูปหน้าปก</span>
-                <small>.png .jpg .jpeg ไม่เกิน 20MB</small>
-              </>
+          <div className="cover-box-container">
+            <label className="cover-box">
+              {coverImage ? (
+                <img src={renderImageSrc(coverImage)} alt="Cover Preview" />
+              ) : (
+                <>
+                  <span>คลิกเพื่ออัปโหลดรูปหน้าปก</span>
+                  <small>.png .jpg .jpeg ไม่เกิน 20MB</small>
+                </>
+              )}
+              <input
+                type="file"
+                hidden
+                accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                onChange={handleCoverUpload}
+              />
+            </label>
+            {coverImage && (
+              <button
+                type="button"
+                className="btn-remove-cover-image"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCoverImage(null);
+                  setErrors((prev) => ({ ...prev, cover: "" }));
+                }}
+                title="ลบรูปภาพหน้าปก"
+              >
+                <FontAwesomeIcon icon={faTrashCan} />
+              </button>
             )}
-            <input
-              type="file"
-              hidden
-              accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-              onChange={handleCoverUpload}
-            />
-          </label>
+          </div>
 
           <label>หัวข้อบทความ (10-100 ตัวอักษร) *</label>
           <input
@@ -387,6 +445,7 @@ function CreateOfficialArticle() {
             <option value="ข่าวประชาสัมพันธ์">ข่าวประชาสัมพันธ์</option>
             <option value="กิจกรรมสุขภาพ">กิจกรรมสุขภาพ</option>
             <option value="โปรโมชั่น">โปรโมชั่น</option>
+            <option value="บทความสุขภาพ">บทความสุขภาพ</option>
           </select>
 
           <label>รูปภาพประกอบ (ว่างได้ สูงสุด 4 รูป / รวมปกเป็น 5 รูป)</label>

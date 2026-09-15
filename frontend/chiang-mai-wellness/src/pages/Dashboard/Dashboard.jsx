@@ -20,6 +20,7 @@ import {
 
 import "./Dashboard.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
+import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 
 const DASHBOARD_API = "http://localhost:8080/api/admin/dashboard";
 
@@ -176,18 +177,6 @@ function Dashboard() {
     localStorage.clear();
     navigate("/login");
   };
-
-  if (isLoading) {
-    return (
-      <div className="dashboard-loading-page">
-        <div className="dashboard-loading-box">
-          <FontAwesomeIcon icon={faSpinner} spin />
-          <h2>กำลังโหลดข้อมูล Dashboard</h2>
-          <p>กรุณารอสักครู่...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="admin-dashboard-page">
@@ -394,6 +383,14 @@ function Dashboard() {
           </section>
         </div>
       </main>
+
+      {/* 🏛️ ป๊อปอัปแจ้งเตือนสถานะสำหรับแอดมิน */}
+      <AdminStatusModal
+        isOpen={isLoading}
+        type="loading"
+        title="กำลังโหลดข้อมูล Dashboard..."
+        message="กรุณารอสักครู่ ระบบกำลังประมวลผลข้อมูลสถิติและภาพรวมระบบ"
+      />
     </div>
   );
 }
@@ -457,22 +454,15 @@ function RequestStatusRow({ title, value, percentage, type }) {
 }
 
 function CategoryDistribution({ categories, totalWellnessHubs }) {
-  const centerX = 180;
-  const centerY = 180;
+  const centerX = 160;
+  const centerY = 160;
 
-  const radius = 92;
-  const strokeWidth = 30;
+  const radius = 105;
+  const strokeWidth = 32;
 
   const circumference = 2 * Math.PI * radius;
 
-  const lineStartRadius = radius + strokeWidth / 2 + 3;
-  const lineMiddleRadius = radius + strokeWidth / 2 + 24;
-  const lineEndDistance = 42;
-
   let accumulatedPercentage = 0;
-
-  let lastRightY = -999;
-  let lastLeftY = 999;
 
   const chartSegments = categories.map((category, index) => {
     const safePercentage = Math.min(
@@ -482,52 +472,18 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
 
     const startPercentage = accumulatedPercentage;
     const endPercentage = startPercentage + safePercentage;
-    const middlePercentage = startPercentage + safePercentage / 2;
 
     accumulatedPercentage = endPercentage;
 
     const segmentLength = (safePercentage / 100) * circumference;
     const segmentOffset = (startPercentage / 100) * circumference;
 
-    const angle = (middlePercentage / 100) * Math.PI * 2 - Math.PI / 2;
-
-    const startX = centerX + Math.cos(angle) * lineStartRadius;
-    const startY = centerY + Math.sin(angle) * lineStartRadius;
-
-    let middleX = centerX + Math.cos(angle) * lineMiddleRadius;
-    let middleY = centerY + Math.sin(angle) * lineMiddleRadius;
-
-    const isRightSide = Math.cos(angle) >= 0;
-    const minGap = 24;
-
-    if (isRightSide) {
-      if (lastRightY !== -999 && middleY - lastRightY < minGap) {
-        middleY = lastRightY + minGap;
-      }
-      lastRightY = middleY;
-    } else {
-      if (lastLeftY !== 999 && lastLeftY - middleY < minGap) {
-        middleY = lastLeftY - minGap;
-      }
-      lastLeftY = middleY;
-    }
-
-    const endX = middleX + (isRightSide ? lineEndDistance : -lineEndDistance);
-    const endY = middleY;
-
     return {
       ...category,
       safePercentage,
       segmentLength,
       segmentOffset,
-      startX,
-      startY,
-      middleX,
-      middleY,
-      endX,
-      endY,
-      isRightSide,
-      animationDelay: index * 0.12,
+      animationDelay: index * 0.1,
     };
   });
 
@@ -535,10 +491,10 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(430px, 1fr) minmax(420px, 1.15fr)",
-        gap: "50px",
+        gridTemplateColumns: "minmax(260px, 320px) minmax(360px, 1fr)",
+        gap: "40px",
         alignItems: "center",
-        padding: "28px 30px 32px",
+        padding: "24px 28px",
       }}
     >
       <div
@@ -546,23 +502,21 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          minHeight: "430px",
         }}
       >
         <div
           style={{
             position: "relative",
-            width: "430px",
+            width: "300px",
             maxWidth: "100%",
           }}
         >
           <svg
-            viewBox="0 0 360 360"
+            viewBox="0 0 320 320"
             style={{
               display: "block",
               width: "100%",
               height: "auto",
-              overflow: "visible",
             }}
             role="img"
             aria-label="กราฟวงกลมแสดงสัดส่วนสถานประกอบการตามหมวดหมู่"
@@ -603,7 +557,7 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
                     to={`${category.segmentLength} ${
                       circumference - category.segmentLength
                     }`}
-                    dur="0.9s"
+                    dur="0.8s"
                     begin={`${category.animationDelay}s`}
                     fill="freeze"
                     calcMode="spline"
@@ -613,64 +567,13 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
               ))}
             </g>
 
-            {chartSegments.map((category) => (
-              <g key={`label-${category.categoryId}`} opacity="0">
-                <polyline
-                  points={`
-                    ${category.startX},${category.startY}
-                    ${category.middleX},${category.middleY}
-                    ${category.endX},${category.endY}
-                  `}
-                  fill="none"
-                  stroke={category.color}
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-
-                <circle
-                  cx={category.startX}
-                  cy={category.startY}
-                  r="3"
-                  fill={category.color}
-                />
-
-                <text
-                  x={
-                    category.isRightSide ? category.endX + 7 : category.endX - 7
-                  }
-                  y={category.endY + 5}
-                  textAnchor={category.isRightSide ? "start" : "end"}
-                  fill={category.color}
-                  fontSize="14"
-                  fontWeight="800"
-                  fontFamily="'Sarabun', sans-serif"
-                >
-                  {category.safePercentage.toLocaleString("th-TH", {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 2,
-                  })}
-                  %
-                </text>
-
-                <animate
-                  attributeName="opacity"
-                  from="0"
-                  to="1"
-                  dur="0.45s"
-                  begin={`${0.65 + category.animationDelay}s`}
-                  fill="freeze"
-                />
-              </g>
-            ))}
-
-            <circle cx={centerX} cy={centerY} r="65" fill="#ffffff">
+            <circle cx={centerX} cy={centerY} r="72" fill="#ffffff">
               <animate
                 attributeName="r"
-                from="54"
-                to="65"
-                dur="0.65s"
-                begin="0.25s"
+                from="60"
+                to="72"
+                dur="0.6s"
+                begin="0.2s"
                 fill="freeze"
                 calcMode="spline"
                 keySplines="0.22 1 0.36 1"
@@ -680,7 +583,7 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
             <g opacity="0">
               <text
                 x={centerX}
-                y={centerY - 1}
+                y={centerY - 2}
                 textAnchor="middle"
                 fill="#0f172a"
                 fontSize="34"
@@ -695,7 +598,7 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
                 y={centerY + 24}
                 textAnchor="middle"
                 fill="#64748b"
-                fontSize="12"
+                fontSize="13"
                 fontWeight="600"
                 fontFamily="'Sarabun', sans-serif"
               >
@@ -707,7 +610,7 @@ function CategoryDistribution({ categories, totalWellnessHubs }) {
                 from="0"
                 to="1"
                 dur="0.5s"
-                begin="0.55s"
+                begin="0.45s"
                 fill="freeze"
               />
             </g>

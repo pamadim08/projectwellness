@@ -1,19 +1,54 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import axiosInstance from "axios";
+import { Image as ImageIcon, Upload, Trash2 } from "lucide-react";
 import "./EditWellnesshub.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 import { clearWellnessHubCache } from "../ListWellnesshub/ListWellnesshub";
 
-const WELLNESS_CERTIFICATE_OPTIONS = [
-  "ศูนย์เวลเนสประเภทสปาเพื่อสุขภาพ (Wellness Spa)",
-  "ศูนย์เวลเนสประเภทสถานพยาบาล (Wellness Clinic)",
-  "ศูนย์เวลเนสประเภทภัตตาคาร (Wellness Restaurant)",
-  "ศูนย์เวลเนสประเภทนวดเพื่อสุขภาพ (Wellness Massage)",
-  "ศูนย์เวลเนสประเภทที่พักนักท่องเที่ยว (Wellness Accommodation)",
-  "ศูนย์เวลเนสอัตลักษณ์ไทย (Thainess Wellness Destination)",
-];
+function normalizeImageSource(value) {
+  if (!value) return "";
+  let normalizedValue = value;
+  if (typeof normalizedValue === "string") {
+    const trimmed = normalizedValue.trim();
+    try {
+      const parsed = JSON.parse(trimmed);
+      normalizedValue = Array.isArray(parsed) ? parsed[0] || "" : trimmed;
+    } catch {
+      normalizedValue = trimmed;
+    }
+  }
+  if (Array.isArray(normalizedValue)) {
+    normalizedValue = normalizedValue[0] || "";
+  }
+  if (!normalizedValue) return "";
+  const imageSource = String(normalizedValue).trim();
+  if (
+    imageSource.startsWith("data:image/") ||
+    imageSource.startsWith("http://") ||
+    imageSource.startsWith("https://") ||
+    imageSource.startsWith("blob:")
+  ) {
+    return imageSource;
+  }
+  if (/^[A-Za-z0-9+/=\s]+$/.test(imageSource) && imageSource.length > 100) {
+    return `data:image/jpeg;base64,${imageSource}`;
+  }
+  if (!imageSource.includes("/") && !imageSource.includes("\\")) {
+    return `http://localhost:8080/uploads/${imageSource}`;
+  }
+  return imageSource;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
 
 const EditWellnessHub = () => {
   const { id } = useParams();
@@ -25,9 +60,31 @@ const EditWellnessHub = () => {
   const [districts, setDistricts] = useState([]);
   const [errors, setErrors] = useState({});
 
-  // State สำหรับควบคุม Dropdown เลือกใบรับรองแบบหลายตัวเลือก
-  const [isCertOpen, setIsCertOpen] = useState(false);
-  const certDropdownRef = useRef(null);
+  // State สำหรับจัดการรูปภาพหน้าปก
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageFileName, setImageFileName] = useState("");
+
+  // State สำหรับจัดการรายการใบรับรอง 1 ใบต่อ 1 ช่อง
+  const [certificateList, setCertificateList] = useState([""]);
+
+  const handleCertChange = (index, value) => {
+    setCertificateList((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const addCertField = () => {
+    setCertificateList((prev) => [...prev, ""]);
+  };
+
+  const removeCertField = (index) => {
+    setCertificateList((prev) => {
+      if (prev.length <= 1) return [""];
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
   const [formData, setFormData] = useState({
     licenseId: "",
@@ -42,21 +99,14 @@ const EditWellnessHub = () => {
   });
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (certDropdownRef.current && !certDropdownRef.current.contains(event.target)) {
-        setIsCertOpen(false);
-      }
-    }
-    if (isCertOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isCertOpen]);
-
-  useEffect(() => {
     const fetchInitialData = async () => {
+      setStatusModal({
+        isOpen: true,
+        type: "loading",
+        title: "กำลังโหลดข้อมูลสถานประกอบการ...",
+        message: "กรุณารอสักครู่ ระบบกำลังดึงข้อมูลสถานประกอบการจากเซิร์ฟเวอร์",
+      });
+
       try {
         const [catRes, distRes, hubRes] = await Promise.all([
           axiosInstance.get("http://localhost:8080/api/categories"),
@@ -75,8 +125,22 @@ const EditWellnessHub = () => {
           return String(status).trim().toLowerCase() === "active";
         };
 
+        const certStr =
+          hubData.certificateType && hubData.certificateType !== "null"
+            ? hubData.certificateType
+            : "";
+        const initialCerts = certStr
+          ? certStr.split(",").map((s) => s.trim()).filter(Boolean)
+          : [""];
+        setCertificateList(initialCerts.length > 0 ? initialCerts : [""]);
+
+        const rawImg = hubData.wellnessHubImg || hubData.img || hubData.coverImage || "";
+        const normalizedImg = normalizeImageSource(rawImg);
+        setImagePreview(normalizedImg);
+
         setFormData({
           licenseId: hubData.licenseId ?? "",
+          username: hubData.username ?? "",
           wellnessHubName: hubData.wellnessHubName ?? "",
           categoryId: hubData.category?.categoryId
             ? String(hubData.category.categoryId)
@@ -84,10 +148,7 @@ const EditWellnessHub = () => {
           districtId: hubData.district?.districtId
             ? String(hubData.district.districtId)
             : "",
-          certificateType:
-            hubData.certificateType && hubData.certificateType !== "null"
-              ? hubData.certificateType
-              : "",
+          certificateType: certStr,
           telInformation: hubData.telInformation ?? "",
           address: hubData.address === "null" ? "" : (hubData.address ?? ""),
           googleMapsLink:
@@ -95,9 +156,15 @@ const EditWellnessHub = () => {
               ? ""
               : (hubData.googleMapsLink ?? ""),
           status: isStatusActive(hubData.status) ? "active" : "inactive",
+          wellnessHubImg: rawImg,
+          wellnessHubGallery: hubData.wellnessHubGallery ?? "",
+          wellnessHubDescription: hubData.wellnessHubDescription ?? "",
+          contactInformation: hubData.contactInformation ?? "",
+          operatingHours: hubData.operatingHours ?? "",
         });
 
         setIsLoading(false);
+        setStatusModal((prev) => ({ ...prev, isOpen: false }));
       } catch (error) {
         console.error("Error loading data:", error);
         setIsLoading(false);
@@ -125,6 +192,60 @@ const EditWellnessHub = () => {
     title: "",
     message: "",
   });
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "ประเภทไฟล์ไม่ถูกต้อง",
+        message: "รองรับเฉพาะไฟล์รูปภาพ .jpg, .jpeg, .png และ .webp เท่านั้น",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "ขนาดไฟล์เกินกำหนด",
+        message: "ขนาดไฟล์รูปภาพต้องไม่เกิน 20 MB",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setFormData((prev) => ({
+        ...prev,
+        wellnessHubImg: dataUrl,
+      }));
+      setImagePreview(dataUrl);
+      setImageFileName(file.name);
+    } catch (err) {
+      setStatusModal({
+        isOpen: true,
+        type: "error",
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาลองใหม่อีกครั้ง",
+      });
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({
+      ...prev,
+      wellnessHubImg: "",
+    }));
+    setImagePreview("");
+    setImageFileName("");
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -192,7 +313,7 @@ const EditWellnessHub = () => {
     const districtId = String(formData.districtId || "").trim();
     const googleMapsLink = String(formData.googleMapsLink || "").trim();
 
-    // 1. ชื่อสถานประกอบการ: 5-100 ตัวอักษร ไทย/อังกฤษ/ตัวเลข
+    // 1. ชื่อสถานประกอบการ: 5-100 ตัวอักษร ไทย/อังกฤษ/ตัวเลข (ฟิลด์เดียวที่บังคับ)
     if (!name || name.length < 5 || name.length > 100 || !/^[a-zA-Z0-9\u0E00-\u0E7F\s]+$/.test(name)) {
       setStatusModal({
         isOpen: true,
@@ -203,75 +324,93 @@ const EditWellnessHub = () => {
       return;
     }
 
-    // 2. หมวดหมู่ธุรกิจ: ห้ามว่าง
-    if (!categoryId) {
+    // 2. เบอร์โทรศัพท์: ไม่บังคับ แต่ถ้ากรอกต้องเป็นตัวเลข 9-10 หลัก ไม่มีช่องว่าง
+    if (tel && !/^[0-9]{9,10}$/.test(tel)) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณาเลือกหมวดหมู่ธุรกิจ",
+        message: "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9-10 หลัก โดยไม่มีช่องว่างหรืออักขระพิเศษ",
       });
       return;
     }
 
-    // 3. เบอร์โทรศัพท์: ตัวเลข 9-10 หลัก ไม่มีช่องว่าง
-    if (!tel || !/^[0-9]{9,10}$/.test(tel)) {
+    // 3. ที่อยู่: ไม่บังคับ (ถ้ามีระบุต้องไม่เกิน 255 ตัวอักษร)
+    if (address && address.length > 255) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณาระบุเบอร์โทรศัพท์เป็นตัวเลข 9-10 หลัก โดยไม่มีช่องว่างหรืออักขระพิเศษ",
+        message: "รายละเอียดที่อยู่ต้องมีความยาวไม่เกิน 255 ตัวอักษร",
       });
       return;
     }
 
-    // 4. ที่อยู่: 10-255 ตัวอักษร
-    if (!address || address.length < 10 || address.length > 255) {
+    // 3.1 รายละเอียดสถานประกอบการ: ไม่บังคับ (ถ้ามีระบุต้องไม่เกิน 255 ตัวอักษร)
+    const description = String(formData.wellnessHubDescription || "").trim();
+    if (description && description.length > 255) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณาระบุรายละเอียดที่อยู่ ความยาว 10-255 ตัวอักษร",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (รายละเอียดสถานประกอบการต้องมีความยาวไม่เกิน 255 ตัวอักษร)",
       });
       return;
     }
 
-    // 5. อำเภอ: ห้ามว่าง
-    if (!districtId) {
+    // 4. Google Maps: ห้ามว่าง ต้องเป็น URL ที่ถูกต้อง หรือใส่ #
+    if (!googleMapsLink) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณาเลือกอำเภอที่ตั้ง",
+        message: "กรุณาระบุลิงก์ Google Maps หรือใส่ # หากไม่มีลิงก์",
       });
       return;
     }
 
-    // 6. Google Maps: ห้ามว่าง ต้องเป็น URL ที่ถูกต้อง และไม่มีช่องว่าง
-    if (!googleMapsLink || /\s/.test(googleMapsLink) || !/^https?:\/\/.+/i.test(googleMapsLink)) {
-      setStatusModal({
-        isOpen: true,
-        type: "warning",
-        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณาระบุลิงก์ Google Maps ให้ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https:// และไม่มีช่องว่าง)",
-      });
-      return;
+    if (googleMapsLink !== "#") {
+      if (/\s/.test(googleMapsLink) || !/^https?:\/\/.+/i.test(googleMapsLink)) {
+        setStatusModal({
+          isOpen: true,
+          type: "warning",
+          title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+          message: "ลิงก์ Google Maps ต้องเป็น URL ที่ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https://) หรือใส่ #",
+        });
+        return;
+      }
     }
 
-    const parsedCoords = parseLatLngFromGoogleMapsLink(googleMapsLink);
+    const parsedCoords = googleMapsLink !== "#" ? parseLatLngFromGoogleMapsLink(googleMapsLink) : null;
 
     setIsLoading(true);
+    setStatusModal({
+      isOpen: true,
+      type: "loading",
+      title: "กำลังบันทึกการแก้ไข...",
+      message: "กรุณารอสักครู่ ระบบกำลังบันทึกและปรับปรุงข้อมูลในฐานข้อมูลกลาง",
+    });
+
+    const certTypePayload = certificateList
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .join(", ");
 
     const payload = {
       licenseId: formData.licenseId,
       wellnessHubName: name,
-      telInformation: tel,
-      certificateType: formData.certificateType || null,
+      telInformation: tel || null,
+      certificateType: certTypePayload || null,
       address: address,
       googleMapsLink: googleMapsLink,
       status: formData.status || "ACTIVE",
       category: categoryId ? { categoryId: categoryId } : null,
       district: districtId ? { districtId: parseInt(districtId, 10) } : null,
+      wellnessHubImg: formData.wellnessHubImg || null,
+      wellnessHubGallery: formData.wellnessHubGallery || null,
+      wellnessHubDescription: description || null,
+      contactInformation: formData.contactInformation || null,
+      operatingHours: formData.operatingHours || null,
     };
 
     if (parsedCoords) {
@@ -313,14 +452,6 @@ const EditWellnessHub = () => {
       });
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="gov-loading-container">
-        <p>กำลังส่งและปรับปรุงข้อมูลในฐานข้อมูลกลาง...</p>
-      </div>
-    );
-  }
 
   const handleLogout = () => {
     localStorage.removeItem("adminName");
@@ -411,12 +542,11 @@ const EditWellnessHub = () => {
                 </div>
 
                 <div className="form-group">
-                  <label>หมวดหมู่ธุรกิจ *</label>
+                  <label>หมวดหมู่ธุรกิจ</label>
                   <select
                     name="categoryId"
                     value={formData.categoryId}
                     onChange={handleChange}
-                    required
                   >
                     <option value="">-- เลือกหมวดหมู่ --</option>
                     {categories.map((category) => (
@@ -430,117 +560,45 @@ const EditWellnessHub = () => {
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label>ประเภทใบรับรองศูนย์เวลเนส</label>
-                  <div
-                    ref={certDropdownRef}
-                    className={`gov-multi-select ${isCertOpen ? "open" : ""}`}
-                  >
-                    <div
-                      className="gov-multi-select-trigger"
-                      onClick={() => setIsCertOpen((prev) => !prev)}
+                <div className="form-group full-width">
+                  <div className="gov-cert-header">
+                    <label>ประเภทใบรับรอง / มาตรฐาน (1 ใบต่อ 1 ช่อง)</label>
+                    <button
+                      type="button"
+                      className="gov-btn-add-cert"
+                      onClick={addCertField}
                     >
-                      <div className="gov-multi-select-value">
-                        {formData.certificateType ? (
-                          <div className="gov-multi-select-tags">
-                            {formData.certificateType.split(", ").filter(Boolean).map((cert) => (
-                              <span key={cert} className="gov-multi-select-tag">
-                                <span>{cert}</span>
-                                <button
-                                  type="button"
-                                  className="gov-multi-select-tag-del"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const current = formData.certificateType.split(", ").filter(Boolean);
-                                    const next = current.filter((c) => c !== cert);
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      certificateType: next.join(", "),
-                                    }));
-                                  }}
-                                >
-                                  ×
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="gov-multi-select-placeholder">
-                            -- เลือกประเภทใบรับรอง (เลือกได้หลายตัวเลือก) --
-                          </span>
-                        )}
-                      </div>
-                      <span className="gov-multi-select-caret">▾</span>
-                    </div>
-
-                    {isCertOpen && (
-                      <div className="gov-multi-select-dropdown">
-                        <div className="gov-multi-select-header">
-                          <span>
-                            เลือกประเภทใบรับรอง ({formData.certificateType ? formData.certificateType.split(", ").filter(Boolean).length : 0}/{WELLNESS_CERTIFICATE_OPTIONS.length})
-                          </span>
+                      + เพิ่มใบรับรอง
+                    </button>
+                  </div>
+                  <div className="gov-cert-list">
+                    {certificateList.map((cert, index) => (
+                      <div key={index} className="gov-cert-row">
+                        <input
+                          type="text"
+                          className="gov-input-field"
+                          placeholder={`ระบุชื่อใบรับรอง / มาตรฐานที่ ${index + 1} (เช่น ศูนย์เวลเนสประเภทสปาเพื่อสุขภาพ)`}
+                          value={cert}
+                          maxLength={150}
+                          onChange={(e) => handleCertChange(index, e.target.value)}
+                        />
+                        {certificateList.length > 1 && (
                           <button
                             type="button"
-                            className="gov-multi-select-btn-all"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const current = formData.certificateType ? formData.certificateType.split(", ").filter(Boolean) : [];
-                              if (current.length === WELLNESS_CERTIFICATE_OPTIONS.length) {
-                                setFormData((prev) => ({ ...prev, certificateType: "" }));
-                              } else {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  certificateType: WELLNESS_CERTIFICATE_OPTIONS.join(", "),
-                                }));
-                              }
-                            }}
+                            className="gov-btn-del-cert"
+                            onClick={() => removeCertField(index)}
+                            title="ลบช่องใบรับรองนี้"
                           >
-                            {formData.certificateType && formData.certificateType.split(", ").filter(Boolean).length === WELLNESS_CERTIFICATE_OPTIONS.length
-                              ? "ล้างทั้งหมด"
-                              : "เลือกทั้งหมด"}
+                            ✕ ลบ
                           </button>
-                        </div>
-
-                        <div className="gov-multi-select-list">
-                          {WELLNESS_CERTIFICATE_OPTIONS.map((option) => {
-                            const current = formData.certificateType ? formData.certificateType.split(", ").filter(Boolean) : [];
-                            const checked = current.includes(option);
-                            return (
-                              <div
-                                key={option}
-                                className={`gov-multi-select-item ${checked ? "selected" : ""}`}
-                                onClick={() => {
-                                  let next;
-                                  if (checked) {
-                                    next = current.filter((c) => c !== option);
-                                  } else {
-                                    next = [...current, option];
-                                  }
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    certificateType: next.join(", "),
-                                  }));
-                                }}
-                              >
-                                <div
-                                  className={`gov-custom-cb ${checked ? "checked" : ""}`}
-                                >
-                                  {checked ? "✓" : ""}
-                                </div>
-                                <span className="gov-multi-select-item-text">
-                                  {option}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label>เลขใบอนุญาตประกอบกิจการ *</label>
+                  <label>เลขใบอนุญาตประกอบกิจการ</label>
                   <input
                     type="text"
                     name="licenseId"
@@ -549,18 +607,29 @@ const EditWellnessHub = () => {
                   />
                 </div>
 
+                <div className="form-group">
+                  <label>ชื่อผู้ใช้งาน (Username)</label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username || "-"}
+                    readOnly
+                    style={{ backgroundColor: "#f8fafc", color: "#475569", cursor: "not-allowed" }}
+                  />
+                </div>
+
                 <div
                   className={`form-group ${errors.telInformation ? "has-error" : ""
                     }`}
                 >
-                  <label>เบอร์โทรศัพท์ติดต่อ *</label>
+                  <label>เบอร์โทรศัพท์ติดต่อ</label>
                   <input
                     type="text"
                     name="telInformation"
                     maxLength={10}
                     value={formData.telInformation}
                     onChange={handleChange}
-                    required
+                    placeholder="เช่น 053123456"
                   />
                   <div className="char-counter">{(formData.telInformation || "").length}/10</div>
                   {errors.telInformation && (
@@ -569,33 +638,110 @@ const EditWellnessHub = () => {
                     </span>
                   )}
                 </div>
+
+                <div className="form-group full-width">
+                  <label>รายละเอียดสถานประกอบการ (ไม่บังคับ)</label>
+                  <textarea
+                    rows="4"
+                    name="wellnessHubDescription"
+                    maxLength={255}
+                    value={formData.wellnessHubDescription}
+                    onChange={handleChange}
+                    placeholder="ระบุรายละเอียดหรือจุดเด่นของสถานประกอบการ (สูงสุด 255 ตัวอักษร)..."
+                  />
+                  <div className="char-counter">{(formData.wellnessHubDescription || "").length}/255</div>
+                </div>
               </div>
 
               <div className="section-heading">
-                <span>2</span> สถานที่ตั้ง
+                <span>2</span> ภาพหน้าปกสถานประกอบการ (Cover Image)
+              </div>
+
+              <div className="gov-image-section">
+                <div className="gov-image-preview-wrapper">
+                  {imagePreview ? (
+                    <div className="gov-image-preview-container">
+                      <img
+                        src={imagePreview}
+                        alt={formData.wellnessHubName || "รูปหน้าปกสถานประกอบการ"}
+                        className="gov-image-preview"
+                      />
+                    </div>
+                  ) : (
+                    <div className="gov-image-empty-placeholder">
+                      <ImageIcon size={44} className="gov-image-empty-icon" />
+                      <span className="gov-image-empty-title">ยังไม่มีรูปภาพหน้าปก</span>
+                      <span className="gov-image-empty-subtitle">คลิกปุ่มด้านล่างเพื่อเลือกรูปภาพ</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="gov-image-controls">
+                  <div className="gov-image-guidelines">
+                    <h4>อัปโหลดรูปภาพหน้าปก</h4>
+                    <p>
+                      รองรับไฟล์ภาพนามสกุล .JPG, .JPEG, .PNG หรือ .WEBP ขนาดไม่เกิน 20 MB (แนะนำภาพแนวนอนสัดส่วน 16:9 เพื่อความสวยงาม)
+                    </p>
+                  </div>
+
+                  <div className="gov-image-btn-group">
+                    <label className="gov-btn-upload-image" htmlFor="cover-image-input">
+                      <Upload size={16} />
+                      <span>{imagePreview ? "เปลี่ยนรูปภาพหน้าปก" : "เลือกรูปภาพหน้าปก"}</span>
+                      <input
+                        id="cover-image-input"
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        onChange={handleImageChange}
+                        style={{ display: "none" }}
+                      />
+                    </label>
+
+                    {imagePreview && (
+                      <button
+                        type="button"
+                        className="gov-btn-remove-image"
+                        onClick={handleRemoveImage}
+                        title="ลบรูปภาพหน้าปก"
+                      >
+                        <Trash2 size={16} />
+                        <span>ลบรูปภาพ</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {imageFileName && (
+                    <div className="gov-image-filename">
+                      <span>ไฟล์ที่เลือก:</span> <strong>{imageFileName}</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="section-heading">
+                <span>3</span> สถานที่ตั้ง
               </div>
 
               <div className="form-group">
-                <label>รายละเอียดที่อยู่ *</label>
+                <label>รายละเอียดที่อยู่</label>
                 <textarea
                   rows="3"
                   name="address"
                   maxLength={255}
                   value={formData.address}
                   onChange={handleChange}
-                  required
+                  placeholder="ระบุรายละเอียดที่อยู่ เช่น เลขที่ ถนน ซอย"
                 />
                 <div className="char-counter">{(formData.address || "").length}/255</div>
               </div>
 
               <div className="form-grid-2">
                 <div className="form-group">
-                  <label>อำเภอที่ตั้ง *</label>
+                  <label>อำเภอที่ตั้ง</label>
                   <select
                     name="districtId"
                     value={formData.districtId}
                     onChange={handleChange}
-                    required
                   >
                     <option value="">-- เลือกอำเภอ --</option>
                     {districts.map((district) => (
@@ -616,6 +762,7 @@ const EditWellnessHub = () => {
                     name="googleMapsLink"
                     value={formData.googleMapsLink}
                     onChange={handleChange}
+                    placeholder="ระบุลิงก์ Google Maps หรือใส่ #"
                     required
                   />
                 </div>

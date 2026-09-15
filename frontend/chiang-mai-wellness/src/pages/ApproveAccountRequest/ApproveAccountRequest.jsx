@@ -23,21 +23,29 @@ import {
 import "./ApproveAccountRequest.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
+import { clearAccountRequestsCache } from "../ListAccountRequest/ListAccountRequest";
 
 // Helper Functions จัดฟอร์แมตข้อมูล
 
-// 1. แปลงประเภทใบรับรอง
-const formatCertificateType = (certData) => {
-  if (!certData) return "-";
+// 1. แปลงประเภทใบรับรอง แสดงผล 1 ใบต่อ 1 บรรทัด
+const parseCertificateTypes = (certData) => {
+  if (!certData || certData === "-" || certData === "null") return [];
   try {
     const parsed =
       typeof certData === "string" ? JSON.parse(certData) : certData;
     if (Array.isArray(parsed)) {
-      return parsed.join(", ");
+      return parsed.map((s) => String(s).trim()).filter(Boolean);
     }
-    return String(parsed);
+    return String(parsed)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   } catch (e) {
-    return String(certData).replace(/[\[\]"']/g, "");
+    return String(certData)
+      .replace(/[[\]"']/g, "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
 };
 
@@ -120,6 +128,7 @@ function ApproveAccountRequest() {
   const [rejectDetail, setRejectDetail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showDetailPassword, setShowDetailPassword] = useState(false);
   const [showApproveEmailPreview, setShowApproveEmailPreview] = useState(false);
   const [showRejectEmailPreview, setShowRejectEmailPreview] = useState(false);
 
@@ -138,6 +147,15 @@ function ApproveAccountRequest() {
   }, []);
 
   const fetchRequest = async () => {
+    setStatusModal({
+      isOpen: true,
+      type: "loading",
+      title: "กำลังโหลดข้อมูลคำร้อง...",
+      message: "กรุณารอสักครู่ ระบบกำลังดึงข้อมูลคำขอจากเซิร์ฟเวอร์",
+      onConfirm: null,
+      children: null,
+    });
+
     try {
       const res = await axios.get(
         `http://localhost:8080/api/account-requests/${id}`,
@@ -151,8 +169,10 @@ function ApproveAccountRequest() {
           onConfirm: null,
           children: null,
         });
+        return;
       }
       setRequest(res.data);
+      setStatusModal((prev) => ({ ...prev, isOpen: false }));
     } catch (err) {
       console.error(err);
       setStatusModal({
@@ -197,11 +217,21 @@ function ApproveAccountRequest() {
 
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setShowApprove(false);
+    setStatusModal({
+      isOpen: true,
+      type: "loading",
+      title: "กำลังอนุมัติคำขอ...",
+      message: "กรุณารอสักครู่ ระบบกำลังประมวลผลการอนุมัติและส่งอีเมลแจ้งผล",
+      onConfirm: null,
+      children: null,
+    });
 
     try {
       await axios.put(
         `http://localhost:8080/api/account-requests/${id}/approve`,
       );
+      clearAccountRequestsCache();
 
       // Trigger Notify Request Result
       try {
@@ -374,6 +404,15 @@ function ApproveAccountRequest() {
 
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setShowReject(false);
+    setStatusModal({
+      isOpen: true,
+      type: "loading",
+      title: "กำลังบันทึกการไม่อนุมัติ...",
+      message: "กรุณารอสักครู่ ระบบกำลังประมวลผลและส่งอีเมลแจ้งผล",
+      onConfirm: null,
+      children: null,
+    });
 
     try {
       await axios.put(
@@ -383,6 +422,7 @@ function ApproveAccountRequest() {
           params: { reason: finalReason },
         },
       );
+      clearAccountRequestsCache();
 
       // Trigger Notify Request Result
       try {
@@ -557,37 +597,12 @@ function ApproveAccountRequest() {
     }
   };
 
-  if (!request) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          backgroundColor: "#f4f6f9",
-          color: "#475569",
-          fontFamily: "'Sarabun', sans-serif",
-        }}
-      >
-        <FontAwesomeIcon
-          icon={faSpinner}
-          spin
-          style={{ fontSize: "40px", color: "#2563eb", marginBottom: "16px" }}
-        />
-        <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "600" }}>
-          กำลังโหลดข้อมูลคำร้อง...
-        </h3>
-        <p style={{ margin: "6px 0 0", fontSize: "14px", color: "#94a3b8" }}>
-          กรุณารอสักครู่ ระบบกำลังดึงข้อมูลจากเซิร์ฟเวอร์
-        </p>
-      </div>
-    );
-  }
-
-  const operatingHoursList = formatOperatingHoursList(request.operatingHours);
-  const galleryList = parseGalleryImages(request.wellnessHubGallery);
+  const operatingHoursList = request
+    ? formatOperatingHoursList(request.operatingHours)
+    : [];
+  const galleryList = request
+    ? parseGalleryImages(request.wellnessHubGallery)
+    : [];
 
   return (
     <div className="admin-layout">
@@ -606,7 +621,8 @@ function ApproveAccountRequest() {
           <p>ตรวจสอบข้อมูลสถานประกอบการอย่างละเอียดก่อนอนุมัติบัญชี</p>
         </div>
 
-        <div className="request-card">
+        {request && (
+          <div className="request-card">
           {/* SECTION 1: ข้อมูลสถานประกอบการ */}
           <h3>ข้อมูลสถานประกอบการ</h3>
 
@@ -656,7 +672,19 @@ function ApproveAccountRequest() {
 
             <div>
               <label>ประเภทใบรับรอง</label>
-              <p>{formatCertificateType(request.certificateType)}</p>
+              {(() => {
+                const certs = parseCertificateTypes(request.certificateType);
+                if (certs.length === 0) return <p>-</p>;
+                return (
+                  <div className="approve-cert-display-list">
+                    {certs.map((cert, i) => (
+                      <div key={i} className="approve-cert-display-item">
+                        {cert}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             <div>
@@ -855,6 +883,35 @@ function ApproveAccountRequest() {
             </div>
 
             <div>
+              <label>รหัสผ่านที่ขอตั้ง</label>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", minHeight: "24px" }}>
+                <span style={{ fontFamily: "monospace", fontSize: "15px", fontWeight: "600", color: "#1e293b" }}>
+                  {showDetailPassword
+                    ? (request.password || "-")
+                    : (request.password ? "•".repeat(Math.max(6, Math.min(request.password.length, 12))) : "••••••••")}
+                </span>
+                {request.password && (
+                  <button
+                    type="button"
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      padding: "2px 6px",
+                      color: "#64748b",
+                      fontSize: "14px",
+                    }}
+                    onClick={() => setShowDetailPassword(!showDetailPassword)}
+                    title={showDetailPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                    aria-label={showDetailPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                  >
+                    <FontAwesomeIcon icon={showDetailPassword ? faEyeSlash : faEye} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div>
               <label>เบอร์โทรศัพท์</label>
               <p>{request.tellInformation || "-"}</p>
             </div>
@@ -949,6 +1006,7 @@ function ApproveAccountRequest() {
             </button>
           </div>
         </div>
+        )}
       </div>
 
       {/* Popup Approve Confirmation */}

@@ -95,8 +95,7 @@ public class WellnessHubController {
         String username = "WH_" + nextId;
         return ResponseEntity.ok(Map.of(
                 "licenseId", nextId,
-                "username", username
-        ));
+                "username", username));
     }
 
     /*
@@ -193,21 +192,34 @@ public class WellnessHubController {
                     .body(
                             Map.of(
                                     "message",
-                                    "กรุณากรอกข้อมูลให้ถูกต้อง"));
+                                    exception.getMessage() != null && !exception.getMessage().trim().isEmpty()
+                                            ? exception.getMessage()
+                                            : "กรุณากรอกข้อมูลให้ถูกต้อง"));
         } catch (Exception exception) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(
                             Map.of(
                                     "message",
-                                    "ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง"));
+                                    exception.getMessage() != null && !exception.getMessage().trim().isEmpty()
+                                            ? exception.getMessage()
+                                            : "ไม่สามารถแก้ไขข้อมูลสถานประกอบการได้ กรุณาลองใหม่อีกครั้ง"));
         }
     }
 
     private Map<String, Object> toResponseMap(WellnessHub hub) {
-        if (hub == null) return null;
+        if (hub == null)
+            return null;
         Map<String, Object> map = new java.util.LinkedHashMap<>();
         map.put("licenseId", hub.getLicenseId());
+        String username = hub.getUsername();
+        if (username == null || username.trim().isEmpty()) {
+            boolean isEmer = hub.getCategory() != null && hub.getCategory().getCategoryId() != null
+                    && ("EM01".equalsIgnoreCase(hub.getCategory().getCategoryId().trim())
+                            || "EM02".equalsIgnoreCase(hub.getCategory().getCategoryId().trim()));
+            username = (isEmer ? "ES_" : "WH_") + hub.getLicenseId();
+        }
+        map.put("username", username);
         map.put("wellnessHubName", hub.getWellnessHubName());
         map.put("address", hub.getAddress());
         map.put("contactInformation", hub.getContactInformation());
@@ -226,6 +238,42 @@ public class WellnessHubController {
         map.put("createdAt", hub.getCreatedAt());
         map.put("updatedAt", hub.getUpdatedAt());
         return map;
+    }
+
+    /*
+     * =====================================================
+     * ปรับปรุงสถานะสถานประกอบการ (ระงับ / เปิดใช้งาน)
+     * =====================================================
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body) {
+        try {
+            String status = body != null ? body.get("status") : null;
+            if (status == null || status.trim().isEmpty()) {
+                return ResponseEntity
+                        .badRequest()
+                        .body(Map.of("message", "กรุณาระบุสถานะ"));
+            }
+
+            boolean updated = wellnessHubService.updateStatus(id, status);
+
+            if (!updated) {
+                return ResponseEntity
+                        .status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "ไม่พบสถานประกอบการ หรือสถานะไม่ถูกต้อง"));
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "อัปเดตสถานะสถานประกอบการสำเร็จ",
+                    "status", status.trim().toUpperCase()));
+
+        } catch (RuntimeException exception) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", exception.getMessage()));
+        }
     }
 
     /*
@@ -268,36 +316,34 @@ public class WellnessHubController {
      *
      * หลัง Migration สำเร็จ ควรปิด Endpoint นี้
      */
-    // @PostMapping("/migrate-old-links")
-    // public ResponseEntity<Map<String, Object>>
-    // runMigration() {
-    //
-    // wellnessHubService
-    // .migrateOldGoogleMapsLinks();
-    //
-    // return ResponseEntity.ok(
-    // Map.of(
-    // "status", "completed",
-    // "message",
-    // "ตรวจสอบและอัปเดตพิกัดเรียบร้อยแล้ว"
-    // )
-    // );
-    // }
+    @PostMapping("/migrate-old-links")
+    public ResponseEntity<Map<String, Object>> runMigration() {
+
+        wellnessHubService
+                .migrateOldGoogleMapsLinks();
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "status", "completed",
+                        "message",
+                        "ตรวจสอบและอัปเดตพิกัดเรียบร้อยแล้ว"));
+    }
 
     /*
-
-    =========== MOBILE ===================================
-
+     * 
+     * =========== MOBILE ===================================
+     * 
      */
-
 
     @GetMapping("/user")
     public ResponseEntity<ResponseObject> getAllWellnessHubs() {
         try {
             List<WellnessHubDTO> dtos = wellnessHubService.getWellnessHubs();
-            return new ResponseEntity<>(new ResponseObject(true, "ดึงข้อมูลสถานประกอบการทั้งหมดสำเร็จ", dtos), HttpStatus.OK);
+            return new ResponseEntity<>(new ResponseObject(true, "ดึงข้อมูลสถานประกอบการทั้งหมดสำเร็จ", dtos),
+                    HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>(new ResponseObject(false, "เกิดข้อผิดพลาดในการดึงข้อมูล", null), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(new ResponseObject(false, "เกิดข้อผิดพลาดในการดึงข้อมูล", null),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -306,12 +352,15 @@ public class WellnessHubController {
     public ResponseEntity<ResponseObject> getWellnessHubDetail(@PathVariable String id) {
         try {
             WellnessHubDTO dto = wellnessHubService.getWellnessHubDetail(id);
-            return new ResponseEntity<>(new ResponseObject(true, "ดึงข้อมูลสถานประกอบการรหัส " + id + " สำเร็จ", dto), HttpStatus.OK);
+            return new ResponseEntity<>(new ResponseObject(true, "ดึงข้อมูลสถานประกอบการรหัส " + id + " สำเร็จ", dto),
+                    HttpStatus.OK);
         } catch (Exception e) {
             if (e instanceof NoSuchElementException) {
-                return new ResponseEntity<>(new ResponseObject(false, "ไม่พบข้อมูลสถานประกอบการที่ระบุ", null), HttpStatus.NOT_FOUND);
+                return new ResponseEntity<>(new ResponseObject(false, "ไม่พบข้อมูลสถานประกอบการที่ระบุ", null),
+                        HttpStatus.NOT_FOUND);
             }
-            return new ResponseEntity<>(new ResponseObject(false, "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์", null), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(new ResponseObject(false, "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์", null),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -329,13 +378,11 @@ public class WellnessHubController {
                     .searchWellnessHub(keyword, categoryId, districtId, page, size);
             return new ResponseEntity<>(
                     new ResponseObject(true, "ค้นหาสำเร็จ", result),
-                    HttpStatus.OK
-            );
+                    HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(
                     new ResponseObject(false, "เกิดข้อผิดพลาดในการค้นหา", null),
-                    HttpStatus.INTERNAL_SERVER_ERROR
-            );
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -373,7 +420,6 @@ public class WellnessHubController {
         return ResponseEntity.ok(wellnessHubService.isFavorite(memberId, licenseId));
     }
 
-
     @GetMapping("/route")
     public ResponseEntity<PagedResult> getHubsForRoute(
             @RequestParam Integer originId,
@@ -384,7 +430,6 @@ public class WellnessHubController {
         PagedResult result = wellnessHubService.getHubsAlongRoute(originId, destId, page, size);
         return ResponseEntity.ok(result);
     }
-
 
     @GetMapping("/by-districts")
     public ResponseEntity<?> getHubsByDistricts(

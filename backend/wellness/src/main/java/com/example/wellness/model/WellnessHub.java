@@ -25,13 +25,13 @@ public class WellnessHub {
     @Column(name = "wellness_hub_name", nullable = false, length = 255)
     private String wellnessHubName;
 
-    @Column(name = "address", nullable = false, length = 255)
+    @Column(name = "address", length = 255)
     private String address;
 
     @Column(name = "contact_information", length = 255)
     private String contactInformation;
 
-    @Column(name = "google_maps_link", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "google_maps_link", columnDefinition = "TEXT")
     private String googleMapsLink;
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
@@ -47,10 +47,10 @@ public class WellnessHub {
     @Column(name = "wellness_hub_description", columnDefinition = "TEXT")
     private String wellnessHubDescription;
 
-    @Column(name = "wellness_hub_img", columnDefinition = "TEXT")
+    @Column(name = "wellness_hub_img", columnDefinition = "LONGTEXT")
     private String wellnessHubImg;
 
-    @Column(name = "wellness_hub_gallery", columnDefinition = "TEXT")
+    @Column(name = "wellness_hub_gallery", columnDefinition = "LONGTEXT")
     private String wellnessHubGallery;
 
     @Column(name = "wellness_hub_latitude")

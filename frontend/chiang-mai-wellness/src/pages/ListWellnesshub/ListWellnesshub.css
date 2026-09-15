@@ -21,7 +21,8 @@
 
 /* Header Section */
 .gov-header {
-  border-bottom: 3px double var(--gov-green-dark); /* เส้นคู่เพื่อความเป็นทางการ */
+  border-bottom: 3px double var(--gov-green-dark);
+  /* เส้นคู่เพื่อความเป็นทางการ */
   margin-bottom: 25px;
   padding-bottom: 10px;
 }
@@ -44,7 +45,8 @@
   display: flex;
   height: 100vh;
   width: 100vw;
-  overflow: hidden; /* ล็อคหน้าจอหลักไม่ให้เลื่อนหลุดเฟรม */
+  overflow: hidden;
+  /* ล็อคหน้าจอหลักไม่ให้เลื่อนหลุดเฟรม */
 }
 
 /* ==========================================================================
@@ -52,7 +54,8 @@
    ========================================================================== */
 .sidebar-menu {
   width: 260px;
-  height: 100vh; /* บังคับให้สูงเท่าหน้าจอเสมอ */
+  height: 100vh;
+  /* บังคับให้สูงเท่าหน้าจอเสมอ */
   background-color: var(--sidebar-dark);
   color: white;
   display: flex;
@@ -94,15 +97,18 @@
   font-size: 24px;
   color: var(--gov-green-main);
 }
+
 .user-info {
   display: flex;
   flex-direction: column;
 }
+
 .user-label {
   font-size: 10px;
   color: #a0aec0;
   text-transform: uppercase;
 }
+
 .user-name {
   font-size: 14px;
   font-weight: bold;
@@ -147,12 +153,14 @@
   font-size: 10px;
   margin-left: auto;
   font-weight: bold;
-  border-radius: 0px !important; /* ลบความโค้งมนออกคงสไตล์ราชการ */
+  border-radius: 0px !important;
+  /* ลบความโค้งมนออกคงสไตล์ราชการ */
 }
 
 /* ปุ่ม Logout ล่างสุด - ล็อคอยู่กับที่ถาวรไม่เลื่อนหนีไปไหน */
 .btn-sidebar-logout {
-  background-color: #bd2130; /* ปรับสีแดงให้ดูเข้มเป็นทางการและชัดเจน */
+  background-color: #bd2130;
+  /* ปรับสีแดงให้ดูเข้มเป็นทางการและชัดเจน */
   color: white;
   border: none;
   border-top: 1px solid var(--gov-border);
@@ -164,7 +172,8 @@
   justify-content: center;
   gap: 10px;
   width: 100%;
-  flex-shrink: 0; /* บังคับไม่ให้โดนบีบอัดหายไป */
+  flex-shrink: 0;
+  /* บังคับไม่ให้โดนบีบอัดหายไป */
   transition: background-color 0.1s;
 }
 
@@ -179,7 +188,8 @@
   flex: 1;
   min-width: 0;
   background-color: var(--gov-bg);
-  overflow-y: auto; /* ส่วนนี้จะเลื่อนขึ้นลงได้อิสระ */
+  overflow-y: auto;
+  /* ส่วนนี้จะเลื่อนขึ้นลงได้อิสระ */
   padding-bottom: 60px;
   box-sizing: border-box;
 }
@@ -187,7 +197,8 @@
 /* จัดระเบียบแถบคัดกรองข้อมูลทรงเหลี่ยม */
 .gov-filter-bar {
   display: flex;
-  gap: 10px; /* เพิ่มระยะห่างช่องไฟเล็กน้อยเพื่อให้สอดคล้องกับ UX */
+  gap: 10px;
+  /* เพิ่มระยะห่างช่องไฟเล็กน้อยเพื่อให้สอดคล้องกับ UX */
   margin-bottom: 20px;
   background: #ffffff;
   padding: 15px;
@@ -200,7 +211,8 @@
   font-size: 14px;
   border: 1px solid var(--gov-border);
   padding: 10px 12px;
-  border-radius: 0px !important; /* เหลี่ยมคมชัดเจน */
+  border-radius: 0px !important;
+  /* เหลี่ยมคมชัดเจน */
   background-color: #ffffff;
   color: var(--gov-text);
   height: 40px;
@@ -218,7 +230,8 @@
 
 .gov-input:focus,
 .gov-select:focus {
-  border: 2px solid var(--gov-green-dark); /* เน้นขอบหนาชัดเจนตอนพิมพ์ */
+  border: 2px solid var(--gov-green-dark);
+  /* เน้นขอบหนาชัดเจนตอนพิมพ์ */
 }
 
 /* ปุ่มค้นหาแบบราชการสีเขียวชัดเจน */
@@ -271,12 +284,14 @@
    ========================================================================== */
 .gov-table-container {
   background: white;
-  border: 2px solid var(--gov-border); /* ปรับขอบนอกให้หนาชัดเจน */
+  border: 2px solid var(--gov-border);
+  /* ปรับขอบนอกให้หนาชัดเจน */
 }
 
 .list-table {
   width: 100%;
-  border-collapse: collapse; /* ยุบขอบให้ชนกันเป็นตารางเส้นเดี่ยวเด็ดขาด */
+  border-collapse: collapse;
+  /* ยุบขอบให้ชนกันเป็นตารางเส้นเดี่ยวเด็ดขาด */
 }
 
 .list-table th {
@@ -290,7 +305,8 @@
 }
 
 .list-table td {
-  border: 1px solid var(--gov-border); /* เส้นคั่นกั้นทุกด้านชัดเจน */
+  border: 1px solid var(--gov-border);
+  /* เส้นคั่นกั้นทุกด้านชัดเจน */
   padding: 12px 15px;
   vertical-align: middle;
   color: var(--gov-text);
@@ -302,7 +318,8 @@
 }
 
 .list-table tbody tr:hover {
-  background-color: #f1f5f1; /* เปลี่ยนสีเมื่อ hover เล็กน้อย */
+  background-color: #f1f5f1;
+  /* เปลี่ยนสีเมื่อ hover เล็กน้อย */
 }
 
 .text-center {
@@ -325,7 +342,9 @@
 }
 
 .btn-edit,
-.btn-delete {
+.btn-delete,
+.btn-suspend,
+.btn-activate {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: bold;
@@ -334,7 +353,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border-radius: 0px !important; /* คงความเหลี่ยมสนิทสไตล์ข้าราชการ */
+  border-radius: 0px !important;
+  /* คงความเหลี่ยมสนิทสไตล์ข้าราชการ */
   transition: 0.1s;
 }
 
@@ -343,18 +363,33 @@
   color: #0056b3;
   border: 1px solid #0056b3 !important;
 }
+
 .btn-edit:hover {
   background: #0056b3;
   color: white;
 }
 
-/* ปุ่มลบ: สีแดงเข้มข้น ดึงดูดสายตาและเตือนสติผู้ใช้ถึงความอันตรายก่อนลบข้อมูล */
-.btn-delete {
+/* ปุ่มระงับ/ลบ: สีแดงเข้มข้น ดึงดูดสายตาและเตือนสติผู้ใช้ถึงความอันตรายก่อนดำเนินการ */
+.btn-delete,
+.btn-suspend {
   color: #c53030;
   border: 1px solid #c53030 !important;
 }
-.btn-delete:hover {
+
+.btn-delete:hover,
+.btn-suspend:hover {
   background: #c53030;
+  color: white;
+}
+
+/* ปุ่มเปิดใช้งาน: สีเขียวเข้มข้น สื่อถึงการเปิดให้บริการสถานประกอบการ */
+.btn-activate {
+  color: #16a34a;
+  border: 1px solid #16a34a !important;
+}
+
+.btn-activate:hover {
+  background: #16a34a;
   color: white;
 }
 
@@ -451,6 +486,7 @@
 .btn-close-toast:hover {
   opacity: 1;
 }
+
 .gov-loading-row {
   text-align: center;
   padding: 30px 0 !important;
@@ -464,140 +500,224 @@
     transform: translateX(120%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
   }
 }
+
 /* =======================================================
-   Popup ยืนยันการลบ
+   Popup ยืนยันการลบสถานประกอบการ (Admin Hub Delete Modal)
+   จัดข้อความตรงกลาง สวยงาม ทางการ คมชัด สี่เหลี่ยม 0px
 ======================================================= */
 
-.popup-bg {
+.hub-delete-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
-
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
-
   padding: 20px;
-
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: hubModalFadeIn 0.2s ease-out;
 }
 
-.popup {
+@keyframes hubModalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.hub-delete-modal {
   width: 100%;
-  max-width: 430px;
-
-  padding: 30px;
-
+  max-width: 440px;
+  padding: 32px 28px 26px;
   background: #ffffff;
-  border: 2px solid var(--gov-border);
-
+  border-radius: 0px !important;
+  border: 1px solid #cbd5e1;
+  border-top: 5px solid #dc2626;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.35);
   box-sizing: border-box;
+  text-align: center;
+  animation: hubModalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes hubModalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.hub-delete-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 16px;
+  border-radius: 0px !important;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 800;
+  box-sizing: border-box;
+}
+
+.hub-delete-title {
+  margin: 0 0 14px 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.hub-delete-body {
+  margin: 0 0 24px 0;
   text-align: center;
 }
 
-.popup-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 68px;
-  height: 68px;
-
-  margin: 0 auto 18px;
-
-  border-radius: 50%;
-
-  color: #ffffff;
-  font-size: 34px;
-  font-weight: 800;
+.hub-delete-desc {
+  margin: 0 0 8px 0;
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: center;
 }
 
-.popup-icon.error {
-  background: #dc3545;
-}
-
-.popup h3 {
-  margin: 0 0 12px;
-
-  color: #111111;
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.popup p {
-  margin: 0;
-
-  color: #555555;
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-.popup-route-name {
+.hub-delete-name-card {
   display: block;
-
+  width: 100%;
+  padding: 10px 14px;
   margin: 8px 0;
-
-  color: var(--gov-green-dark);
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #dc2626;
+  border-radius: 0px !important;
+  color: #0f172a;
   font-size: 16px;
   font-weight: 800;
+  text-align: center;
+  box-sizing: border-box;
+  word-break: break-word;
 }
 
-.popup-warning-text {
-  display: block;
-
-  margin-top: 10px;
-
-  color: #888888;
-  font-size: 12px;
+.hub-delete-confirm-q {
+  margin: 8px 0 0 0;
+  color: #475569;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
 }
 
-.popup-buttons {
+.hub-delete-warning-note {
+  margin: 10px 0 0 0;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.hub-delete-actions {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 12px;
-
-  margin-top: 24px;
+  margin-top: 6px;
 }
 
-.cancel-btn,
-.delete-btn {
-  min-width: 120px;
-
-  padding: 10px 18px;
-
-  border: none;
-
-  color: #ffffff;
-  font-family: "Sarabun", sans-serif;
+.btn-hub-delete-cancel,
+.btn-hub-delete-confirm {
+  flex: 1;
+  min-height: 42px;
+  padding: 10px 20px;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 700;
-
+  border-radius: 0px !important;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
-.cancel-btn {
-  background: #6c757d;
+.btn-hub-delete-cancel {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #cbd5e1;
 }
 
-.cancel-btn:hover {
-  background: #5a6268;
+.btn-hub-delete-cancel:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
-.delete-btn {
-  background: #dc3545;
+.hub-delete-modal.hub-delete-modal--activate {
+  border-top: 5px solid #16a34a;
 }
 
-.delete-btn:hover {
-  background: #bd2130;
+.hub-delete-icon.hub-delete-icon--activate {
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 2px solid #bbf7d0;
 }
 
-.cancel-btn:disabled,
-.delete-btn:disabled {
+.hub-delete-name-card.hub-delete-name-card--activate {
+  border-left: 4px solid #16a34a;
+}
+
+.hub-delete-warning-note.hub-delete-warning-note--activate {
+  color: #15803d;
+}
+
+.btn-hub-activate-confirm {
+  flex: 1;
+  min-height: 42px;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 0px !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+  background: #16a34a;
+  color: #ffffff;
+  border: 1px solid #15803d;
+}
+
+.btn-hub-activate-confirm:hover:not(:disabled) {
+  background: #15803d;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+
+.btn-hub-activate-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-hub-delete-cancel:disabled,
+.btn-hub-delete-confirm:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

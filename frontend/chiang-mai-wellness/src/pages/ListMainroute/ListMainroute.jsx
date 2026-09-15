@@ -5,6 +5,13 @@ import axiosInstance from "axios";
 import "./ListMainroute.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faPenToSquare,
+  faTrashCan,
+  faSpinner,
+  faCircleExclamation,
+} from "@fortawesome/free-solid-svg-icons";
 
 // 🌟 1. ประกาศตัวแปร In-Memory Cache ไว้นอก Component
 let mainRouteCache = null;
@@ -17,8 +24,8 @@ export const clearMainRouteCache = () => {
 const ListMainRoute = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [routes, setRoutes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [routes, setRoutes] = useState(() => mainRouteCache || []);
+  const [loading, setLoading] = useState(() => !mainRouteCache);
   const [hasError, setHasError] = useState(false);
 
   // State สำหรับจัดการ Popup ยืนยันการลบ
@@ -183,22 +190,19 @@ const ListMainRoute = () => {
             <thead>
               <tr>
                 <th style={{ width: "5%", textAlign: "center" }}>
-                  ลำดับเส้นทาง
+                  ลำดับ
                 </th>
-                <th style={{ width: "18%" }}>ชื่อเส้นทางสุขภาพ</th>
-                <th style={{ width: "18%" }}>หมวดหมู่ทั้งหมดในเส้นทาง</th>
-                <th style={{ width: "15%" }}>อำเภอในเส้นทาง</th>
-                <th style={{ width: "7%", textAlign: "center" }}>
-                  จำนวนปักหมุด
+                <th style={{ width: "19%" }}>ชื่อเส้นทางสุขภาพ</th>
+                <th style={{ width: "20%" }}>หมวดหมู่ทั้งหมดในเส้นทาง</th>
+                <th style={{ width: "16%" }}>อำเภอในเส้นทาง</th>
+                <th style={{ width: "8%", textAlign: "center" }}>
+                  จำนวนจุด
                 </th>
                 <th style={{ width: "8%", textAlign: "center" }}>ผู้สร้าง</th>
-                <th style={{ width: "8%", textAlign: "center" }}>
-                  วันที่สร้าง
+                <th style={{ width: "9%", textAlign: "center" }}>
+                  วันที่แก้ไข
                 </th>
-                <th style={{ width: "8%", textAlign: "center" }}>
-                  แก้ไขล่าสุด
-                </th>
-                <th style={{ width: "6%", textAlign: "center" }}>สถานะ</th>
+                <th style={{ width: "8%", textAlign: "center" }}>สถานะ</th>
                 <th style={{ width: "7%", textAlign: "center" }}>การจัดการ</th>
               </tr>
             </thead>
@@ -206,7 +210,7 @@ const ListMainRoute = () => {
               {loading ? (
                 <tr>
                   <td
-                    colSpan="10"
+                    colSpan="9"
                     className="gov-loading-row"
                     style={{
                       textAlign: "center",
@@ -224,7 +228,7 @@ const ListMainRoute = () => {
               ) : hasError ? (
                 <tr>
                   <td
-                    colSpan="10"
+                    colSpan="9"
                     style={{
                       textAlign: "center",
                       color: "#ef4444",
@@ -238,7 +242,7 @@ const ListMainRoute = () => {
               ) : sortedRoutes.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="10"
+                    colSpan="9"
                     style={{
                       textAlign: "center",
                       color: "#94a3b8",
@@ -260,16 +264,13 @@ const ListMainRoute = () => {
                       {item.categoriesPassed || item.routeDescription || "-"}
                     </td>
                     <td>{item.districtsPassed || "-"}</td>
-                    <td>{item.pinCount || 0}</td>
-                    <td>{item.createdBy || "-"}</td>
-                    <td>
-                      {item.createdAt
-                        ? new Date(item.createdAt).toLocaleDateString("th-TH")
-                        : "-"}
-                    </td>
-                    <td>
+                    <td style={{ textAlign: "center" }}>{item.pinCount || 0}</td>
+                    <td style={{ textAlign: "center" }}>{item.createdBy || "-"}</td>
+                    <td style={{ textAlign: "center" }}>
                       {item.updatedAt
                         ? new Date(item.updatedAt).toLocaleDateString("th-TH")
+                        : item.createdAt
+                        ? new Date(item.createdAt).toLocaleDateString("th-TH")
                         : "-"}
                     </td>
                     <td
@@ -277,9 +278,10 @@ const ListMainRoute = () => {
                         textAlign: "center",
                         fontWeight: "bold",
                         color: "#166534",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      เปิดใช้งาน
+                      [ เปิดใช้งาน ]
                     </td>
                     <td style={{ textAlign: "center" }}>
                       <div
@@ -295,6 +297,7 @@ const ListMainRoute = () => {
                             navigate(`/editMainRoute/${item.routeId}`)
                           }
                         >
+                          <FontAwesomeIcon icon={faPenToSquare} />
                           แก้ไข
                         </button>
                         <button
@@ -304,6 +307,7 @@ const ListMainRoute = () => {
                             setShowDeletePopup(true);
                           }}
                         >
+                          <FontAwesomeIcon icon={faTrashCan} />
                           ลบ
                         </button>
                       </div>
@@ -317,28 +321,29 @@ const ListMainRoute = () => {
       </main>
 
       {/* Popup ยืนยันการลบ */}
-      {showDeletePopup && (
-        <div className="popup-bg">
-          <div className="popup">
-            <div className="popup-icon error">!</div>
+      {showDeletePopup && selectedRoute && (
+        <div className="route-delete-modal-overlay" role="dialog" aria-modal="true">
+          <div className="route-delete-modal">
+            <div className="route-delete-icon">
+              <FontAwesomeIcon icon={faTrashCan} />
+            </div>
 
-            <h3>ยืนยันการลบข้อมูล</h3>
+            <h3 className="route-delete-title">ยืนยันการลบเส้นทางสุขภาพ</h3>
 
-            <p>
-              คุณต้องการลบเส้นทางสุขภาพ{" "}
-              <span className="popup-route-name">
-                {selectedRoute?.routeName}
-              </span>{" "}
-              ใช่หรือไม่?
-              <span className="popup-warning-text">
-                การดำเนินการนี้ไม่สามารถย้อนกลับได้
-              </span>
-            </p>
+            <div className="route-delete-body">
+              <p className="route-delete-desc">คุณต้องการลบเส้นทางสุขภาพ</p>
+              <div className="route-delete-name-card">
+                {selectedRoute?.routeName || "-"}
+              </div>
+              <p className="route-delete-warning-note">
+                ข้อมูลที่ลบแล้วไม่สามารถกู้คืนได้
+              </p>
+            </div>
 
-            <div className="popup-buttons">
+            <div className="route-delete-actions">
               <button
                 type="button"
-                className="cancel-btn"
+                className="btn-route-delete-cancel"
                 onClick={() => {
                   setShowDeletePopup(false);
                   setSelectedRoute(null);
@@ -349,7 +354,7 @@ const ListMainRoute = () => {
 
               <button
                 type="button"
-                className="delete-btn"
+                className="btn-route-delete-confirm"
                 onClick={handleDeleteRoute}
               >
                 ยืนยันลบ

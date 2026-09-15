@@ -42,11 +42,32 @@ const hasValidCoordinates = (hub) => {
   return (
     Number.isFinite(latitude) &&
     Number.isFinite(longitude) &&
+    !(latitude === 0 && longitude === 0) &&
     latitude >= -90 &&
     latitude <= 90 &&
     longitude >= -180 &&
     longitude <= 180
   );
+};
+
+// ตรวจสอบว่าสถานประกอบการมีคุณสมบัติครบถ้วนสำหรับแสดงบนแผนที่ (สถานะ ACTIVE + มีลิงก์ Google Maps + มีพิกัด ละติจูด ลองติจูด ที่ถูกต้อง)
+const isValidHubForMap = (hub) => {
+  if (!hub) return false;
+
+  // 1. สถานะเปิดทำการ (ACTIVE) เท่านั้น
+  const status = hub.status ? String(hub.status).trim().toLowerCase() : "active";
+  if (status !== "active" && status !== "เปิดใช้งาน") {
+    return false;
+  }
+
+  // 2. ต้องมีลิงก์ Google Maps
+  const gmapsLink = hub.googleMapsLink ? String(hub.googleMapsLink).trim() : "";
+  if (!gmapsLink || gmapsLink === "null" || gmapsLink === "undefined") {
+    return false;
+  }
+
+  // 3. มีพิกัด ละติจูด ลองติจูด ที่ถูกต้อง
+  return hasValidCoordinates(hub);
 };
 
 const CreateMainRoute = () => {
@@ -345,6 +366,14 @@ const CreateMainRoute = () => {
 
     const fetchSystemDBData = async () => {
       setLoadingRoute(true);
+      setStatusModal({
+        isOpen: true,
+        type: "loading",
+        title: id ? "กำลังโหลดข้อมูลเส้นทาง..." : "กำลังโหลดข้อมูลระบบ...",
+        message: id
+          ? "กรุณารอสักครู่ ระบบกำลังดึงแผนที่ หมวดหมู่ และข้อมูลเส้นทางเดิม"
+          : "กรุณารอสักครู่ ระบบกำลังโหลดข้อมูลหมวดหมู่และอำเภอ",
+      });
 
       try {
         const [catRes, distRes, hubRes] = await Promise.all([
@@ -357,10 +386,19 @@ const CreateMainRoute = () => {
         setDistricts(distRes.data || []);
         setWellnessHubs(hubRes.data || []);
 
-        if (!id) setLoadingRoute(false);
+        if (!id) {
+          setLoadingRoute(false);
+          setStatusModal((prev) => ({ ...prev, isOpen: false }));
+        }
       } catch (err) {
         console.error("❌ ดึงข้อมูลล้มเหลว", err);
         setLoadingRoute(false);
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "เกิดข้อผิดพลาดในการโหลดข้อมูล",
+          message: "ไม่สามารถดึงข้อมูลระบบได้ กรุณาลองใหม่อีกครั้ง",
+        });
       }
     };
 
@@ -375,6 +413,9 @@ const CreateMainRoute = () => {
       if (id && districts.length > 0) {
         try {
           await loadRouteData(id, districts);
+          if (isMounted) {
+            setStatusModal((prev) => ({ ...prev, isOpen: false }));
+          }
         } catch (err) {
           console.error("❌ เกิดข้อผิดพลาดขณะโหลดเส้นทางเก่า:", err);
           const is404 = err.response && err.response.status === 404;
@@ -612,7 +653,7 @@ const CreateMainRoute = () => {
           activeDistrictIds.includes(hubDistId) &&
           (style.isEmergency ||
             selectedCategoryIds.includes(String(hubCatId))) &&
-          hasValidCoordinates(hub)
+          isValidHubForMap(hub)
         );
       });
 
@@ -684,7 +725,7 @@ const CreateMainRoute = () => {
       return (
         activeDistrictIds.includes(hubDistId) &&
         String(hubCatId) === String(catId) &&
-        hasValidCoordinates(hub)
+        isValidHubForMap(hub)
       );
     }).length;
   };
@@ -709,7 +750,7 @@ const CreateMainRoute = () => {
       return (
         String(hubDistId) === String(districtId) &&
         (style.isEmergency || selectedCategoryIds.includes(String(hubCatId))) &&
-        hasValidCoordinates(hub)
+        isValidHubForMap(hub)
       );
     }).length;
   };
@@ -738,7 +779,7 @@ const CreateMainRoute = () => {
       return (
         activeDistrictIds.includes(hubDistId) &&
         (style.isEmergency || selectedCategoryIds.includes(String(hubCatId))) &&
-        hasValidCoordinates(hub)
+        isValidHubForMap(hub)
       );
     }).length;
   };
@@ -868,6 +909,12 @@ const CreateMainRoute = () => {
     }
 
     setIsSubmitting(true);
+    setStatusModal({
+      isOpen: true,
+      type: "loading",
+      title: id ? "กำลังบันทึกการแก้ไข..." : "กำลังบันทึกข้อมูลเส้นทาง...",
+      message: "กรุณารอสักครู่ ระบบกำลังประมวลผลและจัดเก็บข้อมูลเส้นทางสุขภาพ",
+    });
 
     try {
       let finalRouteImage = imageExistingName || "";
@@ -972,20 +1019,6 @@ const CreateMainRoute = () => {
 
   return (
     <div className="gov-admin-layout">
-      {loadingRoute && (
-        <div className="loading-overlay">
-          <div className="loading-box">
-            <i className="fa-solid fa-spinner fa-spin"></i>
-            <h3>{id ? "กำลังโหลดข้อมูลเส้นทาง" : "กำลังโหลดข้อมูลระบบ"}</h3>
-            <p>
-              {id
-                ? "กรุณารอสักครู่ ระบบกำลังดึงแผนที่ หมวดหมู่ และอำเภอเดิม"
-                : "กรุณารอสักครู่ ระบบกำลังโหลดข้อมูลหมวดหมู่และอำเภอ..."}
-            </p>
-          </div>
-        </div>
-      )}
-
       <AdminSidebar activeMenu="routes" />
 
       <main className="gov-main-content">

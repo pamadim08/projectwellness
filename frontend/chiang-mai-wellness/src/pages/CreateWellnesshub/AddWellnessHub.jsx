@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./AddWellnessHub.css";
@@ -11,23 +11,32 @@ import {
   faSave,
 } from "@fortawesome/free-solid-svg-icons";
 
-const WELLNESS_CERTIFICATE_OPTIONS = [
-  "ศูนย์เวลเนสประเภทสปาเพื่อสุขภาพ (Wellness Spa)",
-  "ศูนย์เวลเนสประเภทสถานพยาบาล (Wellness Clinic)",
-  "ศูนย์เวลเนสประเภทภัตตาคาร (Wellness Restaurant)",
-  "ศูนย์เวลเนสประเภทนวดเพื่อสุขภาพ (Wellness Massage)",
-  "ศูนย์เวลเนสประเภทที่พักนักท่องเที่ยว (Wellness Accommodation)",
-  "ศูนย์เวลเนสอัตลักษณ์ไทย (Thainess Wellness Destination)",
-];
-
 const AddWellnessHub = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [adminName, setAdminName] = useState("ผู้ดูแลระบบ (Admin)");
 
-  // State สำหรับควบคุม Dropdown เลือกใบรับรองแบบหลายตัวเลือก
-  const [isCertOpen, setIsCertOpen] = useState(false);
-  const certDropdownRef = useRef(null);
+  // State สำหรับจัดการรายการใบรับรอง 1 ใบต่อ 1 ช่อง
+  const [certificateList, setCertificateList] = useState([""]);
+
+  const handleCertChange = (index, value) => {
+    setCertificateList((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const addCertField = () => {
+    setCertificateList((prev) => [...prev, ""]);
+  };
+
+  const removeCertField = (index) => {
+    setCertificateList((prev) => {
+      if (prev.length <= 1) return [""];
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
   // State สำหรับเก็บข้อมูลตัวเลือกใน Dropdown
   const [categories, setCategories] = useState([]);
@@ -58,20 +67,6 @@ const AddWellnessHub = () => {
     categoryId: "",
     districtId: "",
   });
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (certDropdownRef.current && !certDropdownRef.current.contains(event.target)) {
-        setIsCertOpen(false);
-      }
-    }
-    if (isCertOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isCertOpen]);
 
   useEffect(() => {
     // ดึงชื่อแอดมินจากระบบ
@@ -274,6 +269,18 @@ const AddWellnessHub = () => {
       return;
     }
 
+    // 6.1 รายละเอียดสถานประกอบการ (ถ้ามี): ไม่เกิน 255 ตัวอักษร
+    const description = String(formData.wellnessHubDescription || "").trim();
+    if (description && description.length > 255) {
+      setStatusModal({
+        isOpen: true,
+        type: "warning",
+        title: "กรุณากรอกข้อมูลให้ถูกต้อง",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (รายละเอียดสถานประกอบการต้องมีความยาวไม่เกิน 255 ตัวอักษร)",
+      });
+      return;
+    }
+
     // 7. Google Maps: ต้องเป็น URL ที่ถูกต้อง และห้ามมีช่องว่าง
     if (!googleMapsLink || /\s/.test(googleMapsLink) || !/^https?:\/\/.+/i.test(googleMapsLink)) {
       setStatusModal({
@@ -301,13 +308,24 @@ const AddWellnessHub = () => {
     }
 
     setIsLoading(true);
+    setStatusModal({
+      isOpen: true,
+      type: "loading",
+      title: "กำลังบันทึกข้อมูล...",
+      message: "กรุณารอสักครู่ ระบบกำลังบันทึกสถานประกอบการและสร้างบัญชีผู้ใช้",
+    });
+
+    const certTypePayload = certificateList
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .join(", ");
 
     const payload = {
       licenseId: licenseId,
       username: formData.username || (licenseId ? (["EM01", "EM02"].includes(categoryId) ? `ES_${licenseId}` : `WH_${licenseId}`) : null),
       wellnessHubName: wellnessHubName,
       address: address,
-      certificateType: formData.certificateType || null,
+      certificateType: certTypePayload || null,
       googleMapsLink: googleMapsLink,
       telInformation: tel || null,
       contactInformation: formData.contactInformation ? formData.contactInformation.trim() : null,
@@ -401,112 +419,40 @@ const AddWellnessHub = () => {
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label>ประเภทใบรับรองศูนย์เวลเนส</label>
-                  <div
-                    ref={certDropdownRef}
-                    className={`gov-multi-select ${isCertOpen ? "open" : ""}`}
-                  >
-                    <div
-                      className="gov-multi-select-trigger gov-input-field"
-                      onClick={() => setIsCertOpen((prev) => !prev)}
+                <div className="form-group full-width">
+                  <div className="gov-cert-header">
+                    <label>ประเภทใบรับรอง / มาตรฐาน (1 ใบต่อ 1 ช่อง)</label>
+                    <button
+                      type="button"
+                      className="gov-btn-add-cert"
+                      onClick={addCertField}
                     >
-                      <div className="gov-multi-select-value">
-                        {formData.certificateType ? (
-                          <div className="gov-multi-select-tags">
-                            {formData.certificateType.split(", ").filter(Boolean).map((cert) => (
-                              <span key={cert} className="gov-multi-select-tag">
-                                <span>{cert}</span>
-                                <button
-                                  type="button"
-                                  className="gov-multi-select-tag-del"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const current = formData.certificateType.split(", ").filter(Boolean);
-                                    const next = current.filter((c) => c !== cert);
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      certificateType: next.join(", "),
-                                    }));
-                                  }}
-                                >
-                                  ×
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="gov-multi-select-placeholder">
-                            -- เลือกประเภทใบรับรอง (เลือกได้หลายตัวเลือก) --
-                          </span>
-                        )}
-                      </div>
-                      <span className="gov-multi-select-caret">▾</span>
-                    </div>
-
-                    {isCertOpen && (
-                      <div className="gov-multi-select-dropdown">
-                        <div className="gov-multi-select-header">
-                          <span>
-                            เลือกประเภทใบรับรอง ({formData.certificateType ? formData.certificateType.split(", ").filter(Boolean).length : 0}/{WELLNESS_CERTIFICATE_OPTIONS.length})
-                          </span>
+                      + เพิ่มใบรับรอง
+                    </button>
+                  </div>
+                  <div className="gov-cert-list">
+                    {certificateList.map((cert, index) => (
+                      <div key={index} className="gov-cert-row">
+                        <input
+                          type="text"
+                          className="gov-input-field"
+                          placeholder={`ระบุชื่อใบรับรอง / มาตรฐานที่ ${index + 1} (เช่น ศูนย์เวลเนสประเภทสปาเพื่อสุขภาพ)`}
+                          value={cert}
+                          maxLength={150}
+                          onChange={(e) => handleCertChange(index, e.target.value)}
+                        />
+                        {certificateList.length > 1 && (
                           <button
                             type="button"
-                            className="gov-multi-select-btn-all"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const current = formData.certificateType ? formData.certificateType.split(", ").filter(Boolean) : [];
-                              if (current.length === WELLNESS_CERTIFICATE_OPTIONS.length) {
-                                setFormData((prev) => ({ ...prev, certificateType: "" }));
-                              } else {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  certificateType: WELLNESS_CERTIFICATE_OPTIONS.join(", "),
-                                }));
-                              }
-                            }}
+                            className="gov-btn-del-cert"
+                            onClick={() => removeCertField(index)}
+                            title="ลบช่องใบรับรองนี้"
                           >
-                            {formData.certificateType && formData.certificateType.split(", ").filter(Boolean).length === WELLNESS_CERTIFICATE_OPTIONS.length
-                              ? "ล้างทั้งหมด"
-                              : "เลือกทั้งหมด"}
+                            ✕ ลบ
                           </button>
-                        </div>
-
-                        <div className="gov-multi-select-list">
-                          {WELLNESS_CERTIFICATE_OPTIONS.map((option) => {
-                            const current = formData.certificateType ? formData.certificateType.split(", ").filter(Boolean) : [];
-                            const checked = current.includes(option);
-                            return (
-                              <div
-                                key={option}
-                                className={`gov-multi-select-item ${checked ? "selected" : ""}`}
-                                onClick={() => {
-                                  let next;
-                                  if (checked) {
-                                    next = current.filter((c) => c !== option);
-                                  } else {
-                                    next = [...current, option];
-                                  }
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    certificateType: next.join(", "),
-                                  }));
-                                }}
-                              >
-                                <div
-                                  className={`gov-custom-cb ${checked ? "checked" : ""}`}
-                                >
-                                  {checked ? "✓" : ""}
-                                </div>
-                                <span className="gov-multi-select-item-text">
-                                  {option}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               </div>
@@ -580,6 +526,25 @@ const AddWellnessHub = () => {
                     value={formData.contactInformation}
                     onChange={handleChange}
                   />
+                  <div className="char-counter">
+                    {(formData.contactInformation || "").length}/255
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>รายละเอียดสถานประกอบการ (ไม่บังคับ)</label>
+                <textarea
+                  name="wellnessHubDescription"
+                  className="gov-input-field gov-textarea"
+                  placeholder="ระบุรายละเอียดหรือจุดเด่นของสถานประกอบการ (สูงสุด 255 ตัวอักษร)..."
+                  maxLength={255}
+                  rows={4}
+                  value={formData.wellnessHubDescription}
+                  onChange={handleChange}
+                ></textarea>
+                <div className="char-counter">
+                  {(formData.wellnessHubDescription || "").length}/255
                 </div>
               </div>
 

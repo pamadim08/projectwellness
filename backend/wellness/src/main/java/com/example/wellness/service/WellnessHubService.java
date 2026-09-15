@@ -8,6 +8,7 @@ import com.example.wellness.repository.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -168,11 +169,12 @@ public class WellnessHubService {
 
         // 1. Query filtered WellnessHub directly from DB
         List<WellnessHub> results = new ArrayList<>(
-                wellnessHubRepository.searchWithFilter(keyword, categoryIdStr, districtId)
-        );
+                wellnessHubRepository.searchWithFilter(keyword, categoryIdStr, districtId));
 
-        // 2. Query filtered EmergencyService directly from DB (if category is null or emergency category)
-        boolean checkEmergency = (categoryIdStr == null || EMERGENCY_CATEGORY_IDS.contains(categoryIdStr.toUpperCase()));
+        // 2. Query filtered EmergencyService directly from DB (if category is null or
+        // emergency category)
+        boolean checkEmergency = (categoryIdStr == null
+                || EMERGENCY_CATEGORY_IDS.contains(categoryIdStr.toUpperCase()));
         if (checkEmergency) {
             List<WellnessHub> emergencyResults = emergencyServiceRepository
                     .searchWithFilter(keyword, categoryIdStr, districtId)
@@ -217,7 +219,8 @@ public class WellnessHubService {
         }
         String licenseId = wellnessHub.getLicenseId().trim();
         if (!licenseId.matches("^[a-zA-Z0-9]{10,13}$")) {
-            throw new IllegalArgumentException("เลขใบอนุญาตต้องเป็นภาษาอังกฤษหรือตัวเลข 10-13 ตัวอักษร และไม่มีช่องว่าง");
+            throw new IllegalArgumentException(
+                    "เลขใบอนุญาตต้องเป็นภาษาอังกฤษหรือตัวเลข 10-13 ตัวอักษร และไม่มีช่องว่าง");
         }
         wellnessHub.setLicenseId(licenseId);
 
@@ -275,43 +278,61 @@ public class WellnessHubService {
         }
         wellnessHub.setAddress(address);
 
-        // 6. googleMapsLink: required, ต้องเป็น Google Maps URL ที่ถูกต้อง, ห้ามมีช่องว่าง
+        // 5.1 wellnessHubDescription: optional, if provided max 255 characters
+        if (wellnessHub.getWellnessHubDescription() != null && !wellnessHub.getWellnessHubDescription().trim().isEmpty()) {
+            String desc = wellnessHub.getWellnessHubDescription().trim();
+            if (desc.length() > 255) {
+                throw new IllegalArgumentException("รายละเอียดสถานประกอบการต้องมีความยาวไม่เกิน 255 ตัวอักษร");
+            }
+            wellnessHub.setWellnessHubDescription(desc);
+        } else {
+            wellnessHub.setWellnessHubDescription(null);
+        }
+
+        // 6. googleMapsLink: required, ต้องเป็น "#" หรือ Google Maps URL ที่ถูกต้อง
         if (wellnessHub.getGoogleMapsLink() == null || wellnessHub.getGoogleMapsLink().trim().isEmpty()) {
-            throw new IllegalArgumentException("กรุณาระบุลิงก์ Google Maps");
+            throw new IllegalArgumentException("กรุณาระบุลิงก์ Google Maps หรือใส่ #");
         }
         String googleMapsLink = wellnessHub.getGoogleMapsLink().trim();
-        if (googleMapsLink.contains(" ")) {
-            throw new IllegalArgumentException("ลิงก์ Google Maps ต้องไม่มีช่องว่าง");
-        }
-        if (!googleMapsLink.matches("^https?://.*")) {
-            throw new IllegalArgumentException("ลิงก์ Google Maps ต้องเป็น URL ที่ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https://)");
+        if (!googleMapsLink.equals("#")) {
+            if (googleMapsLink.contains(" ")) {
+                throw new IllegalArgumentException("ลิงก์ Google Maps ต้องไม่มีช่องว่าง");
+            }
+            if (!googleMapsLink.matches("^https?://.*")) {
+                throw new IllegalArgumentException(
+                        "ลิงก์ Google Maps ต้องเป็น URL ที่ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https://) หรือใส่ #");
+            }
+
+            // ตรวจลิงก์ Google Maps ซ้ำใน DB ด้วย existsByGoogleMapsLink (ยกเว้น #)
+            if (wellnessHubRepository.existsByGoogleMapsLink(googleMapsLink)
+                    || emergencyServiceRepository.existsByGoogleMapsLink(googleMapsLink)) {
+                throw new IllegalArgumentException("ลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาใช้ลิงก์อื่น");
+            }
+
+            // 7. & 8. latitude & longitude: required, -90 ถึง 90, -180 ถึง 180
+            if (wellnessHub.getWellnessHubLatitude() == null || wellnessHub.getWellnessHubLongitude() == null) {
+                extractCoordinates(wellnessHub);
+            }
+
+            if (wellnessHub.getWellnessHubLatitude() == null || wellnessHub.getWellnessHubLongitude() == null) {
+                throw new IllegalArgumentException(
+                        "ไม่สามารถดึงพิกัดจากลิงก์ Google Maps ได้ กรุณาตรวจสอบลิงก์ Google Maps หรือใส่ #");
+            }
+
+            Double lat = wellnessHub.getWellnessHubLatitude();
+            Double lng = wellnessHub.getWellnessHubLongitude();
+
+            if (lat < -90.0 || lat > 90.0) {
+                throw new IllegalArgumentException("ละติจูดต้องอยู่ระหว่าง -90 ถึง 90");
+            }
+            if (lng < -180.0 || lng > 180.0) {
+                throw new IllegalArgumentException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
+            }
+        } else {
+            wellnessHub.setWellnessHubLatitude(null);
+            wellnessHub.setWellnessHubLongitude(null);
         }
         wellnessHub.setGoogleMapsLink(googleMapsLink);
-
-        // ตรวจลิงก์ Google Maps ซ้ำใน DB ด้วย existsByGoogleMapsLink
-        if (wellnessHubRepository.existsByGoogleMapsLink(googleMapsLink)
-                || emergencyServiceRepository.existsByGoogleMapsLink(googleMapsLink)) {
-            throw new IllegalArgumentException("ลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาใช้ลิงก์อื่น");
-        }
-
-        // 7. & 8. latitude & longitude: required, -90 ถึง 90, -180 ถึง 180
-        if (wellnessHub.getWellnessHubLatitude() == null || wellnessHub.getWellnessHubLongitude() == null) {
-            extractCoordinates(wellnessHub);
-        }
-
-        if (wellnessHub.getWellnessHubLatitude() == null || wellnessHub.getWellnessHubLongitude() == null) {
-            throw new IllegalArgumentException("ไม่สามารถดึงพิกัดจากลิงก์ Google Maps ได้ กรุณาตรวจสอบลิงก์ Google Maps");
-        }
-
-        Double lat = wellnessHub.getWellnessHubLatitude();
-        Double lng = wellnessHub.getWellnessHubLongitude();
-
-        if (lat < -90.0 || lat > 90.0) {
-            throw new IllegalArgumentException("ละติจูดต้องอยู่ระหว่าง -90 ถึง 90");
-        }
-        if (lng < -180.0 || lng > 180.0) {
-            throw new IllegalArgumentException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
-        }
 
         boolean isEmergency = isEmergencyCategory(wellnessHub.getCategory());
 
@@ -354,7 +375,7 @@ public class WellnessHubService {
     private void extractCoordinates(WellnessHub hub) {
         String originalUrl = hub.getGoogleMapsLink();
 
-        if (originalUrl == null || originalUrl.trim().isEmpty()) {
+        if (originalUrl == null || originalUrl.trim().isEmpty() || originalUrl.trim().equals("#")) {
             hub.setWellnessHubLatitude(null);
             hub.setWellnessHubLongitude(null);
             return;
@@ -545,52 +566,67 @@ public class WellnessHubService {
                 }
             }
 
-            // 4. wellnessHubDescription: required, 10–1000
-            if (updatedData.getWellnessHubDescription() == null || updatedData.getWellnessHubDescription().trim().isEmpty()) {
-                throw new IllegalArgumentException("กรุณาระบุคำอธิบายสถานประกอบการ");
-            }
-            String desc = updatedData.getWellnessHubDescription().trim();
-            if (desc.length() < 10 || desc.length() > 1000) {
-                throw new IllegalArgumentException("คำอธิบายสถานประกอบการต้องมีความยาว 10-1000 ตัวอักษร");
+            // 4. wellnessHubDescription: optional, if provided max 255
+            String desc = null;
+            if (updatedData.getWellnessHubDescription() != null
+                    && !updatedData.getWellnessHubDescription().trim().isEmpty()) {
+                desc = updatedData.getWellnessHubDescription().trim();
+                if (desc.length() > 255) {
+                    throw new IllegalArgumentException("รายละเอียดสถานประกอบการต้องมีความยาวไม่เกิน 255 ตัวอักษร");
+                }
             }
 
-            // 5. googleMapsLink: required, valid Google Maps URL, no whitespace
+            // 5. googleMapsLink: required, valid Google Maps URL or #, no whitespace
             if (updatedData.getGoogleMapsLink() == null || updatedData.getGoogleMapsLink().trim().isEmpty()) {
-                throw new IllegalArgumentException("กรุณาระบุลิงก์ Google Maps");
+                throw new IllegalArgumentException("กรุณาระบุลิงก์ Google Maps หรือใส่ #");
             }
             String googleMapsLink = updatedData.getGoogleMapsLink().trim();
-            if (googleMapsLink.contains(" ")) {
-                throw new IllegalArgumentException("ลิงก์ Google Maps ต้องไม่มีช่องว่าง");
-            }
-            if (!googleMapsLink.matches("^https?://.*")) {
-                throw new IllegalArgumentException("ลิงก์ Google Maps ต้องเป็น URL ที่ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https://)");
+            if (!googleMapsLink.equals("#")) {
+                if (googleMapsLink.contains(" ")) {
+                    throw new IllegalArgumentException("ลิงก์ Google Maps ต้องไม่มีช่องว่าง");
+                }
+                if (!googleMapsLink.matches("^https?://.*")) {
+                    throw new IllegalArgumentException(
+                            "ลิงก์ Google Maps ต้องเป็น URL ที่ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https://) หรือใส่ #");
+                }
             }
 
-            // 6. latitude & longitude: required, -90 ถึง 90, -180 ถึง 180
-            Double lat = updatedData.getWellnessHubLatitude();
-            Double lng = updatedData.getWellnessHubLongitude();
-            if (lat == null || lng == null) {
-                WellnessHub temp = new WellnessHub();
-                temp.setGoogleMapsLink(googleMapsLink);
-                extractCoordinates(temp);
-                lat = temp.getWellnessHubLatitude();
-                lng = temp.getWellnessHubLongitude();
-            }
-            if (lat == null || lng == null) {
-                throw new IllegalArgumentException("ไม่สามารถดึงพิกัดจากลิงก์ Google Maps ได้ กรุณาตรวจสอบลิงก์ Google Maps");
-            }
-            if (lat < -90.0 || lat > 90.0) {
-                throw new IllegalArgumentException("ละติจูดต้องอยู่ระหว่าง -90 ถึง 90");
-            }
-            if (lng < -180.0 || lng > 180.0) {
-                throw new IllegalArgumentException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
+            // 6. latitude & longitude: optional (ถ้าใส่ # ให้ lat/lng เป็น null)
+            Double lat = null;
+            Double lng = null;
+            if (!googleMapsLink.equals("#")) {
+                lat = updatedData.getWellnessHubLatitude();
+                lng = updatedData.getWellnessHubLongitude();
+                if (lat == null || lng == null) {
+                    WellnessHub temp = new WellnessHub();
+                    temp.setGoogleMapsLink(googleMapsLink);
+                    extractCoordinates(temp);
+                    lat = temp.getWellnessHubLatitude();
+                    lng = temp.getWellnessHubLongitude();
+                }
+                if (lat != null && (lat < -90.0 || lat > 90.0)) {
+                    throw new IllegalArgumentException("ละติจูดต้องอยู่ระหว่าง -90 ถึง 90");
+                }
+                if (lng != null && (lng < -180.0 || lng > 180.0)) {
+                    throw new IllegalArgumentException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
+                }
             }
 
             // 7. wellnessHubImg: optional, png/jpg/jpeg, <= 20MB
             String img = null;
-            if (updatedData.getWellnessHubImg() != null && !updatedData.getWellnessHubImg().trim().isEmpty()) {
-                validateImage(updatedData.getWellnessHubImg().trim());
-                img = updatedData.getWellnessHubImg().trim();
+            if (updatedData.getWellnessHubImg() != null) {
+                if (!updatedData.getWellnessHubImg().trim().isEmpty()) {
+                    validateImage(updatedData.getWellnessHubImg().trim());
+                    img = updatedData.getWellnessHubImg().trim();
+                } else {
+                    img = "";
+                }
+            }
+
+            // 7.1 wellnessHubGallery: optional
+            String gallery = null;
+            if (updatedData.getWellnessHubGallery() != null) {
+                gallery = updatedData.getWellnessHubGallery().trim();
             }
 
             // 8. operatingHours: validate Mon-Sun
@@ -600,8 +636,32 @@ public class WellnessHubService {
                 opHours = updatedData.getOperatingHours().trim();
             }
 
-            // Apply ONLY whitelist fields (preserve licenseId, username, password, category, district, status, wellnessHubName, certificateType)
+            String oldName = oldHub != null ? oldHub.getWellnessHubName()
+                    : (oldEmergency != null ? oldEmergency.getWellnessHubName() : null);
+            String name = updatedData.getWellnessHubName() != null ? updatedData.getWellnessHubName().trim() : null;
+            if (name != null && !name.isEmpty()) {
+                if (name.length() < 5 || name.length() > 100) {
+                    throw new IllegalArgumentException("ชื่อสถานประกอบการต้องมีความยาว 5-100 ตัวอักษร");
+                }
+                if (!name.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
+                    throw new IllegalArgumentException(
+                            "ชื่อสถานประกอบการต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
+                }
+                // ตรวจชื่อซ้ำเฉพาะเมื่อเปลี่ยนชื่อใหม่
+                if (oldName == null || !name.equalsIgnoreCase(oldName.trim())) {
+                    if (wellnessHubRepository.existsByWellnessHubNameIgnoreCaseAndLicenseIdNot(name, id)
+                            || emergencyServiceRepository.existsByWellnessHubNameIgnoreCaseAndLicenseIdNot(name, id)) {
+                        throw new IllegalArgumentException("ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น");
+                    }
+                }
+            }
+
+            // Apply ONLY whitelist fields (preserve licenseId, username, password,
+            // category, district, status, certificateType)
             if (oldHub != null) {
+                if (name != null && !name.isEmpty()) {
+                    oldHub.setWellnessHubName(name);
+                }
                 oldHub.setAddress(address);
                 oldHub.setTelInformation(tel);
                 oldHub.setContactInformation(contact);
@@ -610,14 +670,23 @@ public class WellnessHubService {
                 oldHub.setWellnessHubLatitude(lat);
                 oldHub.setWellnessHubLongitude(lng);
                 if (img != null) {
-                    oldHub.setWellnessHubImg(img);
+                    oldHub.setWellnessHubImg(img.isEmpty() ? null : img);
+                }
+                if (gallery != null) {
+                    oldHub.setWellnessHubGallery(gallery);
                 }
                 if (opHours != null) {
                     oldHub.setOperatingHours(opHours);
                 }
+                if (updatedData.getCertificateType() != null) {
+                    oldHub.setCertificateType(updatedData.getCertificateType());
+                }
                 oldHub.setUpdatedAt(LocalDateTime.now());
                 return wellnessHubRepository.save(oldHub);
             } else {
+                if (name != null && !name.isEmpty()) {
+                    oldEmergency.setWellnessHubName(name);
+                }
                 oldEmergency.setAddress(address);
                 oldEmergency.setTelInformation(tel);
                 oldEmergency.setContactInformation(contact);
@@ -626,10 +695,16 @@ public class WellnessHubService {
                 oldEmergency.setWellnessHubLatitude(lat);
                 oldEmergency.setWellnessHubLongitude(lng);
                 if (img != null) {
-                    oldEmergency.setWellnessHubImg(img);
+                    oldEmergency.setWellnessHubImg(img.isEmpty() ? null : img);
+                }
+                if (gallery != null) {
+                    oldEmergency.setWellnessHubGallery(gallery);
                 }
                 if (opHours != null) {
                     oldEmergency.setOperatingHours(opHours);
+                }
+                if (updatedData.getCertificateType() != null) {
+                    oldEmergency.setCertificateType(updatedData.getCertificateType());
                 }
                 oldEmergency.setUpdatedAt(LocalDateTime.now());
                 EmergencyService saved = emergencyServiceRepository.save(oldEmergency);
@@ -643,24 +718,34 @@ public class WellnessHubService {
             throw new IllegalArgumentException("ไม่สามารถเปลี่ยนเลขใบอนุญาตได้");
         }
 
+        String oldName = oldHub != null ? oldHub.getWellnessHubName()
+                : (oldEmergency != null ? oldEmergency.getWellnessHubName() : null);
+
         // 2. wellnessHubName: required, ไทย/อังกฤษ/ตัวเลข, 5–100 ตัว
-        if (updatedData.getWellnessHubName() == null || updatedData.getWellnessHubName().trim().isEmpty()) {
+        String name = updatedData.getWellnessHubName() != null && !updatedData.getWellnessHubName().trim().isEmpty()
+                ? updatedData.getWellnessHubName().trim()
+                : oldName;
+
+        if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("กรุณาระบุชื่อสถานประกอบการ");
         }
-        String name = updatedData.getWellnessHubName().trim();
+        name = name.trim();
         if (name.length() < 5 || name.length() > 100) {
             throw new IllegalArgumentException("ชื่อสถานประกอบการต้องมีความยาว 5-100 ตัวอักษร");
         }
         if (!name.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
             throw new IllegalArgumentException("ชื่อสถานประกอบการต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
         }
-        if (wellnessHubRepository.existsByWellnessHubNameIgnoreCaseAndLicenseIdNot(name, id)
-                || emergencyServiceRepository.existsByWellnessHubNameIgnoreCaseAndLicenseIdNot(name, id)) {
-            throw new IllegalArgumentException("ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น");
+        // ตรวจชื่อซ้ำเฉพาะเมื่อเปลี่ยนชื่อใหม่ต่างจากชื่อเดิมของตัวเอง
+        if (oldName == null || !name.equalsIgnoreCase(oldName.trim())) {
+            if (wellnessHubRepository.existsByWellnessHubNameIgnoreCaseAndLicenseIdNot(name, id)
+                    || emergencyServiceRepository.existsByWellnessHubNameIgnoreCaseAndLicenseIdNot(name, id)) {
+                throw new IllegalArgumentException("ชื่อสถานประกอบการนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น");
+            }
         }
 
-        // 3. Category: ต้องมีจริงในฐานข้อมูล
-        Category targetCategory;
+        // 3. Category: optional ในหน้าแก้ไข (ถ้าไม่ระบุ ให้คงของเดิมไว้)
+        Category targetCategory = null;
         if (updatedData.getCategory() != null
                 && updatedData.getCategory().getCategoryId() != null
                 && !updatedData.getCategory().getCategoryId().trim().isEmpty()) {
@@ -671,12 +756,12 @@ public class WellnessHubService {
 
         } else if (oldHub != null) {
             targetCategory = oldHub.getCategory();
-        } else {
+        } else if (oldEmergency != null) {
             targetCategory = oldEmergency.getCategory();
         }
 
-        // 4. District: ต้องมีจริงในฐานข้อมูล
-        District targetDistrict;
+        // 4. District: optional ในหน้าแก้ไข (ถ้าไม่ระบุ ให้คงของเดิมไว้)
+        District targetDistrict = null;
         if (updatedData.getDistrict() != null
                 && updatedData.getDistrict().getDistrictId() != null) {
 
@@ -686,59 +771,73 @@ public class WellnessHubService {
 
         } else if (oldHub != null) {
             targetDistrict = oldHub.getDistrict();
-        } else {
+        } else if (oldEmergency != null) {
             targetDistrict = oldEmergency.getDistrict();
         }
 
-        // 5. address: required, 10–255 ตัว
-        if (updatedData.getAddress() == null || updatedData.getAddress().trim().isEmpty()) {
-            throw new IllegalArgumentException("กรุณาระบุที่อยู่");
-        }
-        String address = updatedData.getAddress().trim();
-        if (address.length() < 10 || address.length() > 255) {
-            throw new IllegalArgumentException("ที่อยู่ต้องมีความยาว 10-255 ตัวอักษร");
-        }
-
-        // 6. telInformation: required, ตัวเลข 9-10 หลัก ไม่มีช่องว่าง
-        if (updatedData.getTelInformation() == null || updatedData.getTelInformation().trim().isEmpty()) {
-            throw new IllegalArgumentException("กรุณาระบุเบอร์โทรศัพท์");
-        }
-        String tel = updatedData.getTelInformation().trim();
-        if (!tel.matches("^[0-9]{9,10}$")) {
-            throw new IllegalArgumentException("เบอร์โทรศัพท์ต้องเป็นตัวเลข 9-10 หลัก และไม่มีช่องว่าง");
+        // 5. address: optional, สูงสุด 255 ตัวอักษร (ถ้ามีระบุ)
+        String address = null;
+        if (updatedData.getAddress() != null && !updatedData.getAddress().trim().isEmpty()) {
+            address = updatedData.getAddress().trim();
+            if (address.length() > 255) {
+                throw new IllegalArgumentException("ที่อยู่ต้องมีความยาวไม่เกิน 255 ตัวอักษร");
+            }
         }
 
-        // 7. googleMapsLink: required, ต้องเป็น Google Maps URL ที่ถูกต้อง, ห้ามมีช่องว่าง
+        // 6. telInformation: optional, ตัวเลข 9-10 หลัก ไม่มีช่องว่าง (ถ้ามีระบุ)
+        String tel = null;
+        if (updatedData.getTelInformation() != null && !updatedData.getTelInformation().trim().isEmpty()) {
+            tel = updatedData.getTelInformation().trim();
+            if (!tel.matches("^[0-9]{9,10}$")) {
+                throw new IllegalArgumentException("เบอร์โทรศัพท์ต้องเป็นตัวเลข 9-10 หลัก และไม่มีช่องว่าง");
+            }
+        }
+
+        // 7. googleMapsLink: required, ต้องเป็น "#" หรือ Google Maps URL ที่ถูกต้อง
         if (updatedData.getGoogleMapsLink() == null || updatedData.getGoogleMapsLink().trim().isEmpty()) {
-            throw new IllegalArgumentException("กรุณาระบุลิงก์ Google Maps");
+            throw new IllegalArgumentException("กรุณาระบุลิงก์ Google Maps หรือใส่ #");
         }
         String googleMapsLink = updatedData.getGoogleMapsLink().trim();
-        if (googleMapsLink.contains(" ")) {
-            throw new IllegalArgumentException("ลิงก์ Google Maps ต้องไม่มีช่องว่าง");
-        }
-        if (!googleMapsLink.matches("^https?://.*")) {
-            throw new IllegalArgumentException("ลิงก์ Google Maps ต้องเป็น URL ที่ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https://)");
+        if (!googleMapsLink.equals("#")) {
+            if (googleMapsLink.contains(" ")) {
+                throw new IllegalArgumentException("ลิงก์ Google Maps ต้องไม่มีช่องว่าง");
+            }
+            if (!googleMapsLink.matches("^https?://.*")) {
+                throw new IllegalArgumentException(
+                        "ลิงก์ Google Maps ต้องเป็น URL ที่ถูกต้อง (ขึ้นต้นด้วย http:// หรือ https://) หรือใส่ #");
+            }
         }
 
-        // 8. latitude & longitude: required, -90 ถึง 90, -180 ถึง 180
-        Double lat = updatedData.getWellnessHubLatitude();
-        Double lng = updatedData.getWellnessHubLongitude();
-        if (lat == null || lng == null) {
-            WellnessHub temp = new WellnessHub();
-            temp.setGoogleMapsLink(googleMapsLink);
-            extractCoordinates(temp);
-            lat = temp.getWellnessHubLatitude();
-            lng = temp.getWellnessHubLongitude();
+        // 8. latitude & longitude: optional (ถ้าใส่ # ให้ lat/lng เป็น null)
+        Double lat = null;
+        Double lng = null;
+        if (!googleMapsLink.equals("#")) {
+            lat = updatedData.getWellnessHubLatitude();
+            lng = updatedData.getWellnessHubLongitude();
+            if (lat == null || lng == null) {
+                WellnessHub temp = new WellnessHub();
+                temp.setGoogleMapsLink(googleMapsLink);
+                extractCoordinates(temp);
+                lat = temp.getWellnessHubLatitude();
+                lng = temp.getWellnessHubLongitude();
+            }
+            if (lat != null && (lat < -90.0 || lat > 90.0)) {
+                throw new IllegalArgumentException("ละติจูดต้องอยู่ระหว่าง -90 ถึง 90");
+            }
+            if (lng != null && (lng < -180.0 || lng > 180.0)) {
+                throw new IllegalArgumentException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
+            }
         }
-        if (lat == null || lng == null) {
-            throw new IllegalArgumentException("ไม่สามารถดึงพิกัดจากลิงก์ Google Maps ได้ กรุณาตรวจสอบลิงก์ Google Maps");
+
+        // 8.1 wellnessHubDescription: optional, if provided max 255
+        String adminDesc = null;
+        if (updatedData.getWellnessHubDescription() != null && !updatedData.getWellnessHubDescription().trim().isEmpty()) {
+            adminDesc = updatedData.getWellnessHubDescription().trim();
+            if (adminDesc.length() > 255) {
+                throw new IllegalArgumentException("รายละเอียดสถานประกอบการต้องมีความยาวไม่เกิน 255 ตัวอักษร");
+            }
         }
-        if (lat < -90.0 || lat > 90.0) {
-            throw new IllegalArgumentException("ละติจูดต้องอยู่ระหว่าง -90 ถึง 90");
-        }
-        if (lng < -180.0 || lng > 180.0) {
-            throw new IllegalArgumentException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
-        }
+        updatedData.setWellnessHubDescription(adminDesc);
 
         updatedData.setWellnessHubName(name);
         updatedData.setAddress(address);
@@ -782,7 +881,6 @@ public class WellnessHubService {
             emergency.setCategory(targetCategory);
             emergency.setDistrict(targetDistrict);
 
-            accountRequestRepository.deleteByLicenseId(id);
             wellnessHubRepository.delete(oldHub);
 
             EmergencyService savedEmergency = emergencyServiceRepository.save(emergency);
@@ -802,14 +900,16 @@ public class WellnessHubService {
         }
         String raw = img.trim();
         if (raw.startsWith("data:image/")) {
-            if (!raw.startsWith("data:image/jpeg") && !raw.startsWith("data:image/jpg") && !raw.startsWith("data:image/png")) {
+            if (!raw.startsWith("data:image/jpeg") && !raw.startsWith("data:image/jpg")
+                    && !raw.startsWith("data:image/png")) {
                 throw new IllegalArgumentException("รองรับเฉพาะไฟล์รูปภาพ .png, .jpg หรือ .jpeg เท่านั้น");
             }
             if (raw.length() > 28_000_000) {
                 throw new IllegalArgumentException("ขนาดรูปภาพต้องไม่เกิน 20 MB");
             }
         } else if (raw.toLowerCase().endsWith(".webp") || raw.contains("image/webp")) {
-            throw new IllegalArgumentException("รองรับเฉพาะไฟล์รูปภาพ .png, .jpg หรือ .jpeg เท่านั้น (ไม่อนุญาตไฟล์ webp)");
+            throw new IllegalArgumentException(
+                    "รองรับเฉพาะไฟล์รูปภาพ .png, .jpg หรือ .jpeg เท่านั้น (ไม่อนุญาตไฟล์ webp)");
         }
     }
 
@@ -823,7 +923,7 @@ public class WellnessHubService {
             if (!root.isObject()) {
                 throw new IllegalArgumentException("รูปแบบเวลาเปิด-ปิดไม่ถูกต้อง");
             }
-            String[] days = {"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"};
+            String[] days = { "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" };
             Pattern timePattern = Pattern.compile("^([01]\\d|2[0-3]):[0-5]\\d$");
 
             for (String day : days) {
@@ -864,10 +964,10 @@ public class WellnessHubService {
             target.setWellnessHubDescription(updatedData.getWellnessHubDescription().trim());
         }
         if (updatedData.getWellnessHubImg() != null) {
-            target.setWellnessHubImg(updatedData.getWellnessHubImg());
+            target.setWellnessHubImg(updatedData.getWellnessHubImg().trim().isEmpty() ? null : updatedData.getWellnessHubImg().trim());
         }
         if (updatedData.getWellnessHubGallery() != null) {
-            target.setWellnessHubGallery(updatedData.getWellnessHubGallery());
+            target.setWellnessHubGallery(updatedData.getWellnessHubGallery().trim().isEmpty() ? null : updatedData.getWellnessHubGallery().trim());
         }
         if (updatedData.getCertificateType() != null) {
             target.setCertificateType(updatedData.getCertificateType());
@@ -898,10 +998,12 @@ public class WellnessHubService {
             target.setGoogleMapsLink(source.getGoogleMapsLink());
         if (source.getWellnessHubDescription() != null)
             target.setWellnessHubDescription(source.getWellnessHubDescription());
-        if (source.getWellnessHubImg() != null)
-            target.setWellnessHubImg(source.getWellnessHubImg());
-        if (source.getWellnessHubGallery() != null)
-            target.setWellnessHubGallery(source.getWellnessHubGallery());
+        if (source.getWellnessHubImg() != null) {
+            target.setWellnessHubImg(source.getWellnessHubImg().trim().isEmpty() ? null : source.getWellnessHubImg().trim());
+        }
+        if (source.getWellnessHubGallery() != null) {
+            target.setWellnessHubGallery(source.getWellnessHubGallery().trim().isEmpty() ? null : source.getWellnessHubGallery().trim());
+        }
         if (source.getCertificateType() != null)
             target.setCertificateType(source.getCertificateType());
         if (source.getOperatingHours() != null)
@@ -920,17 +1022,61 @@ public class WellnessHubService {
     }
 
     @Transactional
-    public boolean deleteWellnessHub(String id) {
-        if (emergencyServiceRepository.existsById(id)) {
-            emergencyServiceRepository.deleteById(id);
-            return true;
+    public boolean updateStatus(String id, String newStatus) {
+        if (id == null || id.trim().isEmpty() || newStatus == null || newStatus.trim().isEmpty()) {
+            return false;
         }
 
-        WellnessHub hub = wellnessHubRepository.findById(id).orElse(null);
+        String cleanStatus = newStatus.trim().toUpperCase();
+        if (!"ACTIVE".equals(cleanStatus) && !"INACTIVE".equals(cleanStatus) && !"SUSPENDED".equals(cleanStatus)) {
+            return false;
+        }
 
-        if (hub != null) {
-            accountRequestRepository.deleteByLicenseId(id);
-            wellnessHubRepository.delete(hub);
+        if (emergencyServiceRepository.existsById(id)) {
+            EmergencyService service = emergencyServiceRepository.findById(id).orElse(null);
+            if (service != null) {
+                service.setStatus(cleanStatus);
+                service.setUpdatedAt(LocalDateTime.now());
+                emergencyServiceRepository.save(service);
+                return true;
+            }
+        } else {
+            WellnessHub hub = wellnessHubRepository.findById(id).orElse(null);
+            if (hub != null) {
+                hub.setStatus(cleanStatus);
+                hub.setUpdatedAt(LocalDateTime.now());
+                wellnessHubRepository.save(hub);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Transactional
+    public boolean deleteWellnessHub(String id) {
+        boolean deleted = false;
+        if (emergencyServiceRepository.existsById(id)) {
+            emergencyServiceRepository.deleteById(id);
+            deleted = true;
+        } else {
+            WellnessHub hub = wellnessHubRepository.findById(id).orElse(null);
+            if (hub != null) {
+                wellnessHubRepository.delete(hub);
+                deleted = true;
+            }
+        }
+
+        if (deleted) {
+            List<AccountRequest> requests = accountRequestRepository.findByLicenseIdOrderByRequestIdDesc(id);
+            if (requests != null && !requests.isEmpty()) {
+                for (AccountRequest req : requests) {
+                    req.setRequestStatus("REJECTED");
+                    req.setRejectionReason("สถานประกอบการถูกลบโดยผู้ดูแลระบบ");
+                    req.setProcessedDate(LocalDateTime.now());
+                }
+                accountRequestRepository.saveAll(requests);
+            }
             return true;
         }
         return false;
@@ -940,6 +1086,8 @@ public class WellnessHubService {
         EmergencyService emergency = new EmergencyService();
 
         emergency.setLicenseId(hub.getLicenseId());
+        emergency.setUsername(hub.getUsername());
+        emergency.setPassword(hub.getPassword());
         emergency.setWellnessHubName(hub.getWellnessHubName());
         emergency.setAddress(hub.getAddress());
         emergency.setContactInformation(hub.getContactInformation());
@@ -965,6 +1113,8 @@ public class WellnessHubService {
         WellnessHub hub = new WellnessHub();
 
         hub.setLicenseId(emergency.getLicenseId());
+        hub.setUsername(emergency.getUsername());
+        hub.setPassword(emergency.getPassword());
         hub.setWellnessHubName(emergency.getWellnessHubName());
         hub.setAddress(emergency.getAddress());
         hub.setContactInformation(emergency.getContactInformation());
@@ -988,111 +1138,92 @@ public class WellnessHubService {
     }
 
     // @PostConstruct
-    // public void migrateOldGoogleMapsLinks() {
-    // System.out.println("==================================================");
-    // System.out.println("🔄 [Data Migration] เริ่มตรวจสอบพิกัดข้อมูลเก่า");
+    public void migrateOldGoogleMapsLinks() {
+        System.out.println("==================================================");
+        System.out.println("🔄 [Data Migration] เริ่มตรวจสอบพิกัดข้อมูลเก่า");
 
-    // int wellnessSuccessCount = 0;
-    // int wellnessFailedCount = 0;
+        int wellnessSuccessCount = 0;
+        int wellnessFailedCount = 0;
 
-    // int emergencySuccessCount = 0;
-    // int emergencyFailedCount = 0;
+        int emergencySuccessCount = 0;
+        int emergencyFailedCount = 0;
 
-    // List<WellnessHub> allHubs = wellnessHubRepository.findAll();
+        List<WellnessHub> allHubs = wellnessHubRepository.findAll();
 
-    // for (WellnessHub hub : allHubs) {
-    // if (!shouldMigrateCoordinates(
-    // hub.getGoogleMapsLink(),
-    // hub.getWellnessHubLatitude(),
-    // hub.getWellnessHubLongitude())) {
-    // continue;
-    // }
+        for (WellnessHub hub : allHubs) {
+            if (!shouldMigrateCoordinates(
+                    hub.getGoogleMapsLink(),
+                    hub.getWellnessHubLatitude(),
+                    hub.getWellnessHubLongitude())) {
+                continue;
+            }
 
-    // try {
-    // extractCoordinates(hub);
+            try {
+                extractCoordinates(hub);
 
-    // if (hub.getWellnessHubLatitude() != null && hub.getWellnessHubLongitude() !=
-    // null) {
-    // wellnessSuccessCount++;
-    // System.out.println("✅ Wellness Hub: [" + hub.getWellnessHubName() + "]
-    // อัปเดตพิกัดสำเร็จ");
-    // } else {
-    // wellnessFailedCount++;
-    // System.out.println("🟡 Wellness Hub: [" + hub.getWellnessHubName() + "]
-    // ไม่สามารถสกัดพิกัดได้");
-    // }
+                if (hub.getWellnessHubLatitude() != null && hub.getWellnessHubLongitude() != null) {
+                    wellnessSuccessCount++;
+                    System.out.println("✅ Wellness Hub: [" + hub.getWellnessHubName() + "] อัปเดตพิกัดสำเร็จ");
+                } else {
+                    wellnessFailedCount++;
+                    System.out.println("🟡 Wellness Hub: [" + hub.getWellnessHubName() + "] ไม่สามารถสกัดพิกัดได้");
+                }
 
-    // wellnessHubRepository.save(hub);
-    // Thread.sleep(500);
+                wellnessHubRepository.save(hub);
+                Thread.sleep(500);
 
-    // } catch (InterruptedException exception) {
-    // System.err.println("❌ การ Migration ถูกขัดจังหวะ: " +
-    // exception.getMessage());
-    // Thread.currentThread().interrupt();
-    // break;
-    // } catch (Exception exception) {
-    // wellnessFailedCount++;
-    // System.err.println("❌ เกิดข้อผิดพลาดที่ Wellness Hub [" +
-    // hub.getWellnessHubName() + "]: "
-    // + exception.getMessage());
-    // }
-    // }
+            } catch (InterruptedException exception) {
+                System.err.println("❌ การ Migration ถูกขัดจังหวะ: " + exception.getMessage());
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception exception) {
+                wellnessFailedCount++;
+                System.err.println("❌ เกิดข้อผิดพลาดที่ Wellness Hub [" + hub.getWellnessHubName() + "]: " + exception.getMessage());
+            }
+        }
 
-    // List<EmergencyService> allEmergencyServices =
-    // emergencyServiceRepository.findAll();
+        List<EmergencyService> allEmergencyServices = emergencyServiceRepository.findAll();
 
-    // for (EmergencyService emergency : allEmergencyServices) {
-    // if (!shouldMigrateCoordinates(
-    // emergency.getGoogleMapsLink(),
-    // emergency.getWellnessHubLatitude(),
-    // emergency.getWellnessHubLongitude())) {
-    // continue;
-    // }
+        for (EmergencyService emergency : allEmergencyServices) {
+            if (!shouldMigrateCoordinates(
+                    emergency.getGoogleMapsLink(),
+                    emergency.getWellnessHubLatitude(),
+                    emergency.getWellnessHubLongitude())) {
+                continue;
+            }
 
-    // try {
-    // extractCoordinates(emergency);
+            try {
+                extractCoordinates(emergency);
 
-    // if (emergency.getWellnessHubLatitude() != null &&
-    // emergency.getWellnessHubLongitude() != null) {
-    // emergencySuccessCount++;
-    // System.out
-    // .println("✅ Emergency Service: [" + emergency.getWellnessHubName() + "]
-    // อัปเดตพิกัดสำเร็จ");
-    // } else {
-    // emergencyFailedCount++;
-    // System.out.println(
-    // "🟡 Emergency Service: [" + emergency.getWellnessHubName() + "]
-    // ไม่สามารถสกัดพิกัดได้");
-    // }
+                if (emergency.getWellnessHubLatitude() != null && emergency.getWellnessHubLongitude() != null) {
+                    emergencySuccessCount++;
+                    System.out.println("✅ Emergency Service: [" + emergency.getWellnessHubName() + "] อัปเดตพิกัดสำเร็จ");
+                } else {
+                    emergencyFailedCount++;
+                    System.out.println("🟡 Emergency Service: [" + emergency.getWellnessHubName() + "] ไม่สามารถสกัดพิกัดได้");
+                }
 
-    // emergencyServiceRepository.save(emergency);
-    // Thread.sleep(500);
+                emergencyServiceRepository.save(emergency);
+                Thread.sleep(500);
 
-    // } catch (InterruptedException exception) {
-    // System.err.println("❌ การ Migration ถูกขัดจังหวะ: " +
-    // exception.getMessage());
-    // Thread.currentThread().interrupt();
-    // break;
-    // } catch (Exception exception) {
-    // emergencyFailedCount++;
-    // System.err.println("❌ เกิดข้อผิดพลาดที่ Emergency Service [" +
-    // emergency.getWellnessHubName() + "]: "
-    // + exception.getMessage());
-    // }
-    // }
+            } catch (InterruptedException exception) {
+                System.err.println("❌ การ Migration ถูกขัดจังหวะ: " + exception.getMessage());
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception exception) {
+                emergencyFailedCount++;
+                System.err.println("❌ เกิดข้อผิดพลาดที่ Emergency Service [" + emergency.getWellnessHubName() + "]: " + exception.getMessage());
+            }
+        }
 
-    // System.out.println("==================================================");
-    // System.out.println("🎉 [Data Migration] ตรวจสอบข้อมูลเก่าเสร็จสิ้น");
-    // System.out.println("🟢 Wellness Hub สำเร็จ: " + wellnessSuccessCount + "
-    // รายการ");
-    // System.out.println("🟡 Wellness Hub ไม่สำเร็จ: " + wellnessFailedCount + "
-    // รายการ");
-    // System.out.println("🟢 Emergency Service สำเร็จ: " + emergencySuccessCount +
-    // " รายการ");
-    // System.out.println("🟡 Emergency Service ไม่สำเร็จ: " + emergencyFailedCount
-    // + " รายการ");
-    // System.out.println("==================================================");
-    // }
+        System.out.println("==================================================");
+        System.out.println("🎉 [Data Migration] ตรวจสอบข้อมูลเก่าเสร็จสิ้น");
+        System.out.println("🟢 Wellness Hub สำเร็จ: " + wellnessSuccessCount + " รายการ");
+        System.out.println("🟡 Wellness Hub ไม่สำเร็จ: " + wellnessFailedCount + " รายการ");
+        System.out.println("🟢 Emergency Service สำเร็จ: " + emergencySuccessCount + " รายการ");
+        System.out.println("🟡 Emergency Service ไม่สำเร็จ: " + emergencyFailedCount + " รายการ");
+        System.out.println("==================================================");
+    }
 
     private boolean shouldMigrateCoordinates(
             String googleMapsLink,
@@ -1142,7 +1273,12 @@ public class WellnessHubService {
 
     public WellnessHubDTO getWellnessHubDetail(String id) {
         WellnessHub hub = wellnessHubRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("ไม่พบข้อมูลสถานประกอบการ"));
+                .orElse(null);
+        if (hub == null) {
+            EmergencyService emer = emergencyServiceRepository.findById(id)
+                    .orElseThrow(() -> new NoSuchElementException("ไม่พบข้อมูลสถานประกอบการ"));
+            hub = convertEmergencyToWellnessHub(emer);
+        }
         return convertToDTO(hub);
     }
 

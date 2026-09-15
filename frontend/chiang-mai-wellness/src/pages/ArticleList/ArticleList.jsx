@@ -157,6 +157,14 @@ export default function ArticleList() {
   }, [loadArticles]);
 
   useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "instant",
+    });
+  }, [loading]);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [keyword, selectedCategory, sortOption]);
 

@@ -14,7 +14,7 @@ import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/v1/member") // ตั้งชื่อเส้นทางหลัก
-@CrossOrigin
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class MemberController {
 
     @Autowired

@@ -32,7 +32,7 @@ public class WellnessHubAuthService {
             throw new IllegalArgumentException("กรุณากรอกข้อมูลให้ถูกต้อง");
         }
 
-        if (trimmedUsername.length() < 4 || trimmedUsername.length() > 10) {
+        if (trimmedUsername.length() < 4 || trimmedUsername.length() > 20) {
             throw new IllegalArgumentException("กรุณากรอกข้อมูลให้ถูกต้อง");
         }
 

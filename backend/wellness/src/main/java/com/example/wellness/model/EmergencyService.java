@@ -40,10 +40,10 @@ public class EmergencyService {
     @Column(name = "wellness_hub_description", columnDefinition = "TEXT")
     private String wellnessHubDescription;
 
-    @Column(name = "wellness_hub_img", columnDefinition = "TEXT")
+    @Column(name = "wellness_hub_img", columnDefinition = "LONGTEXT")
     private String wellnessHubImg;
 
-    @Column(name = "wellness_hub_gallery", columnDefinition = "TEXT")
+    @Column(name = "wellness_hub_gallery", columnDefinition = "LONGTEXT")
     private String wellnessHubGallery;
 
     @Column(name = "wellness_hub_latitude")

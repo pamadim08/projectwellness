@@ -83,27 +83,57 @@ if (!isInterceptorRegistered) {
   );
 }
 
+// ปิดการจำตำแหน่ง Scroll อัตโนมัติของบราวเซอร์ ป้องกันหน้าจอเด้งลงล่างขณะโหลด
+if (typeof window !== "undefined" && "scrollRestoration" in window.history) {
+  window.history.scrollRestoration = "manual";
+}
+
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
+    // บังคับปิด scroll restoration ซ้ำ
+    if (typeof window !== "undefined" && "scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+
+    // เลื่อนขึ้นบนสุดทันที
     window.scrollTo({
       top: 0,
       left: 0,
       behavior: "instant",
     });
-  }, [pathname]);
+
+    // ดักเรียกซ้ำเมื่อ DOM/Layout เริ่ม render เพื่อป้องกัน layout shift ดันลงล่าง
+    const timer = setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "instant",
+      });
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [pathname, search]);
 
   return null;
 }
 
 function PublicLayout({ children }) {
   return (
-    <>
+    <div
+      className="public-layout-root"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        width: "100%",
+      }}
+    >
       <Navbar />
-      <main>{children}</main>
+      <div style={{ flex: "1 0 auto", width: "100%" }}>{children}</div>
       <Footer />
-    </>
+    </div>
   );
 }
 

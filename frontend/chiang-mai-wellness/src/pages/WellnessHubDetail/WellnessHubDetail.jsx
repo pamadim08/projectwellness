@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
   ArrowLeft,
-  Building2,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -13,7 +12,6 @@ import {
   Eye,
   FileBadge2,
   ImageIcon,
-  Info,
   Mail,
   MapPin,
   Maximize2,
@@ -21,101 +19,87 @@ import {
   Phone,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
   X,
 } from "lucide-react";
 
-import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import LoadingState from "../../Components/LoadingState/LoadingState";
-import { getCategoryMarkerIcon } from "../../utils/categoryMarkerIcons";
+import {
+  getCategoryMarkerIcon,
+  normalizeCategoryCode,
+} from "../../utils/categoryMarkerIcons";
 import "./WellnessHubDetail.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
 const DEFAULT_CENTER = [18.7883, 98.9853];
 
-const DEFAULT_CATEGORIES = [
-  {
+const CATEGORY_MAP = {
+  C01: {
     id: "SPA",
     code: "C01",
-    keyMatch: ["C01", "SPA", "MASSAGE", "นวด", "สปา"],
     name: "นวด/สปาเพื่อสุขภาพ",
     color: "#E02873",
     accentColor: "#FDEBF2",
     icon: "fa-spa",
     description: "การดูแลสุขภาพ ผ่อนคลาย และบำบัดด้วยศาสตร์การนวดและสปา",
   },
-  {
-    id: "RESTAURANT",
-    code: "C03",
-    keyMatch: ["C03", "REST", "FOOD", "อาหาร"],
-    name: "อาหารและเครื่องดื่ม",
-    color: "#0B7D31",
-    accentColor: "#EAF5ED",
-    icon: "fa-utensils",
-    description: "โภชนาการเพื่อสุขภาพ อาหารอินทรีย์ และเครื่องดื่มสมุนไพร",
-  },
-  {
-    id: "HOTEL",
-    code: "C04",
-    keyMatch: ["C04", "HOTEL", "ACCOM", "ที่พัก"],
-    name: "ที่พักฟื้นฟูสุขภาพ",
-    color: "#5E27AB",
-    accentColor: "#F2ECFB",
-    icon: "fa-bed",
-    description: "สถานที่พักผ่อนและฟื้นฟูสุขภาพท่ามกลางธรรมชาติเชียงใหม่",
-  },
-  {
+  C02: {
     id: "CLINIC",
     code: "C02",
-    keyMatch: ["C02", "CLINIC", "คลินิก"],
     name: "คลินิก/สถานพยาบาล",
     color: "#004CB4",
     accentColor: "#E7EFF9",
     icon: "fa-notes-medical",
     description: "บริการตรวจรักษา ฟื้นฟูสมรรถภาพ และการแพทย์บูรณาการ",
   },
-  {
+  C03: {
+    id: "RESTAURANT",
+    code: "C03",
+    name: "อาหารและเครื่องดื่ม",
+    color: "#0B7D31",
+    accentColor: "#EAF5ED",
+    icon: "fa-utensils",
+    description: "โภชนาการเพื่อสุขภาพ อาหารอินทรีย์ และเครื่องดื่มสมุนไพร",
+  },
+  C04: {
+    id: "HOTEL",
+    code: "C04",
+    name: "ที่พักฟื้นฟูสุขภาพ",
+    color: "#5E27AB",
+    accentColor: "#F2ECFB",
+    icon: "fa-bed",
+    description: "สถานที่พักผ่อนและฟื้นฟูสุขภาพท่ามกลางธรรมชาติเชียงใหม่",
+  },
+  C05: {
     id: "ATTRACTION",
     code: "C05",
-    keyMatch: [
-      "C05",
-      "ATTRACTION",
-      "TOURIS",
-      "TOURISM",
-      "TOURIST",
-      "TRAVEL",
-      "ท่องเที่ยว",
-    ],
     name: "สถานที่ท่องเที่ยว",
     color: "#009BB0",
     accentColor: "#E6F8FA",
     icon: "fa-map-location-dot",
     description: "แหล่งท่องเที่ยวเชิงสุขภาพ วัฒนธรรม และธรรมชาติ",
   },
-  {
-    id: "HOSPITAL",
-    code: "EM02",
-    keyMatch: ["EM02", "HOSPITAL", "โรงพยาบาล", "ALS", "ADVANCED"],
-    name: "โรงพยาบาล",
-    color: "#BD0915",
-    accentColor: "#FEECEE",
-    icon: "fa-hospital",
-    description: "โรงพยาบาลและศูนย์การแพทย์พร้อมการดูแลตลอด 24 ชั่วโมง",
-  },
-  {
+  EM01: {
     id: "RESCUE",
     code: "EM01",
-    keyMatch: ["EM01", "RESCUE", "กู้ภัย", "BLS", "BASIC"],
     name: "หน่วยกู้ภัยฉุกเฉิน",
     color: "#C98600",
     accentColor: "#FFF7DC",
     icon: "fa-truck-medical",
     description: "หน่วยบริการฉุกเฉินและกู้ชีพเพื่อความปลอดภัย 24 ชั่วโมง",
   },
-];
+  EM02: {
+    id: "HOSPITAL",
+    code: "EM02",
+    name: "โรงพยาบาล",
+    color: "#BD0915",
+    accentColor: "#FEECEE",
+    icon: "fa-hospital",
+    description: "โรงพยาบาลและศูนย์การแพทย์พร้อมการดูแลตลอด 24 ชั่วโมง",
+  },
+};
 
 const DAY_LABELS = {
   monday: "วันจันทร์",
@@ -153,35 +137,24 @@ function hasCoordinates(latitude, longitude) {
   );
 }
 
-function getCategoryInfo(hub) {
-  const catKey = (
-    hub?.categoryId ||
-    hub?.categoryName ||
-    hub?.category?.categoryId ||
-    ""
-  )
-    .toString()
-    .toUpperCase();
-
-  const matched = DEFAULT_CATEGORIES.find((cat) =>
-    cat.keyMatch.some((k) => catKey.includes(k)),
-  );
-
-  if (matched) return matched;
-
-  return {
-    id: "OTHER",
-    code: "C01",
-    name: hub?.categoryName || "สถานประกอบการเวลเนส",
-    color: "#E02873",
-    accentColor: "#FDEBF2",
-    icon: "fa-location-dot",
-    description: "สถานประกอบการเพื่อสุขภาพและการท่องเที่ยวเชิงสุขภาพ",
-  };
+function getHubCoordinates(hub) {
+  if (!hub) return null;
+  const lat = hub.latitude ?? hub.wellnessHubLatitude;
+  const lng = hub.longitude ?? hub.wellnessHubLongitude;
+  if (hasCoordinates(lat, lng)) {
+    return [Number(lat), Number(lng)];
+  }
+  return null;
 }
 
-function createWellnessHubMarkerIcon(hub) {
-  return getCategoryMarkerIcon(hub, [32, 44]);
+function getCategoryInfo(hub) {
+  const code = normalizeCategoryCode(hub);
+  const matched = CATEGORY_MAP[code] || CATEGORY_MAP.C01;
+
+  return {
+    ...matched,
+    name: hub?.categoryName || matched.name,
+  };
 }
 
 function parseJsonValue(value) {
@@ -213,33 +186,55 @@ function normalizeOperatingHours(value) {
   });
 }
 
+function removeEmojis(text) {
+  if (!text) return "";
+  return String(text)
+    .replace(
+      /[\p{Extended_Pictographic}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu,
+      "",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function normalizeCertificateTypes(value) {
   if (!hasValue(value)) return [];
 
   const parsedValue = parseJsonValue(value);
+  let rawList = [];
 
   if (Array.isArray(parsedValue)) {
-    return parsedValue
-      .map((item) => String(item).trim())
-      .filter((item) => hasValue(item));
+    rawList = parsedValue;
+  } else {
+    const strValue = String(value).trim();
+    if (strValue.includes(",")) {
+      rawList = strValue.split(",");
+    } else if (strValue.includes("\n")) {
+      rawList = strValue.split("\n");
+    } else {
+      rawList = [strValue];
+    }
   }
 
-  const strValue = String(value).trim();
-
-  if (strValue.includes(",")) {
-    return strValue
-      .split(",")
-      .map((item) => item.trim())
-      .filter((item) => hasValue(item));
-  }
-
-  return [strValue];
+  return rawList
+    .map((item) => removeEmojis(String(item)).trim())
+    .filter((item) => hasValue(item));
 }
 
 function normalizeImageSource(imageValue) {
   if (!hasValue(imageValue)) return "";
 
   let normalizedValue = imageValue;
+
+  if (typeof normalizedValue === "object" && !Array.isArray(normalizedValue)) {
+    normalizedValue =
+      normalizedValue.preview ||
+      normalizedValue.url ||
+      normalizedValue.src ||
+      normalizedValue.image ||
+      normalizedValue.path ||
+      "";
+  }
 
   if (typeof normalizedValue === "string") {
     const trimmedValue = normalizedValue.trim();
@@ -249,6 +244,8 @@ function normalizeImageSource(imageValue) {
 
       normalizedValue = Array.isArray(parsedValue)
         ? parsedValue[0] || ""
+        : typeof parsedValue === "object" && parsedValue !== null
+        ? parsedValue.preview || parsedValue.url || parsedValue.src || parsedValue.image || ""
         : trimmedValue;
     } catch (error) {
       normalizedValue = trimmedValue;
@@ -403,16 +400,13 @@ function getNavigationUrl(hub) {
   if (!hub) return "#";
 
   // 1. If coordinates exist, navigate to destination coordinates from user's current location
-  if (hasCoordinates(hub.latitude, hub.longitude)) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${Number(hub.latitude)},${Number(hub.longitude)}`;
-  }
-
-  if (hasCoordinates(hub.wellnessHubLatitude, hub.wellnessHubLongitude)) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${Number(hub.wellnessHubLatitude)},${Number(hub.wellnessHubLongitude)}`;
+  const coords = getHubCoordinates(hub);
+  if (coords) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}`;
   }
 
   // 2. If googleMapsLink contains hardcoded origin in /maps/dir/Origin/Destination, extract destination only
-  if (hasValue(hub.googleMapsLink)) {
+  if (hasValue(hub.googleMapsLink) && hub.googleMapsLink.trim() !== "#") {
     const rawLink = String(hub.googleMapsLink).trim();
 
     const dirMatch = rawLink.match(/\/maps\/dir\/([^/]+)\/([^/?#]+)/);
@@ -436,7 +430,6 @@ function getNavigationUrl(hub) {
 
 export default function WellnessHubDetail() {
   const { hubId } = useParams();
-  const licenseId = hubId;
   const navigate = useNavigate();
 
   const [hub, setHub] = useState(null);
@@ -455,9 +448,9 @@ export default function WellnessHubDetail() {
       behavior: "auto",
     });
 
-    const normalizedLicenseId = String(licenseId ?? "").trim();
+    const normalizedHubId = String(hubId ?? "").trim();
 
-    if (!normalizedLicenseId) {
+    if (!normalizedHubId) {
       setHub(null);
       setError("รหัสสถานประกอบการไม่ถูกต้อง");
       setLoading(false);
@@ -470,7 +463,7 @@ export default function WellnessHubDetail() {
 
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/home/wellness-hubs/${encodeURIComponent(normalizedLicenseId)}`,
+        `${API_BASE_URL}/home/wellness-hubs/${encodeURIComponent(normalizedHubId)}`,
         {
           timeout: 30000,
         },
@@ -489,7 +482,7 @@ export default function WellnessHubDetail() {
     } finally {
       setLoading(false);
     }
-  }, [licenseId]);
+  }, [hubId]);
 
   useEffect(() => {
     loadWellnessHub();
@@ -499,19 +492,24 @@ export default function WellnessHubDetail() {
     window.scrollTo({
       top: 0,
       left: 0,
-      behavior: "auto",
+      behavior: "instant",
     });
-  }, [hubId]);
+  }, [hubId, loading]);
 
   const imageSource = useMemo(
-    () => normalizeImageSource(hub?.wellnessHubImg),
+    () => normalizeImageSource(hub?.wellnessHubImg || hub?.img || hub?.coverImage),
     [hub],
   );
 
-  const galleryImages = useMemo(
-    () => normalizeGalleryImages(hub?.wellnessHubGallery),
-    [hub?.wellnessHubGallery],
-  );
+  const galleryImages = useMemo(() => {
+    const raw =
+      hub?.wellnessHubGallery ||
+      hub?.gallery ||
+      hub?.wellnessHubImages ||
+      hub?.images ||
+      hub?.atmosphereImages;
+    return normalizeGalleryImages(raw);
+  }, [hub]);
 
   // Combined all images for gallery/lightbox
   const allImages = useMemo(() => {
@@ -541,17 +539,15 @@ export default function WellnessHubDetail() {
   const navigationUrl = useMemo(() => getNavigationUrl(hub), [hub]);
 
   const markerIcon = useMemo(
-    () => (hub ? createWellnessHubMarkerIcon(hub) : null),
+    () => (hub ? getCategoryMarkerIcon(hub) : null),
     [hub],
   );
 
   const catInfo = useMemo(() => (hub ? getCategoryInfo(hub) : null), [hub]);
 
-  const coordinatesAvailable = hasCoordinates(hub?.latitude, hub?.longitude);
-
-  const mapPosition = coordinatesAvailable
-    ? [Number(hub.latitude), Number(hub.longitude)]
-    : DEFAULT_CENTER;
+  const hubCoords = useMemo(() => getHubCoordinates(hub), [hub]);
+  const coordinatesAvailable = Boolean(hubCoords);
+  const mapPosition = hubCoords || DEFAULT_CENTER;
 
   // Lightbox keyboard controls
   useEffect(() => {
@@ -761,11 +757,11 @@ export default function WellnessHubDetail() {
               <div className="hub-detail-highlights-bar">
                 <div className="hub-detail-highlight-item">
                   <div className="hub-detail-highlight-item__icon">
-                    <i className={`fa-solid ${catInfo.icon}`} />
+                    <MapPin />
                   </div>
                   <div>
-                    <small>ประเภทบริการ</small>
-                    <strong>{catInfo.name}</strong>
+                    <small>พื้นที่ / อำเภอที่ตั้ง</small>
+                    <strong>{hub.districtName ? `อ.${hub.districtName}` : "เชียงใหม่"}</strong>
                   </div>
                 </div>
 
@@ -818,18 +814,22 @@ export default function WellnessHubDetail() {
             )}
 
             {/* ATMOSPHERE / PHOTO GALLERY */}
-            {galleryImages.length > 0 && (
-              <section className="hub-detail-card hub-detail-card--gallery">
-                <div className="hub-detail-card__header">
-                  <div className="hub-detail-card__title-group">
-                    <span className="hub-detail-card__eyebrow">PHOTO GALLERY</span>
-                    <h2>รูปภาพบรรยากาศ ({galleryImages.length} รูป)</h2>
-                  </div>
+            <section className="hub-detail-card hub-detail-card--gallery">
+              <div className="hub-detail-card__header">
+                <div className="hub-detail-card__title-group">
+                  <span className="hub-detail-card__eyebrow">PHOTO GALLERY</span>
+                  <h2>
+                    รูปภาพบรรยากาศ {galleryImages.length > 0 ? `(${galleryImages.length} รูป)` : ""}
+                  </h2>
+                </div>
+                {galleryImages.length > 0 && (
                   <span className="hub-detail-card__hint">
                     คลิกที่รูปภาพเพื่อเปิดดูขนาดเต็ม
                   </span>
-                </div>
+                )}
+              </div>
 
+              {galleryImages.length > 0 ? (
                 <div className="hub-detail-gallery-grid">
                   {galleryImages.map((src, idx) => (
                     <button
@@ -851,8 +851,15 @@ export default function WellnessHubDetail() {
                     </button>
                   ))}
                 </div>
-              </section>
-            )}
+              ) : (
+                <div className="hub-detail-gallery-empty">
+                  <div className="hub-detail-gallery-empty__icon">
+                    <ImageIcon size={26} />
+                  </div>
+                  <p>ยังไม่มีรูปภาพบรรยากาศเพิ่มเติมสำหรับสถานประกอบการนี้</p>
+                </div>
+              )}
+            </section>
 
             {/* LOCATION & INTERACTIVE MAP */}
             {coordinatesAvailable && (
@@ -886,17 +893,83 @@ export default function WellnessHubDetail() {
                     className="hub-detail-leaflet-map"
                   >
                     <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      opacity={0.78}
                     />
                     <Marker position={mapPosition} icon={markerIcon}>
-                      <Popup>
-                        <div className="hub-map-popup">
-                          <strong>{hub.wellnessHubName}</strong>
-                          <span>อ. {hub.districtName || "เชียงใหม่"}</span>
-                          {hasValue(hub.telInformation) && (
-                            <small>โทร: {hub.telInformation}</small>
-                          )}
+                      <Popup className="route-hub-leaflet-popup">
+                        <div className="route-hub-popup">
+                          <div className="route-hub-popup__image">
+                            {imageSource && !imageError ? (
+                              <img
+                                src={imageSource}
+                                alt={hub.wellnessHubName}
+                                loading="lazy"
+                                onError={() => setImageError(true)}
+                              />
+                            ) : (
+                              <div
+                                className="route-hub-popup__image-fallback"
+                                style={{
+                                  display: "flex",
+                                  "--popup-category-color": catInfo.color,
+                                  "--popup-category-background": `${catInfo.color}18`,
+                                }}
+                              >
+                                <span className="route-hub-popup__image-fallback-icon">
+                                  <i className={`fa-solid ${catInfo.icon}`}></i>
+                                </span>
+                                <span className="route-hub-popup__image-fallback-text">
+                                  {catInfo.name}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="route-hub-popup__content">
+                            {hasValue(catInfo.name) && (
+                              <div className="route-hub-popup__category">
+                                <span
+                                  className="route-hub-popup__category-dot"
+                                  style={{ background: catInfo.color }}
+                                />
+                                <span>{catInfo.name}</span>
+                              </div>
+                            )}
+                            <h3 className="route-hub-popup__title">
+                              {hub.wellnessHubName}
+                            </h3>
+                            <div className="route-hub-popup__meta">
+                              {hasValue(hub.address) && (
+                                <div className="route-hub-popup__meta-row route-hub-popup__meta-row--address">
+                                  <span className="route-hub-popup__meta-icon">
+                                    <MapPin size={12} />
+                                  </span>
+                                  <span>{hub.address}</span>
+                                </div>
+                              )}
+                              {hasValue(hub.telInformation) && (
+                                <div className="route-hub-popup__meta-row">
+                                  <span className="route-hub-popup__meta-icon">
+                                    <Phone size={12} />
+                                  </span>
+                                  <span>{hub.telInformation}</span>
+                                </div>
+                              )}
+                            </div>
+                            {Boolean(navigationUrl && navigationUrl !== "#") && (
+                              <a
+                                href={navigationUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="route-hub-popup__button"
+                                style={{ textDecoration: "none" }}
+                              >
+                                <span>เปิดนำทางใน Google Maps</span>
+                                <Navigation size={14} />
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </Popup>
                     </Marker>
@@ -1056,47 +1129,21 @@ export default function WellnessHubDetail() {
                     <ShieldCheck size={18} />
                     <h3>ใบรับรองมาตรฐานเวลเนส</h3>
                   </div>
-                  <p>ผ่านการรับรองคุณภาพมาตรฐาน</p>
+                  <p>ผ่านการรับรองคุณภาพมาตรฐาน ({certificateTypes.length} รายการ)</p>
                 </div>
 
                 <div className="hub-detail-cert-list">
                   {certificateTypes.map((cert, index) => (
-                    <div key={`${cert}-${index}`} className="hub-detail-cert-badge">
-                      <div className="hub-detail-cert-badge__icon">
-                        <Sparkles size={14} />
+                    <div key={`${cert}-${index}`} className="hub-detail-cert-item">
+                      <div className="hub-detail-cert-bullet">
+                        <Check size={13} strokeWidth={2.6} />
                       </div>
-                      <span>{cert}</span>
+                      <span className="hub-detail-cert-text">{cert}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
-            {/* EXTENSIBLE FUTURE DATA SLOT: CATEGORY INFO */}
-            <div className="hub-detail-sidecard hub-detail-sidecard--info">
-              <div className="hub-detail-sidecard__header">
-                <div className="hub-detail-sidecard__title-flex">
-                  <Info size={18} />
-                  <h3>ข้อมูลการให้บริการ</h3>
-                </div>
-              </div>
-
-              <div className="hub-detail-category-card">
-                <div
-                  className="hub-detail-category-card__icon"
-                  style={{
-                    backgroundColor: catInfo.accentColor,
-                    color: catInfo.color,
-                  }}
-                >
-                  <i className={`fa-solid ${catInfo.icon}`} />
-                </div>
-                <div className="hub-detail-category-card__body">
-                  <strong>{catInfo.name}</strong>
-                  <p>{catInfo.description}</p>
-                </div>
-              </div>
-            </div>
           </aside>
         </div>
       </div>

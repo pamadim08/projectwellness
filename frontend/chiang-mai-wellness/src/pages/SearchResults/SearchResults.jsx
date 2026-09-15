@@ -201,6 +201,14 @@ export default function SearchResults() {
     loadSearchResults();
   }, [queryKeyword, normalizedType, loadSearchResults]);
 
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "instant",
+    });
+  }, [queryKeyword, normalizedType, loading]);
+
   const routes = useMemo(
     () => (Array.isArray(searchData?.routes) ? searchData.routes : []),
     [searchData],

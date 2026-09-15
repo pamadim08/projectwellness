@@ -101,7 +101,7 @@ export default function LoginWellnessHub() {
       Boolean(username) &&
       !/\s/.test(formData.username) &&
       username.length >= 4 &&
-      username.length <= 10;
+      username.length <= 20;
 
     const isPasswordValid =
       Boolean(password) &&
@@ -113,9 +113,9 @@ export default function LoginWellnessHub() {
         validationErrors.username = "กรุณากรอกชื่อผู้ใช้";
       } else if (/\s/.test(formData.username)) {
         validationErrors.username = "ชื่อผู้ใช้ต้องไม่มีช่องว่าง";
-      } else if (username.length < 4 || username.length > 10) {
+      } else if (username.length < 4 || username.length > 20) {
         validationErrors.username =
-          "ชื่อผู้ใช้ต้องมีความยาว 4–10 ตัวอักษร";
+          "ชื่อผู้ใช้ต้องมีความยาว 4–20 ตัวอักษร";
       }
 
       if (!password) {
@@ -153,6 +153,7 @@ export default function LoginWellnessHub() {
         },
         {
           timeout: 30000,
+          withCredentials: true,
           headers: {
             "Content-Type": "application/json",
           },
@@ -338,13 +339,13 @@ export default function LoginWellnessHub() {
                   onChange={handleInputChange}
                   placeholder="กรอกชื่อผู้ใช้"
                   autoComplete="username"
-                  maxLength={10}
+                  maxLength={20}
                   disabled={submitting}
                 />
               </div>
 
               <div className="provider-login-field__support">
-                <span>ความยาว 4–10 ตัวอักษร ไม่มีช่องว่าง</span>
+                <span>ความยาว 4–20 ตัวอักษร ไม่มีช่องว่าง</span>
               </div>
 
               {errors.username && (

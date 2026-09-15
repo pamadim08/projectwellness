@@ -241,33 +241,210 @@
 
 /* Action Buttons */
 .gov-table-action-btn {
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: bold;
+  min-height: 34px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
-  background: white;
-  border-radius: 0 !important;
+  background: #ffffff;
+  border-radius: 0px !important;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .gov-table-action-btn.edit-blue {
   color: #0056b3;
-  border: 1px solid #0056b3;
+  border: 1px solid #0056b3 !important;
   margin-right: 5px;
 }
 
 .gov-table-action-btn.edit-blue:hover {
   background: #0056b3;
-  color: white;
+  color: #ffffff;
 }
 
 .gov-table-action-btn.delete-red {
-  color: #c53030;
-  border: 1px solid #c53030;
+  color: #c82333;
+  border: 1px solid #c82333 !important;
 }
 
 .gov-table-action-btn.delete-red:hover {
-  background: #c53030;
-  color: white;
+  background: #c82333;
+  color: #ffffff;
+}
+
+/* =======================================================
+   Popup ยืนยันการลบเส้นทางสุขภาพ (Route Delete Modal)
+   จัดข้อความตรงกลาง สวยงาม ทางการ คมชัด สี่เหลี่ยม 0px
+======================================================= */
+
+.route-delete-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: routeModalFadeIn 0.2s ease-out;
+}
+
+@keyframes routeModalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.route-delete-modal {
+  width: 100%;
+  max-width: 440px;
+  padding: 32px 28px 26px;
+  background: #ffffff;
+  border-radius: 0px !important;
+  border: 1px solid #cbd5e1;
+  border-top: 5px solid #dc2626;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+  text-align: center;
+  animation: routeModalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes routeModalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.route-delete-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 16px;
+  border-radius: 0px !important;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 800;
+  box-sizing: border-box;
+}
+
+.route-delete-title {
+  margin: 0 0 14px 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.route-delete-body {
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+.route-delete-desc {
+  margin: 0 0 8px 0;
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.route-delete-name-card {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  margin: 8px 0;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #dc2626;
+  border-radius: 0px !important;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+  box-sizing: border-box;
+  word-break: break-word;
+}
+
+.route-delete-warning-note {
+  margin: 10px 0 0 0;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.route-delete-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.btn-route-delete-cancel,
+.btn-route-delete-confirm {
+  flex: 1;
+  min-height: 42px;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 0px !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.btn-route-delete-cancel {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-route-delete-cancel:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-route-delete-confirm {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #b91c1c;
+}
+
+.btn-route-delete-confirm:hover:not(:disabled) {
+  background: #b91c1c;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.btn-route-delete-cancel:disabled,
+.btn-route-delete-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 /* =======================================================
    ป้องกัน CSS หน้าอื่นทับ Layout ของ List Main Route

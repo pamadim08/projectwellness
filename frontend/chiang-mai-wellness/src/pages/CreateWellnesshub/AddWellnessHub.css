@@ -349,56 +349,80 @@
   background-color: #f8f9fa !important;
 }
 
-.gov-multi-select-item.selected {
-  background-color: #edf7ee !important;
+/* =====================================================
+   DYNAMIC CERTIFICATE INPUTS (1 CERTIFICATE PER ROW)
+===================================================== */
+.form-group.full-width {
+  grid-column: 1 / -1;
 }
 
-.gov-multi-select-item.selected .gov-multi-select-item-text {
-  color: #1c7430 !important;
-  font-weight: 600 !important;
+.gov-cert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
-/* กล่อง Checkbox สี่เหลี่ยมเล็ก ชิดข้อความ */
-.gov-custom-cb {
-  width: 14px !important;
-  height: 14px !important;
-  min-width: 14px !important;
-  max-width: 14px !important;
-  border: 1px solid #8c8c8c !important;
-  background-color: #ffffff !important;
-  border-radius: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-size: 10px !important;
-  font-weight: bold !important;
-  color: transparent !important;
-  flex-shrink: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 1 !important;
-  box-sizing: border-box !important;
-  user-select: none !important;
+.gov-cert-header label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1e293b;
+  margin: 0;
 }
 
-.gov-custom-cb.checked {
-  background-color: #1c7430 !important;
-  border-color: #1c7430 !important;
-  color: #ffffff !important;
+.gov-btn-add-cert {
+  background-color: #1e4620;
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-/* ข้อความตัวเลือก */
-.gov-multi-select-item-text {
-  flex: 1 1 auto !important;
-  font-size: 13px !important;
-  color: #333333 !important;
-  line-height: 1.35 !important;
-  white-space: normal !important;
-  word-break: normal !important;
-  text-align: left !important;
-  user-select: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
+.gov-btn-add-cert:hover {
+  background-color: #143216;
+  transform: translateY(-1px);
+}
+
+.gov-cert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.gov-cert-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.gov-cert-row .gov-input-field {
+  flex: 1;
+  width: 100%;
+}
+
+.gov-btn-del-cert {
+  background-color: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.gov-btn-del-cert:hover {
+  background-color: #ffe4e6;
+  border-color: #fda4af;
+  color: #be123c;
 }
 
 /* ป้ายบอกสถานะสร้างอัตโนมัติ */
