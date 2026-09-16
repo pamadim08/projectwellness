@@ -1,7 +1,7 @@
 package com.example.wellness.repository;
 
+import com.example.wellness.dto.OfficialArticleSummaryDTO;
 import com.example.wellness.model.MainRoute;
-import com.example.wellness.model.OfficialArticle;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
@@ -116,16 +116,24 @@ public class HomeRepository {
      * =====================================================
      *
      * ดึงบทความไม่เกิน 6 รายการ
-     * เรียงตามวันที่เผยแพร่จากใหม่ไปเก่า
+     * เรียงตามวันที่เผยแพร่จากใหม่ไปเก่า (SELECT เฉพาะฟิลด์แสดงผล ไม่ดึง articleImages)
      */
-    public List<OfficialArticle> findLatestArticles() {
+    public List<OfficialArticleSummaryDTO> findLatestArticles() {
 
         return entityManager.createQuery("""
-                        SELECT article
+                        SELECT new com.example.wellness.dto.OfficialArticleSummaryDTO(
+                            article.articleId,
+                            article.articleTitle,
+                            article.articleDetail,
+                            article.author,
+                            article.articleCategory,
+                            article.publishDate,
+                            article.img
+                        )
                         FROM OfficialArticle article
                         ORDER BY article.publishDate DESC,
                                  article.articleId DESC
-                        """, OfficialArticle.class)
+                        """, OfficialArticleSummaryDTO.class)
                 .setMaxResults(6)
                 .getResultList();
     }
@@ -178,17 +186,25 @@ public class HomeRepository {
 
     /*
      * =====================================================
-     * ส่วนที่ 4: ดึงบทความทั้งหมด
+     * ส่วนที่ 4: ดึงบทความทั้งหมด (สำหรับหน้ารวมบทความ)
      * =====================================================
      */
-    public List<OfficialArticle> findAllArticles() {
+    public List<OfficialArticleSummaryDTO> findAllArticles() {
 
         return entityManager.createQuery("""
-                        SELECT article
+                        SELECT new com.example.wellness.dto.OfficialArticleSummaryDTO(
+                            article.articleId,
+                            article.articleTitle,
+                            article.articleDetail,
+                            article.author,
+                            article.articleCategory,
+                            article.publishDate,
+                            article.img
+                        )
                         FROM OfficialArticle article
                         ORDER BY article.publishDate DESC,
                                  article.articleId DESC
-                        """, OfficialArticle.class)
+                        """, OfficialArticleSummaryDTO.class)
                 .getResultList();
     }
 }

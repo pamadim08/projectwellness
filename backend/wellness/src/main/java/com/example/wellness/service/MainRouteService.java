@@ -226,10 +226,10 @@ public class MainRouteService {
                 && !latitude.isNaN()
                 && !longitude.isNaN()
                 && !(latitude == 0.0 && longitude == 0.0)
-                && latitude >= -90
-                && latitude <= 90
-                && longitude >= -180
-                && longitude <= 180;
+                && latitude >= 17.0
+                && latitude <= 20.5
+                && longitude >= 98.0
+                && longitude <= 100.0;
     }
 
     // 🟢 เมธอดสร้างเส้นทางท่องเที่ยวใหม่

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -14,7 +15,12 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "wellness_hubs")
+@Table(name = "wellness_hubs", indexes = {
+    @Index(name = "idx_wellness_hubs_status", columnList = "status"),
+    @Index(name = "idx_wellness_hubs_category", columnList = "category_id"),
+    @Index(name = "idx_wellness_hubs_district", columnList = "district_id"),
+    @Index(name = "idx_wellness_hubs_name", columnList = "wellness_hub_name")
+})
 @Data
 public class WellnessHub {
 

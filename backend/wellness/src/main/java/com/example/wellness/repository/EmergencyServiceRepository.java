@@ -42,10 +42,12 @@ public interface EmergencyServiceRepository
             "WHERE e.district IS NOT NULL")
     List<EmergencyService> findAllEmergencyServices();
 
-    @Query("SELECT e FROM EmergencyService e " +
+    @Query("SELECT DISTINCT e FROM EmergencyService e " +
+            "LEFT JOIN FETCH e.category c " +
+            "LEFT JOIN FETCH e.district d " +
             "WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(e.wellnessHubName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-            "AND (:categoryId IS NULL OR :categoryId = '' OR UPPER(e.category.categoryId) = UPPER(:categoryId)) " +
-            "AND (:districtId IS NULL OR e.district.districtId = :districtId)")
+            "AND (:categoryId IS NULL OR :categoryId = '' OR UPPER(c.categoryId) = UPPER(:categoryId)) " +
+            "AND (:districtId IS NULL OR d.districtId = :districtId)")
     List<EmergencyService> searchWithFilter(
             @Param("keyword") String keyword,
             @Param("categoryId") String categoryId,
@@ -64,6 +66,9 @@ public interface EmergencyServiceRepository
             ORDER BY e.wellnessHubName ASC
             """)
     List<EmergencyService> searchPublicEmergencyServices(@Param("keyword") String keyword);
+
+    @Query("SELECT DISTINCT e FROM EmergencyService e LEFT JOIN FETCH e.category LEFT JOIN FETCH e.district")
+    List<EmergencyService> findAllWithCategoryAndDistrict();
 
     @Query("SELECT e FROM EmergencyService e LEFT JOIN FETCH e.category LEFT JOIN FETCH e.district WHERE e.licenseId = :licenseId")
     java.util.Optional<EmergencyService> findByIdWithCategoryAndDistrict(@Param("licenseId") String licenseId);

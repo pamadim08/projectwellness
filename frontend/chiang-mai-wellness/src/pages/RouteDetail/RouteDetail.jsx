@@ -48,18 +48,6 @@ import "./RouteDetail.css";
 const API_BASE_URL = "http://localhost:8080/api";
 const DEFAULT_CENTER = [18.7883, 98.9853];
 
-// Cache รายละเอียดเส้นทางระหว่างเปลี่ยนหน้า
-const routeDetailCache = new Map();
-
-export const clearRouteDetailCache = (routeId = null) => {
-  if (routeId !== null && routeId !== undefined) {
-    routeDetailCache.delete(String(routeId));
-    return;
-  }
-
-  routeDetailCache.clear();
-};
-
 export const SKY_DOCTOR_HUBS = [
   {
     licenseId: "SKYDOC-INTHANON-01",
@@ -317,10 +305,10 @@ function extractLatLng(item) {
   if (
     !Number.isFinite(parsedLat) ||
     !Number.isFinite(parsedLng) ||
-    parsedLat < -90 ||
-    parsedLat > 90 ||
-    parsedLng < -180 ||
-    parsedLng > 180
+    parsedLat < 17.0 ||
+    parsedLat > 20.5 ||
+    parsedLng < 98.0 ||
+    parsedLng > 100.0
   ) {
     return null;
   }
@@ -331,7 +319,11 @@ function extractLatLng(item) {
 function isMapReady(map, container) {
   if (!map || !container || !container.isConnected) return false;
   try {
-    return map.getContainer?.() === container && Boolean(map._loaded);
+    return (
+      map.getContainer?.() === container &&
+      Boolean(map._loaded) &&
+      Boolean(map._mapPane)
+    );
   } catch {
     return false;
   }
@@ -366,6 +358,31 @@ function isValidHubForMap(hub) {
   }
 
   return true;
+}
+
+function isSkyDoctorHub(item) {
+  if (!item) return false;
+  const nameUpper = String(item.wellnessHubName || item.name || "").toUpperCase();
+  const licenseUpper = String(item.licenseId || item.wellnessHubId || "").toUpperCase();
+  const catKeyUpper = String(
+    item.categoryKey ||
+    item.categoryName ||
+    item.categoryId ||
+    item.category?.categoryId ||
+    item.category?.categoryName ||
+    ""
+  ).toUpperCase();
+  return (
+    Boolean(item.isSkyDoctor) ||
+    catKeyUpper.includes("SKY") ||
+    catKeyUpper.includes("DOCTOR") ||
+    catKeyUpper.includes("ฮ.") ||
+    nameUpper.includes("SKY DOCTOR") ||
+    nameUpper.includes("SKYDOCTOR") ||
+    nameUpper.includes("สกายด็อกเตอร์") ||
+    nameUpper.includes("การแพทย์ฉุกเฉินทางอากาศ") ||
+    licenseUpper.includes("SKYDOC")
+  );
 }
 
 function normalizeImageSource(imageValue) {
@@ -476,15 +493,9 @@ export default function RouteDetail() {
   const navigate = useNavigate();
 
   const normalizedRouteId = Number(routeId);
-  const routeCacheKey = String(routeId);
 
-  const [routeData, setRouteData] = useState(() => {
-    return routeDetailCache.get(routeCacheKey) ?? null;
-  });
-
-  const [loading, setLoading] = useState(() => {
-    return !routeDetailCache.has(routeCacheKey);
-  });
+  const [routeData, setRouteData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState("");
   const [activeFilters, setActiveFilters] = useState({});
@@ -492,13 +503,33 @@ export default function RouteDetail() {
   const [visibleDistrictIds, setVisibleDistrictIds] = useState([]);
   const [isControlCollapsed, setIsControlCollapsed] = useState(false);
   const [isEmergencyMode, setIsEmergencyMode] = useState(false);
+  const [emergencyServicesList, setEmergencyServicesList] = useState([]);
+
+  // ดึงข้อมูล Emergency Services และ Sky Doctor สดจาก API / ฐานข้อมูลจริง
+  useEffect(() => {
+    let isMounted = true;
+    const fetchEmergency = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/emergency-services`);
+        if (isMounted && Array.isArray(res.data) && res.data.length > 0) {
+          setEmergencyServicesList(res.data);
+        }
+      } catch (err) {
+        console.warn("Could not fetch emergency services from API:", err);
+      }
+    };
+    fetchEmergency();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (mapRef.current) {
       const timer = setTimeout(() => {
         try {
           mapRef.current.invalidateSize();
-        } catch {}
+        } catch { }
       }, 200);
       return () => clearTimeout(timer);
     }
@@ -535,10 +566,18 @@ export default function RouteDetail() {
       .toString()
       .toUpperCase();
 
+    const nameUpper = String(hub.wellnessHubName || hub.name || "").toUpperCase();
+    const licenseUpper = String(hub.licenseId || hub.wellnessHubId || "").toUpperCase();
+
     if (
       catKey.includes("SKY") ||
       catKey.includes("DOCTOR") ||
       catKey.includes("ฮ.") ||
+      nameUpper.includes("SKY DOCTOR") ||
+      nameUpper.includes("SKYDOCTOR") ||
+      nameUpper.includes("สกายด็อกเตอร์") ||
+      nameUpper.includes("การแพทย์ฉุกเฉินทางอากาศ") ||
+      licenseUpper.includes("SKYDOC") ||
       hub.isSkyDoctor
     ) {
       return MASTER_CATEGORIES.find((c) => c.id === "SKY_DOCTOR");
@@ -620,12 +659,13 @@ export default function RouteDetail() {
 
   const availableCategories = useMemo(() => {
     const foundCategoryIds = new Set();
+    const EMERGENCY_CATEGORY_SET = new Set(["SKY_DOCTOR", "HOSPITAL", "RESCUE"]);
 
     // 1. ดึงหมวดหมู่ที่ถูกบันทึกไว้กับเส้นทางในฐานข้อมูล (routeData.categories)
     if (Array.isArray(routeData?.categories)) {
       routeData.categories.forEach((cat) => {
         const info = getCategoryInfo(cat);
-        if (info?.id && info.id !== "OTHER") {
+        if (info?.id && info.id !== "OTHER" && !EMERGENCY_CATEGORY_SET.has(info.id)) {
           foundCategoryIds.add(info.id);
         }
       });
@@ -633,19 +673,21 @@ export default function RouteDetail() {
 
     // 2. รวมหมวดหมู่ที่มีสถานประกอบการอยู่จริงใน wellnessHubs
     wellnessHubs.forEach((hub) => {
+      if (isSkyDoctorHub(hub)) return;
       const info = getCategoryInfo(hub);
-      if (info?.id && info.id !== "OTHER") {
+      if (info?.id && info.id !== "OTHER" && !EMERGENCY_CATEGORY_SET.has(info.id)) {
         foundCategoryIds.add(info.id);
       }
     });
 
-    return MASTER_CATEGORIES.filter((cat) => foundCategoryIds.has(cat.id));
+    return MASTER_CATEGORIES.filter(
+      (cat) => foundCategoryIds.has(cat.id) && !EMERGENCY_CATEGORY_SET.has(cat.id)
+    );
   }, [routeData, wellnessHubs, getCategoryInfo]);
 
   const loadRouteDetail = useCallback(
-    async (forceRefresh = false) => {
+    async () => {
       const normalizedRouteId = Number(routeId);
-      const cacheKey = String(routeId);
 
       if (
         !Number.isInteger(normalizedRouteId) ||
@@ -657,21 +699,6 @@ export default function RouteDetail() {
         return;
       }
 
-      // มี Cache แล้ว → ใช้ทันที ไม่ยิง API ซ้ำ
-      if (
-        routeDetailCache.has(cacheKey) &&
-        !forceRefresh
-      ) {
-        setRouteData(
-          routeDetailCache.get(cacheKey)
-        );
-
-        setError("");
-        setLoading(false);
-
-        return;
-      }
-
       setLoading(true);
       setError("");
 
@@ -679,7 +706,6 @@ export default function RouteDetail() {
         const response = await axios.get(
           `${API_BASE_URL}/home/routes/${normalizedRouteId}`,
           {
-            // เพิ่มจาก 15 วินาที → 30 วินาที
             timeout: 30000,
           }
         );
@@ -694,13 +720,6 @@ export default function RouteDetail() {
         }
 
         const data = response.data;
-
-        // เก็บข้อมูล Route นี้ไว้ใน Cache
-        routeDetailCache.set(
-          cacheKey,
-          data
-        );
-
         setRouteData(data);
 
       } catch (requestError) {
@@ -711,7 +730,7 @@ export default function RouteDetail() {
           requestError.code === "ECONNABORTED"
             ? "โหลดข้อมูลเส้นทางใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง"
             : requestError.response?.data?.message ||
-              "ไม่สามารถโหลดรายละเอียดเส้นทางได้"
+            "ไม่สามารถโหลดรายละเอียดเส้นทางได้"
         );
 
       } finally {
@@ -842,72 +861,209 @@ export default function RouteDetail() {
 
   const displayedWellnessHubs = useMemo(() => {
     if (isEmergencyMode) {
+      // อำเภอเป้าหมายในเส้นทาง (ตามที่เลือกเปิดอยู่ หรือทั้งหมดในเส้นทาง)
+      const targetDistricts = visibleDistricts.length > 0 ? visibleDistricts : districts;
+
+      const targetDistrictIdSet = new Set(
+        targetDistricts
+          .map((d) => d.districtId ?? d.district?.districtId)
+          .filter((id) => id != null && String(id).trim() !== "")
+          .map(String),
+      );
+
+      const cleanDistrictName = (name) => {
+        if (!name) return "";
+        return String(name)
+          .replace(/^อำเภอ\s*/i, "")
+          .replace(/^อ\.\s*/i, "")
+          .trim()
+          .toLowerCase();
+      };
+
+      const targetDistrictCleanNames = new Set(
+        targetDistricts
+          .map((d) => d.districtName || d.district?.districtName || "")
+          .map(cleanDistrictName)
+          .filter(Boolean),
+      );
+
+      // ฟังก์ชันตรวจสอบว่าจุดบริการฉุกเฉินอยู่ในอำเภอของเส้นทางหรือไม่
+      const isEmergencyInRouteDistricts = (item) => {
+        if (!item || !targetDistricts.length) return false;
+
+        // 1. ตรวจสอบตาม District ID
+        const itemDistrictId = item.districtId ?? item.district?.districtId ?? null;
+        if (itemDistrictId != null && String(itemDistrictId).trim() !== "") {
+          if (targetDistrictIdSet.has(String(itemDistrictId))) {
+            return true;
+          }
+        }
+
+        // 2. ตรวจสอบตาม District Name
+        const itemDistrictName = cleanDistrictName(
+          item.districtName || item.district?.districtName || "",
+        );
+        if (itemDistrictName && targetDistrictCleanNames.has(itemDistrictName)) {
+          return true;
+        }
+
+        // 3. ตรวจสอบจาก Address (ที่อยู่)
+        if (item.address) {
+          const addressLower = String(item.address).toLowerCase();
+          for (const targetName of targetDistrictCleanNames) {
+            if (
+              targetName &&
+              (addressLower.includes(`อ.${targetName}`) ||
+                addressLower.includes(`อำเภอ${targetName}`) ||
+                addressLower.includes(targetName))
+            ) {
+              return true;
+            }
+          }
+        }
+
+        return false;
+      };
+
       const emergencyFromRoute = wellnessHubs.filter((hub) => {
         const cat = getCategoryInfo(hub);
-        return (
+        const isSkyDoc = isSkyDoctorHub(hub) || cat.id === "SKY_DOCTOR";
+        const isEmergency =
+          isSkyDoc ||
           cat.id === "HOSPITAL" ||
-          cat.id === "RESCUE" ||
-          cat.id === "SKY_DOCTOR" ||
-          hub.isSkyDoctor
-        );
+          cat.id === "RESCUE";
+        return isEmergency && (isSkyDoc || isEmergencyInRouteDistricts(hub));
       });
 
-      const list = [...SKY_DOCTOR_HUBS];
+      const list = [];
+
+      // 1. นำข้อมูล Emergency Services และ Sky Doctor ที่ดึงสดจาก API / ฐานข้อมูลจริง
+      if (Array.isArray(emergencyServicesList) && emergencyServicesList.length > 0) {
+        emergencyServicesList.forEach((em) => {
+          const isSkyDoc = isSkyDoctorHub(em);
+          const mappedItem = {
+            ...em,
+            wellnessHubId: em.licenseId,
+            wellnessHubName: em.wellnessHubName || em.name,
+            wellnessHubLatitude: em.wellnessHubLatitude ?? em.latitude,
+            wellnessHubLongitude: em.wellnessHubLongitude ?? em.longitude,
+            isSkyDoctor: isSkyDoc,
+            categoryKey: isSkyDoc ? "SKY_DOCTOR" : (em.categoryKey || "HOSPITAL"),
+          };
+
+          // 🚨 Sky Doctor ทั้งสองที่ต้องโผล่เสมอ / โรงพยาบาลและกู้ภัยทั่วไปต้องอยู่ในอำเภอตามเส้นทาง
+          if (isSkyDoc || isEmergencyInRouteDistricts(mappedItem)) {
+            list.push(mappedItem);
+          }
+        });
+      }
+
+      // 2. รวมข้อมูลจุดฉุกเฉินที่มีอยู่ในเส้นทางปัจจุบัน (ถ้ายังไม่มีใน list)
       emergencyFromRoute.forEach((eh) => {
+        const key = eh.licenseId || eh.wellnessHubId;
         if (
           !list.some(
             (item) =>
-              (item.licenseId || item.wellnessHubId) ===
-              (eh.licenseId || eh.wellnessHubId),
+              (item.licenseId || item.wellnessHubId) === key,
           )
         ) {
           list.push(eh);
         }
       });
 
-      if (!list.some((item) => getCategoryInfo(item).id === "HOSPITAL")) {
-        DEFAULT_EMERGENCY_HUBS.forEach((dh) => {
+      // 3. ตรวจสอบให้แน่ใจว่า Sky Doctor ทั้ง 2 แห่ง (กิ่วฝิ่น อ.แม่ออน และ ดอยอินทนนท์ อ.จอมทอง) โผล่ขึ้นมาครบถ้วนเสมอ
+      SKY_DOCTOR_HUBS.forEach((skyHub) => {
+        const skyKey = skyHub.licenseId || skyHub.wellnessHubId;
+        const exists = list.some((item) => {
+          const itemKey = item.licenseId || item.wellnessHubId;
+          const itemName = String(item.wellnessHubName || item.name || "").toLowerCase();
+          return itemKey === skyKey || (isSkyDoctorHub(item) && (
+            (skyHub.districtName && itemName.includes(skyHub.districtName.toLowerCase())) ||
+            (skyHub.wellnessHubName && itemName.includes("อินทนนท์") && skyHub.wellnessHubName.includes("อินทนนท์")) ||
+            (skyHub.wellnessHubName && itemName.includes("กิ่วฝิ่น") && skyHub.wellnessHubName.includes("กิ่วฝิ่น"))
+          ));
+        });
+        if (!exists) {
+          list.push({ ...skyHub, isSkyDoctor: true, categoryKey: "SKY_DOCTOR" });
+        }
+      });
+
+      // 4. Fallback กรณี API ดึงไม่ได้และไม่มีข้อมูลโรงพยาบาล/กู้ภัยเลย (กรองเฉพาะอำเภอในเส้นทาง)
+      if (list.filter((x) => !isSkyDoctorHub(x)).length === 0 && (!emergencyServicesList || emergencyServicesList.length === 0)) {
+        DEFAULT_EMERGENCY_HUBS.forEach((fallbackItem) => {
           if (
+            isEmergencyInRouteDistricts(fallbackItem) &&
             !list.some(
               (item) =>
                 (item.licenseId || item.wellnessHubId) ===
-                (dh.licenseId || dh.wellnessHubId),
+                (fallbackItem.licenseId || fallbackItem.wellnessHubId),
             )
           ) {
-            list.push(dh);
+            list.push(fallbackItem);
           }
         });
       }
 
-      return list;
+      // 🌟 จัดลำดับให้ Sky Doctor (แพทย์ฉุกเฉินทางอากาศ) อยู่บนสุดเสมอ (Top Priority)
+      return list.sort((a, b) => {
+        const aSky = isSkyDoctorHub(a) ? 1 : 0;
+        const bSky = isSkyDoctorHub(b) ? 1 : 0;
+        if (bSky !== aSky) {
+          return bSky - aSky;
+        }
+
+        const aCat = getCategoryInfo(a)?.id;
+        const bCat = getCategoryInfo(b)?.id;
+        const rank = (id) =>
+          id === "SKY_DOCTOR" ? 0 : id === "HOSPITAL" ? 1 : id === "RESCUE" ? 2 : 3;
+        if (rank(aCat) !== rank(bCat)) {
+          return rank(aCat) - rank(bCat);
+        }
+
+        const nameA = a.wellnessHubName || a.name || "";
+        const nameB = b.wellnessHubName || b.name || "";
+        return nameA.localeCompare(nameB, "th");
+      });
     }
 
-    return visibleWellnessHubs;
-  }, [isEmergencyMode, visibleWellnessHubs, wellnessHubs, getCategoryInfo]);
+    // 🌟 โหมดปกติ: แสดงเฉพาะสถานประกอบการท่องเที่ยว/เวลเนสทั่วไป (ซ่อน Sky Doctor และจุดฉุกเฉิน)
+    return visibleWellnessHubs.filter((hub) => {
+      if (isSkyDoctorHub(hub)) return false;
+      const cat = getCategoryInfo(hub)?.id;
+      return cat !== "SKY_DOCTOR" && cat !== "HOSPITAL" && cat !== "RESCUE";
+    });
+  }, [
+    isEmergencyMode,
+    visibleWellnessHubs,
+    wellnessHubs,
+    emergencyServicesList,
+    visibleDistricts,
+    districts,
+    getCategoryInfo,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    const mapContainer = mapContainerRef.current;
+    if (!map || !mapContainer || !isMapReady(map, mapContainer)) return;
 
-    if (isEmergencyMode) {
-      const emergencyCoords = displayedWellnessHubs
-        .map((h) => extractLatLng(h))
-        .filter(Boolean)
-        .map((c) => L.latLng(c.lat, c.lng));
+    try {
+      if (isEmergencyMode) {
+        const emergencyCoords = displayedWellnessHubs
+          .map((h) => extractLatLng(h))
+          .filter(Boolean)
+          .map((c) => L.latLng(c.lat, c.lng));
 
-      if (emergencyCoords.length > 0) {
-        try {
+        if (emergencyCoords.length > 0) {
           const bounds = L.latLngBounds(emergencyCoords);
           if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12, animate: false });
           }
-        } catch {}
+        }
+      } else if (routeBoundsRef.current && routeBoundsRef.current.isValid()) {
+        map.fitBounds(routeBoundsRef.current, { padding: [50, 50], animate: false });
       }
-    } else if (routeBoundsRef.current && routeBoundsRef.current.isValid()) {
-      try {
-        map.fitBounds(routeBoundsRef.current, { padding: [50, 50] });
-      } catch {}
-    }
+    } catch { }
   }, [isEmergencyMode, displayedWellnessHubs]);
 
   const handleToggleDistrictVisibility = (district, index) => {
@@ -924,15 +1080,16 @@ export default function RouteDetail() {
     const mapContainer = mapContainerRef.current;
     if (loading || error || !routeData || !mapContainer) return;
 
-    if (mapContainer._leaflet_id) {
-      mapContainer._leaflet_id = null;
-    }
-
     if (mapRef.current) {
       try {
+        mapRef.current.stop();
         mapRef.current.remove();
-      } catch {}
+      } catch { }
       mapRef.current = null;
+    }
+
+    if (mapContainer && mapContainer._leaflet_id) {
+      delete mapContainer._leaflet_id;
     }
 
     const map = L.map(mapContainer, {
@@ -961,8 +1118,10 @@ export default function RouteDetail() {
     map.on("popupclose", () => {
       if (hubHighlightRef.current) {
         try {
-          map.removeLayer(hubHighlightRef.current);
-        } catch {}
+          if (mapRef.current && isMapReady(mapRef.current, mapContainer)) {
+            mapRef.current.removeLayer(hubHighlightRef.current);
+          }
+        } catch { }
         hubHighlightRef.current = null;
       }
     });
@@ -984,13 +1143,19 @@ export default function RouteDetail() {
           if (ctrl._map) {
             ctrl._map.removeControl(ctrl);
           }
-        } catch {}
+        } catch { }
         routingControlRef.current = null;
       }
       try {
+        map.stop();
         map.remove();
-      } catch {}
-      mapRef.current = null;
+      } catch { }
+      if (mapRef.current === map) {
+        mapRef.current = null;
+      }
+      if (mapContainer && mapContainer._leaflet_id) {
+        delete mapContainer._leaflet_id;
+      }
     };
   }, [loading, error, routeData]);
 
@@ -1040,7 +1205,7 @@ export default function RouteDetail() {
         if (activeRouting._map === map) {
           map.removeControl(activeRouting);
         }
-      } catch {}
+      } catch { }
       routingControlRef.current = null;
     }
 
@@ -1095,7 +1260,7 @@ export default function RouteDetail() {
           if (routingControlInstance._map === map) {
             map.removeControl(routingControlInstance);
           }
-        } catch {}
+        } catch { }
         if (routingControlRef.current === routingControlInstance) {
           routingControlRef.current = null;
         }
@@ -1108,7 +1273,7 @@ export default function RouteDetail() {
     if (hubHighlightRef.current && map) {
       try {
         map.removeLayer(hubHighlightRef.current);
-      } catch {}
+      } catch { }
       hubHighlightRef.current = null;
     }
   }, []);
@@ -1120,7 +1285,7 @@ export default function RouteDetail() {
     if (hubHighlightRef.current) {
       try {
         map.removeLayer(hubHighlightRef.current);
-      } catch {}
+      } catch { }
       hubHighlightRef.current = null;
     }
 
@@ -1140,23 +1305,30 @@ export default function RouteDetail() {
 
   const centerMapOnHub = useCallback((coords) => {
     const map = mapRef.current;
-    if (!map || !coords) return;
+    const mapContainer = mapContainerRef.current;
+    if (!map || !mapContainer || !isMapReady(map, mapContainer) || !coords) return;
 
     setTimeout(() => {
-      if (!mapRef.current) return;
-      const mapSize = map.getSize();
-      const markerPoint = map.latLngToContainerPoint([
-        coords.lat,
-        coords.lng,
-      ]);
+      const currentMap = mapRef.current;
+      const currentContainer = mapContainerRef.current;
+      if (!currentMap || !currentContainer || !isMapReady(currentMap, currentContainer)) return;
+      try {
+        const mapSize = currentMap.getSize();
+        const markerPoint = currentMap.latLngToContainerPoint([
+          coords.lat,
+          coords.lng,
+        ]);
 
-      const targetPoint = L.point(
-        mapSize.x * 0.5,
-        Math.max(120, mapSize.y - 42),
-      );
+        const targetPoint = L.point(
+          mapSize.x * 0.5,
+          Math.max(120, mapSize.y - 42),
+        );
 
-      const offset = markerPoint.subtract(targetPoint);
-      map.panBy(offset, { animate: true, duration: 0.35 });
+        const offset = markerPoint.subtract(targetPoint);
+        currentMap.panBy(offset, { animate: false });
+      } catch (err) {
+        console.warn("centerMapOnHub panBy error:", err);
+      }
     }, 80);
   }, []);
 
@@ -1221,17 +1393,16 @@ export default function RouteDetail() {
 
       const popupHtml = `
         <div class="route-hub-popup ${isSkyDoc ? "route-hub-popup--skydoctor" : ""}">
-          ${
-            isSkyDoc
-              ? `
+          ${isSkyDoc
+          ? `
                 <div class="route-hub-popup__sky-banner">
                   <span class="route-hub-popup__sky-badge">
                     <i class="fa-solid fa-helicopter"></i> SKY DOCTOR LANDING ZONE
                   </span>
                 </div>
               `
-              : imageSource
-              ? `
+          : imageSource
+            ? `
                 <div class="route-hub-popup__image">
                   <img
                     src="${safeImage}"
@@ -1245,7 +1416,7 @@ export default function RouteDetail() {
                   </div>
                 </div>
               `
-              : `
+            : `
                 <div class="route-hub-popup__image">
                   <div class="route-hub-popup__image-fallback" style="display:flex;--popup-category-color:${catInfo.color};--popup-category-background:${catInfo.color}18;">
                     <span class="route-hub-popup__image-fallback-icon"><i class="fa-solid ${catInfo.icon}"></i></span>
@@ -1253,88 +1424,81 @@ export default function RouteDetail() {
                   </div>
                 </div>
               `
-          }
+        }
           <div class="route-hub-popup__content">
-            ${
-              hasValue(catInfo.name)
-                ? `
+            ${hasValue(catInfo.name)
+          ? `
               <div class="route-hub-popup__category">
                 <span class="route-hub-popup__category-dot" style="background:${catInfo.color};"></span>
                 <span>${safeCategory}</span>
               </div>
             `
-                : ""
-            }
+          : ""
+        }
             ${hasValue(hub.wellnessHubName) ? `<h3 class="route-hub-popup__title">${safeName}</h3>` : ""}
-            ${
-              hasValue(districtName) ||
-              hasValue(hub.address) ||
-              hasValue(hub.telInformation)
-                ? `
+            ${hasValue(districtName) ||
+          hasValue(hub.address) ||
+          hasValue(hub.telInformation)
+          ? `
               <div class="route-hub-popup__meta">
-                ${
-                  hasValue(districtName)
-                    ? `
+                ${hasValue(districtName)
+            ? `
                   <div class="route-hub-popup__meta-row">
                     <span class="route-hub-popup__meta-icon"><i class="fa-solid fa-location-dot"></i></span>
                     <span>อ. ${safeDistrict}</span>
                   </div>
                 `
-                    : ""
-                }
-                ${
-                  hasValue(hub.address)
-                    ? `
+            : ""
+          }
+                ${hasValue(hub.address)
+            ? `
                   <div class="route-hub-popup__meta-row route-hub-popup__meta-row--address">
                     <span class="route-hub-popup__meta-icon"><i class="fa-solid fa-map"></i></span>
                     <span>${safeAddress}</span>
                   </div>
                 `
-                    : ""
-                }
-                ${
-                  hasValue(hub.telInformation)
-                    ? `
+            : ""
+          }
+                ${hasValue(hub.telInformation)
+            ? `
                   <div class="route-hub-popup__meta-row">
                     <span class="route-hub-popup__meta-icon"><i class="fa-solid fa-phone"></i></span>
                     <span>${safeTel}</span>
                   </div>
                 `
-                    : ""
-                }
+            : ""
+          }
               </div>
             `
-                : ""
-            }
+          : ""
+        }
             ${hasValue(hub.wellnessHubDescription) ? `<p class="route-hub-popup__description">${safeDescription}</p>` : ""}
             
-            ${
-              isSkyDoc || isHospital || isRescue
-                ? `
+            ${isSkyDoc || isHospital || isRescue
+          ? `
                   <div class="route-hub-popup__emergency-actions">
                     <a href="tel:${primaryTel}" class="route-hub-popup__sos-call-btn">
                       <i class="fa-solid fa-phone-volume"></i> โทรสายด่วน ${primaryTel}
                     </a>
-                    ${
-                      hub.googleMapsLink
-                        ? `
+                    ${hub.googleMapsLink
+            ? `
                           <a href="${escapeHtml(hub.googleMapsLink)}" target="_blank" rel="noopener noreferrer" class="route-hub-popup__map-link-btn">
                             <i class="fa-solid fa-diamond-turn-right"></i> เปิดแผนที่นำทาง
                           </a>
                         `
-                        : ""
-                    }
+            : ""
+          }
                   </div>
                 `
-                : hasValue(licenseId)
-                ? `
+          : hasValue(licenseId)
+            ? `
                   <a href="/wellness-hubs/${safeLicenseId}" target="_blank" rel="noopener noreferrer" class="route-hub-popup__button" data-license-id="${safeLicenseId}">
                     <span>ดูรายละเอียดเพิ่มเติม</span>
                     <span class="route-hub-popup__button-arrow" aria-hidden="true">↗</span>
                   </a>
                 `
-                : ""
-            }
+            : ""
+        }
           </div>
         </div>
       `;
@@ -1412,15 +1576,21 @@ export default function RouteDetail() {
 
   const handleFocusDistrict = (district) => {
     const map = mapRef.current;
-    const coords = extractLatLng(district);
-    if (!map || !coords) return;
+    const mapContainer = mapContainerRef.current;
+    if (!map || !mapContainer || !isMapReady(map, mapContainer)) return;
 
-    map.flyTo([coords.lat, coords.lng], 12, { animate: true, duration: 0.5 });
+    const coords = extractLatLng(district);
+    if (!coords) return;
+
+    try {
+      map.setView([coords.lat, coords.lng], 12);
+    } catch { }
   };
 
   const handleFocusWellnessHub = (hub) => {
     const map = mapRef.current;
-    if (!map) return;
+    const mapContainer = mapContainerRef.current;
+    if (!map || !mapContainer || !isMapReady(map, mapContainer)) return;
 
     const coords = extractLatLng(hub);
     if (!coords) return;
@@ -1431,26 +1601,22 @@ export default function RouteDetail() {
 
     if (catInfo?.id && !activeFilters[catInfo.id]) {
       setActiveFilters((cur) => ({ ...cur, [catInfo.id]: true }));
+    }
+
+    try {
       map.setView([coords.lat, coords.lng], 13, { animate: false });
       setHubHighlight(coords, catInfo?.color);
       if (marker) {
         setTimeout(() => {
-          marker.openPopup();
-          centerMapOnHub(coords);
+          try {
+            if (mapRef.current && isMapReady(mapRef.current, mapContainerRef.current)) {
+              marker.openPopup();
+              centerMapOnHub(coords);
+            }
+          } catch { }
         }, 150);
       }
-      return;
-    }
-
-    map.setView([coords.lat, coords.lng], 13, { animate: false });
-    setHubHighlight(coords, catInfo?.color);
-
-    if (!marker) return;
-
-    setTimeout(() => {
-      marker.openPopup();
-      centerMapOnHub(coords);
-    }, 150);
+    } catch { }
   };
 
   if (loading) {
@@ -1518,9 +1684,8 @@ export default function RouteDetail() {
           {/* 🌟 1. TOOLBAR & CONTROLS (Full Width above Map and Cards) */}
           {availableCategories.length > 0 && (
             <div
-              className={`route-detail-map-toolbar ${
-                isControlCollapsed ? "route-detail-map-toolbar--collapsed" : ""
-              }`}
+              className={`route-detail-map-toolbar ${isControlCollapsed ? "route-detail-map-toolbar--collapsed" : ""
+                }`}
             >
               {/* 🌟 UNIFIED TOOLBAR HEADER */}
               <div className="route-detail-map-toolbar__header">
@@ -1546,9 +1711,8 @@ export default function RouteDetail() {
                 <div className="route-detail-map-actions">
                   <button
                     type="button"
-                    className={`route-detail-map-action route-detail-emergency-btn ${
-                      isEmergencyMode ? "active" : ""
-                    }`}
+                    className={`route-detail-map-action route-detail-emergency-btn ${isEmergencyMode ? "active" : ""
+                      }`}
                     onClick={() => setIsEmergencyMode((prev) => !prev)}
                     title={
                       isEmergencyMode
@@ -1585,9 +1749,8 @@ export default function RouteDetail() {
 
                   <button
                     type="button"
-                    className={`route-detail-map-action route-detail-map-action--toggle ${
-                      isControlCollapsed ? "active" : ""
-                    }`}
+                    className={`route-detail-map-action route-detail-map-action--toggle ${isControlCollapsed ? "active" : ""
+                      }`}
                     onClick={() => setIsControlCollapsed((c) => !c)}
                     title={
                       isControlCollapsed
@@ -1647,9 +1810,8 @@ export default function RouteDetail() {
                         return (
                           <label
                             key={cat.id}
-                            className={`route-detail-filter-chip ${
-                              isChecked ? "active" : ""
-                            }`}
+                            className={`route-detail-filter-chip ${isChecked ? "active" : ""
+                              }`}
                             style={{
                               "--route-category-color": cat.color,
                               "--route-category-background": `${cat.color}15`,
@@ -1681,9 +1843,8 @@ export default function RouteDetail() {
 
                         <button
                           type="button"
-                          className={`route-detail-district-edit ${
-                            isEditingDistricts ? "active" : ""
-                          }`}
+                          className={`route-detail-district-edit ${isEditingDistricts ? "active" : ""
+                            }`}
                           onClick={() => setIsEditingDistricts((c) => !c)}
                         >
                           <Pencil size={13} aria-hidden="true" />
@@ -1720,29 +1881,25 @@ export default function RouteDetail() {
 
                           return (
                             <div
-                              className={`route-detail-district-item ${
-                                !isDistrictVisible
-                                  ? "route-detail-district-item--hidden"
-                                  : ""
-                              }`}
-                              key={`${
-                                district.districtId || idx
-                              }-${order}`}
+                              className={`route-detail-district-item ${!isDistrictVisible
+                                ? "route-detail-district-item--hidden"
+                                : ""
+                                }`}
+                              key={`${district.districtId || idx
+                                }-${order}`}
                               role="listitem"
                             >
                               <div
-                                className={`route-detail-district-chip-wrapper ${
-                                  isEditingDistricts
-                                    ? "route-detail-district-chip-wrapper--editing"
-                                    : ""
-                                }`}
+                                className={`route-detail-district-chip-wrapper ${isEditingDistricts
+                                  ? "route-detail-district-chip-wrapper--editing"
+                                  : ""
+                                  }`}
                               >
                                 {isEditingDistricts && (
                                   <label
                                     className="route-detail-district-toggle"
-                                    title={`${
-                                      isDistrictVisible ? "ซ่อน" : "แสดง"
-                                    } อ. ${name}`}
+                                    title={`${isDistrictVisible ? "ซ่อน" : "แสดง"
+                                      } อ. ${name}`}
                                   >
                                     <input
                                       type="checkbox"
@@ -1876,11 +2033,10 @@ export default function RouteDetail() {
 
             <div className="route-detail-explorer__places">
               <div
-                className={`route-detail-explorer__places-header ${
-                  isEmergencyMode
-                    ? "route-detail-explorer__places-header--emergency"
-                    : ""
-                }`}
+                className={`route-detail-explorer__places-header ${isEmergencyMode
+                  ? "route-detail-explorer__places-header--emergency"
+                  : ""
+                  }`}
               >
                 <div>
                   <p>
@@ -1900,11 +2056,10 @@ export default function RouteDetail() {
                   </span>
                 </div>
                 <span
-                  className={`route-detail-explorer__places-count ${
-                    isEmergencyMode
-                      ? "route-detail-explorer__places-count--emergency"
-                      : ""
-                  }`}
+                  className={`route-detail-explorer__places-count ${isEmergencyMode
+                    ? "route-detail-explorer__places-count--emergency"
+                    : ""
+                    }`}
                 >
                   {displayedWellnessHubs.length} {isEmergencyMode ? "จุด" : "แห่ง"}
                 </span>
@@ -1930,13 +2085,12 @@ export default function RouteDetail() {
                       return (
                         <article
                           key={hub.licenseId || hub.wellnessHubId}
-                          className={`route-detail-hub-card ${
-                            isSkyDoc
-                              ? "route-detail-hub-card--skydoctor"
-                              : isEmergencyItem
+                          className={`route-detail-hub-card ${isSkyDoc
+                            ? "route-detail-hub-card--skydoctor"
+                            : isEmergencyItem
                               ? "route-detail-hub-card--emergency"
                               : ""
-                          }`}
+                            }`}
                           role="button"
                           tabIndex={0}
                           onClick={() => handleFocusWellnessHub(hub)}
@@ -1967,12 +2121,12 @@ export default function RouteDetail() {
 
                           {(hub.districtName ||
                             hub.district?.districtName) && (
-                            <p className="route-detail-hub-card__location">
-                              <MapPin /> อ.{" "}
-                              {hub.districtName ||
-                                hub.district?.districtName}
-                            </p>
-                          )}
+                              <p className="route-detail-hub-card__location">
+                                <MapPin /> อ.{" "}
+                                {hub.districtName ||
+                                  hub.district?.districtName}
+                              </p>
+                            )}
 
                           {hub.wellnessHubDescription && (
                             <p className="route-detail-hub-card__description">

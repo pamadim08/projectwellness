@@ -211,14 +211,15 @@
 }
 
 .account-request-header h2 {
+  font-family: "Pridi", serif !important;
   margin: 0 0 5px;
-
   color: var(--request-green-dark);
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .account-request-header p {
+  font-family: "Sarabun", sans-serif;
   margin: 0;
   color: #333333;
   font-size: 14px;

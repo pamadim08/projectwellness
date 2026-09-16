@@ -14,6 +14,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import "./AdminSidebar.css";
+import { prefetchAdminData } from "../../utils/adminPrefetcher";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -28,8 +29,10 @@ export default function AdminSidebar({
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
   const [pendingCount, setPendingCount] = useState(propPendingCount ?? null);
 
-  // ดึงชื่อผู้ใช้งานจาก localStorage
+  // ดึงชื่อผู้ใช้งานจาก localStorage และเริ่มโหลดข้อมูลทุกเมนูล่วงหน้าใน Background
   useEffect(() => {
+    prefetchAdminData();
+
     try {
       const adminNameDirect = localStorage.getItem("adminName");
       const usernameDirect = localStorage.getItem("username");
@@ -245,16 +248,6 @@ export default function AdminSidebar({
           </p>
 
           <Link
-            to="/listMainRoute"
-            className={`admin-sidebar-menu-item ${
-              isRouteActive ? "active" : ""
-            }`}
-          >
-            <FontAwesomeIcon icon={faRoute} />
-            <span>จัดการเส้นทางสุขภาพ</span>
-          </Link>
-
-          <Link
             to="/listWellnessHub"
             className={`admin-sidebar-menu-item ${
               isWellnessHubActive ? "active" : ""
@@ -262,6 +255,16 @@ export default function AdminSidebar({
           >
             <FontAwesomeIcon icon={faShop} />
             <span>จัดการสถานประกอบการ</span>
+          </Link>
+
+          <Link
+            to="/listMainRoute"
+            className={`admin-sidebar-menu-item ${
+              isRouteActive ? "active" : ""
+            }`}
+          >
+            <FontAwesomeIcon icon={faRoute} />
+            <span>จัดการเส้นทางสุขภาพ</span>
           </Link>
 
           <Link

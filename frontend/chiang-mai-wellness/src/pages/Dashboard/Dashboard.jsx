@@ -26,6 +26,14 @@ const DASHBOARD_API = "http://localhost:8080/api/admin/dashboard";
 
 let dashboardCache = null;
 
+export const setDashboardCache = (data) => {
+  dashboardCache = data;
+};
+
+export const clearDashboardCache = () => {
+  dashboardCache = null;
+};
+
 const CATEGORY_COLORS = {
   C01: "#E02873",
   C02: "#004CB4",
@@ -63,9 +71,11 @@ function Dashboard() {
   const navigate = useNavigate();
 
   const [adminName, setAdminName] = useState("Admin");
-  const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
+  const [dashboard, setDashboard] = useState(
+    () => dashboardCache || EMPTY_DASHBOARD,
+  );
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !dashboardCache);
   const [hasError, setHasError] = useState(false);
 
   const loadDashboard = async (forceRefresh = false) => {

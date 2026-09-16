@@ -28,14 +28,7 @@ const SEARCH_TYPES = [
 
 const ALLOWED_TYPES = SEARCH_TYPES.map((type) => type.value);
 
-// Cache สำหรับเก็บผลการค้นหาแยกตาม Type และ Keyword
-const searchResultsCache = new Map();
 
-const getSearchCacheKey = (keyword, type) => {
-  return `${String(type || "ALL").toUpperCase()}::${String(keyword || "")
-    .trim()
-    .toLowerCase()}`;
-};
 
 function removeHtml(value = "") {
   return String(value)
@@ -123,26 +116,16 @@ export default function SearchResults() {
     ? queryType.toUpperCase()
     : "ALL";
 
-  const searchCacheKey = getSearchCacheKey(queryKeyword, normalizedType);
-
   const [keyword, setKeyword] = useState(queryKeyword);
   const [searchType, setSearchType] = useState(normalizedType);
 
-  const [searchData, setSearchData] = useState(() => {
-    return searchResultsCache.get(searchCacheKey) ?? null;
-  });
-
-  const [loading, setLoading] = useState(() => {
-    return (
-      Boolean(queryKeyword.trim()) && !searchResultsCache.has(searchCacheKey)
-    );
-  });
-
+  const [searchData, setSearchData] = useState(null);
+  const [loading, setLoading] = useState(Boolean(queryKeyword.trim()));
   const [error, setError] = useState("");
   const [validationError, setValidationError] = useState("");
 
   const loadSearchResults = useCallback(
-    async (forceRefresh = false) => {
+    async () => {
       const normalizedKeyword = queryKeyword.trim();
 
       if (!normalizedKeyword) {
@@ -155,15 +138,6 @@ export default function SearchResults() {
       if (normalizedKeyword.length > 100) {
         setSearchData(null);
         setError("คำค้นหาต้องไม่เกิน 100 ตัวอักษร");
-        setLoading(false);
-        return;
-      }
-
-      const cacheKey = getSearchCacheKey(normalizedKeyword, normalizedType);
-
-      if (searchResultsCache.has(cacheKey) && !forceRefresh) {
-        setSearchData(searchResultsCache.get(cacheKey));
-        setError("");
         setLoading(false);
         return;
       }
@@ -181,8 +155,6 @@ export default function SearchResults() {
         });
 
         const result = response.data || null;
-
-        searchResultsCache.set(cacheKey, result);
         setSearchData(result);
       } catch (requestError) {
         setSearchData(null);

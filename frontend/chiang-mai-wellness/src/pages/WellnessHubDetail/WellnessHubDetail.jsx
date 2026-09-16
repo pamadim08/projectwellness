@@ -132,8 +132,15 @@ function hasValue(value) {
 }
 
 function hasCoordinates(latitude, longitude) {
+  const lat = Number(latitude);
+  const lng = Number(longitude);
   return (
-    Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude))
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= 17.0 &&
+    lat <= 20.5 &&
+    lng >= 98.0 &&
+    lng <= 100.0
   );
 }
 
@@ -245,8 +252,8 @@ function normalizeImageSource(imageValue) {
       normalizedValue = Array.isArray(parsedValue)
         ? parsedValue[0] || ""
         : typeof parsedValue === "object" && parsedValue !== null
-        ? parsedValue.preview || parsedValue.url || parsedValue.src || parsedValue.image || ""
-        : trimmedValue;
+          ? parsedValue.preview || parsedValue.url || parsedValue.src || parsedValue.image || ""
+          : trimmedValue;
     } catch (error) {
       normalizedValue = trimmedValue;
     }
@@ -650,11 +657,10 @@ export default function WellnessHubDetail() {
 
               {openStatus.isOpen !== null && (
                 <span
-                  className={`hub-detail-tag hub-detail-tag--status ${
-                    openStatus.isOpen
+                  className={`hub-detail-tag hub-detail-tag--status ${openStatus.isOpen
                       ? "hub-detail-tag--open"
                       : "hub-detail-tag--closed"
-                  }`}
+                    }`}
                 >
                   <span className="hub-status-dot" />
                   {openStatus.label}
@@ -1004,54 +1010,54 @@ export default function WellnessHubDetail() {
             {(hasValue(hub.telInformation) ||
               hasValue(hub.contactInformation) ||
               hasValue(hub.address)) && (
-              <div className="hub-detail-sidecard hub-detail-sidecard--contact">
-                <div className="hub-detail-sidecard__header">
-                  <h3>ข้อมูลติดต่อ</h3>
-                  <p>ช่องทางติดต่อสถานประกอบการ</p>
+                <div className="hub-detail-sidecard hub-detail-sidecard--contact">
+                  <div className="hub-detail-sidecard__header">
+                    <h3>ข้อมูลติดต่อ</h3>
+                    <p>ช่องทางติดต่อสถานประกอบการ</p>
+                  </div>
+
+                  <div className="hub-detail-contact-list">
+                    {/* TELEPHONE */}
+                    {hasValue(hub.telInformation) && (
+                      <div className="hub-detail-contact-row">
+                        <div className="hub-detail-contact-row__icon">
+                          <Phone size={18} />
+                        </div>
+                        <div className="hub-detail-contact-row__body">
+                          <small>เบอร์โทรศัพท์ติดต่อ</small>
+                          <p>{hub.telInformation}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CONTACT INFO / EMAIL */}
+                    {hasValue(hub.contactInformation) && (
+                      <div className="hub-detail-contact-row">
+                        <div className="hub-detail-contact-row__icon">
+                          <Mail size={18} />
+                        </div>
+                        <div className="hub-detail-contact-row__body">
+                          <small>ช่องทางติดต่อเพิ่มเติม / อีเมล</small>
+                          <p>{hub.contactInformation}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ADDRESS */}
+                    {hasValue(hub.address) && (
+                      <div className="hub-detail-contact-row">
+                        <div className="hub-detail-contact-row__icon">
+                          <MapPin size={18} />
+                        </div>
+                        <div className="hub-detail-contact-row__body">
+                          <small>ที่อยู่</small>
+                          <p>{hub.address}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <div className="hub-detail-contact-list">
-                  {/* TELEPHONE */}
-                  {hasValue(hub.telInformation) && (
-                    <div className="hub-detail-contact-row">
-                      <div className="hub-detail-contact-row__icon">
-                        <Phone size={18} />
-                      </div>
-                      <div className="hub-detail-contact-row__body">
-                        <small>เบอร์โทรศัพท์ติดต่อ</small>
-                        <p>{hub.telInformation}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* CONTACT INFO / EMAIL */}
-                  {hasValue(hub.contactInformation) && (
-                    <div className="hub-detail-contact-row">
-                      <div className="hub-detail-contact-row__icon">
-                        <Mail size={18} />
-                      </div>
-                      <div className="hub-detail-contact-row__body">
-                        <small>ช่องทางติดต่อเพิ่มเติม / อีเมล</small>
-                        <p>{hub.contactInformation}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ADDRESS */}
-                  {hasValue(hub.address) && (
-                    <div className="hub-detail-contact-row">
-                      <div className="hub-detail-contact-row__icon">
-                        <MapPin size={18} />
-                      </div>
-                      <div className="hub-detail-contact-row__body">
-                        <small>ที่อยู่</small>
-                        <p>{hub.address}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
 
             {/* OPERATING HOURS CARD */}
             {operatingHours.length > 0 && (
@@ -1062,9 +1068,8 @@ export default function WellnessHubDetail() {
                     <h3>เวลาเปิดให้บริการ</h3>
                   </div>
                   <span
-                    className={`hub-detail-badge ${
-                      openStatus.isOpen ? "hub-detail-badge--open" : "hub-detail-badge--closed"
-                    }`}
+                    className={`hub-detail-badge ${openStatus.isOpen ? "hub-detail-badge--open" : "hub-detail-badge--closed"
+                      }`}
                   >
                     {openStatus.label}
                   </span>
@@ -1094,9 +1099,8 @@ export default function WellnessHubDetail() {
                     return (
                       <div
                         key={item.day}
-                        className={`hub-detail-schedule__row ${
-                          isToday ? "hub-detail-schedule__row--today" : ""
-                        } ${!item.active ? "hub-detail-schedule__row--inactive" : ""}`}
+                        className={`hub-detail-schedule__row ${isToday ? "hub-detail-schedule__row--today" : ""
+                          } ${!item.active ? "hub-detail-schedule__row--inactive" : ""}`}
                       >
                         <div className="hub-detail-schedule__day">
                           <span>{item.label}</span>
@@ -1228,9 +1232,8 @@ export default function WellnessHubDetail() {
                 <button
                   key={i}
                   type="button"
-                  className={`hub-lightbox__thumb ${
-                    i === lightboxIndex ? "hub-lightbox__thumb--active" : ""
-                  }`}
+                  className={`hub-lightbox__thumb ${i === lightboxIndex ? "hub-lightbox__thumb--active" : ""
+                    }`}
                   onClick={() => setLightboxIndex(i)}
                 >
                   <img src={src} alt={`Thumbnail ${i + 1}`} />

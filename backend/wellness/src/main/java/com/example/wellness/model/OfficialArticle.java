@@ -5,7 +5,10 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "official_articles") // ปรับเป็นพหูพจน์ให้เข้าพวกค่ะ
+@Table(name = "official_articles", indexes = {
+    @Index(name = "idx_official_articles_publish_date", columnList = "publish_date"),
+    @Index(name = "idx_official_articles_category", columnList = "article_category")
+})
 @Data
 public class OfficialArticle {
 

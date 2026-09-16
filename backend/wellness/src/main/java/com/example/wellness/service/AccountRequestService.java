@@ -185,8 +185,8 @@ public class AccountRequestService {
                 }
 
                 String tellInformation = getRequiredString(payload, "tellInformation", "กรุณาระบุเบอร์โทรศัพท์");
-                if (!tellInformation.matches("^[0-9]{9,10}$")) {
-                        throw new RuntimeException("เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลักและไม่มีช่องว่างหรือสัญลักษณ์พิเศษ");
+                if (!tellInformation.matches("^(1669|[0-9]{3,4}|[0-9]{9,10})$")) {
+                        throw new RuntimeException("เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก หรือเบอร์ฉุกเฉิน (เช่น 1669) และไม่มีช่องว่างหรือสัญลักษณ์พิเศษ");
                 }
 
                 String contactInfo = getOptionalString(payload, "contactInformation");
@@ -566,7 +566,7 @@ public class AccountRequestService {
 
         private void extractCoordinates(AccountRequest request) {
                 String originalUrl = request.getGoogleMapsLink();
-                if (originalUrl == null || originalUrl.trim().isEmpty()) {
+                if (originalUrl == null || originalUrl.trim().isEmpty() || originalUrl.trim().equals("#")) {
                         return;
                 }
 
@@ -575,26 +575,56 @@ public class AccountRequestService {
                         finalUrl = expandShortUrl(finalUrl);
                 }
 
-                Pattern patternPlace = Pattern.compile("!3d(-?\\d+(?:\\.\\d+)?)!4d(-?\\d+(?:\\.\\d+)?)");
-                Pattern patternQuery = Pattern.compile("[?&]q=(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+                // 1. หมุดสถานที่จริง (!3d, !4d) - ความสำคัญสูงสุด (เอาหมุดตัวสุดท้ายซึ่งเป็นสถานที่เป้าหมาย)
+                Pattern patternPlace = Pattern.compile("!3d(-?\\d+(?:\\.\\d+)?)[^!]*!4d(-?\\d+(?:\\.\\d+)?)");
+                // 2. Query พิกัดระบุตรงๆ
+                Pattern patternQuery = Pattern.compile("[?&](?:q|query|ll|destination|daddr)=(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+                // 3. Fallback: พิกัดกึ่งกลางกล้อง/หน้าจอ (@lat,lng)
                 Pattern patternAt = Pattern.compile("@(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+                // 4. Direction/Search/Place path หรือระบุพิกัดใน path โดยตรง
+                Pattern patternDir = Pattern.compile("/(?:dir|search|place)/[^/]*/(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+                Pattern patternDirect = Pattern.compile("/(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
 
                 Matcher matcherPlace = patternPlace.matcher(finalUrl);
                 Matcher matcherQuery = patternQuery.matcher(finalUrl);
                 Matcher matcherAt = patternAt.matcher(finalUrl);
+                Matcher matcherDir = patternDir.matcher(finalUrl);
 
                 Double lat = null;
                 Double lng = null;
 
-                if (matcherPlace.find()) {
+                while (matcherPlace.find()) {
                         lat = Double.parseDouble(matcherPlace.group(1));
                         lng = Double.parseDouble(matcherPlace.group(2));
-                } else if (matcherQuery.find()) {
-                        lat = Double.parseDouble(matcherQuery.group(1));
-                        lng = Double.parseDouble(matcherQuery.group(2));
-                } else if (matcherAt.find()) {
-                        lat = Double.parseDouble(matcherAt.group(1));
-                        lng = Double.parseDouble(matcherAt.group(2));
+                }
+
+                if (lat == null || lng == null) {
+                        while (matcherQuery.find()) {
+                                lat = Double.parseDouble(matcherQuery.group(1));
+                                lng = Double.parseDouble(matcherQuery.group(2));
+                        }
+                }
+
+                if (lat == null || lng == null) {
+                        if (matcherAt.find()) {
+                                lat = Double.parseDouble(matcherAt.group(1));
+                                lng = Double.parseDouble(matcherAt.group(2));
+                        }
+                }
+
+                if (lat == null || lng == null) {
+                        while (matcherDir.find()) {
+                                lat = Double.parseDouble(matcherDir.group(1));
+                                lng = Double.parseDouble(matcherDir.group(2));
+                        }
+                }
+
+                if (lat == null || lng == null) {
+                        Matcher matcherDirect = patternDirect.matcher(finalUrl);
+                        while (matcherDirect.find()) {
+                                lat = Double.parseDouble(matcherDirect.group(1));
+                                lng = Double.parseDouble(matcherDirect.group(2));
+                        }
                 }
 
                 if (isValidCoordinate(lat, lng)) {
@@ -606,8 +636,11 @@ public class AccountRequestService {
         private boolean isValidCoordinate(Double lat, Double lng) {
                 return lat != null
                                 && lng != null
-                                && lat >= -90 && lat <= 90
-                                && lng >= -180 && lng <= 180;
+                                && !lat.isNaN()
+                                && !lng.isNaN()
+                                && !(lat == 0.0 && lng == 0.0)
+                                && lat >= 17.0 && lat <= 20.5
+                                && lng >= 98.0 && lng <= 100.0;
         }
 
         private String expandShortUrl(String shortenedUrl) {
@@ -735,11 +768,11 @@ public class AccountRequestService {
                 if (latitude == null || longitude == null) {
                         throw new RuntimeException("กรุณาระบุละติจูดและลองจิจูดให้ครบ");
                 }
-                if (latitude < -90 || latitude > 90) {
-                        throw new RuntimeException("ละติจูดต้องอยู่ระหว่าง -90 ถึง 90");
+                if (latitude < 17.0 || latitude > 20.5) {
+                        throw new RuntimeException("ละติจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 17.0 ถึง 20.5)");
                 }
-                if (longitude < -180 || longitude > 180) {
-                        throw new RuntimeException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
+                if (longitude < 98.0 || longitude > 100.0) {
+                        throw new RuntimeException("ลองจิจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 98.0 ถึง 100.0)");
                 }
         }
 

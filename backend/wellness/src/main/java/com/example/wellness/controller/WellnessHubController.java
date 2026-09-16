@@ -316,18 +316,18 @@ public class WellnessHubController {
      *
      * หลัง Migration สำเร็จ ควรปิด Endpoint นี้
      */
-    @PostMapping("/migrate-old-links")
-    public ResponseEntity<Map<String, Object>> runMigration() {
+    // @PostMapping("/migrate-old-links")
+    // public ResponseEntity<Map<String, Object>> runMigration() {
 
-        wellnessHubService
-                .migrateOldGoogleMapsLinks();
+    // wellnessHubService
+    // .migrateOldGoogleMapsLinks();
 
-        return ResponseEntity.ok(
-                Map.of(
-                        "status", "completed",
-                        "message",
-                        "ตรวจสอบและอัปเดตพิกัดเรียบร้อยแล้ว"));
-    }
+    // return ResponseEntity.ok(
+    // Map.of(
+    // "status", "completed",
+    // "message",
+    // "ตรวจสอบและอัปเดตพิกัดเรียบร้อยแล้ว"));
+    // }
 
     /*
      * 

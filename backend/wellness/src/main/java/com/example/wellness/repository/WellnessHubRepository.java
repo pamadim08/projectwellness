@@ -64,10 +64,12 @@ public interface WellnessHubRepository
     List<WellnessHub>
     searchByNameStartingWithAndHasAddress(@Param("keyword") String keyword);
 
-    @Query("SELECT w FROM WellnessHub w " +
+    @Query("SELECT DISTINCT w FROM WellnessHub w " +
+            "LEFT JOIN FETCH w.category c " +
+            "LEFT JOIN FETCH w.district d " +
             "WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(w.wellnessHubName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-            "AND (:categoryId IS NULL OR :categoryId = '' OR UPPER(w.category.categoryId) = UPPER(:categoryId)) " +
-            "AND (:districtId IS NULL OR w.district.districtId = :districtId)")
+            "AND (:categoryId IS NULL OR :categoryId = '' OR UPPER(c.categoryId) = UPPER(:categoryId)) " +
+            "AND (:districtId IS NULL OR d.districtId = :districtId)")
     List<WellnessHub> searchWithFilter(
             @Param("keyword") String keyword,
             @Param("categoryId") String categoryId,
@@ -117,6 +119,9 @@ public interface WellnessHubRepository
             ORDER BY w.wellnessHubName ASC
             """)
     List<WellnessHub> searchPublicHubs(@Param("keyword") String keyword);
+
+    @Query("SELECT DISTINCT w FROM WellnessHub w LEFT JOIN FETCH w.category LEFT JOIN FETCH w.district")
+    List<WellnessHub> findAllWithCategoryAndDistrict();
 
     @Query("SELECT w FROM WellnessHub w LEFT JOIN FETCH w.category LEFT JOIN FETCH w.district WHERE w.licenseId = :licenseId")
     java.util.Optional<WellnessHub> findByIdWithCategoryAndDistrict(@Param("licenseId") String licenseId);

@@ -42,9 +42,11 @@ public class DashboardService {
 
         @Transactional(readOnly = true)
         public Map<String, Object> getDashboardSummary() {
-                long totalWellnessHubs = wellnessHubRepository.count()
-                                + emergencyServiceRepository.count();
+                // ดึงข้อมูลทั้งหมดเพียงครั้งเดียวด้วย JOIN FETCH เพื่อป้องกัน N+1 queries ข้ามอินเทอร์เน็ต
+                List<WellnessHub> allHubs = wellnessHubRepository.findAllWithCategoryAndDistrict();
+                List<EmergencyService> allEmergency = emergencyServiceRepository.findAllWithCategoryAndDistrict();
 
+                long totalWellnessHubs = allHubs.size() + allEmergency.size();
                 long totalMainRoutes = mainRouteRepository.count();
                 long totalAccountRequests = accountRequestRepository.count();
 
@@ -61,8 +63,10 @@ public class DashboardService {
                 double rejectedPercentage = calculatePercentage(rejectedAccountRequests, totalAccountRequests);
                 double pendingPercentage = calculatePercentage(pendingAccountRequests, totalAccountRequests);
 
-                List<Map<String, Object>> wellnessHubsByCategory = getWellnessHubsByCategory(totalWellnessHubs);
-                List<Map<String, Object>> wellnessHubsByDistrict = getWellnessHubsByDistrict();
+                List<Map<String, Object>> wellnessHubsByCategory = getWellnessHubsByCategory(
+                                allHubs, allEmergency, totalWellnessHubs);
+                List<Map<String, Object>> wellnessHubsByDistrict = getWellnessHubsByDistrict(
+                                allHubs, allEmergency);
 
                 Map<String, Object> response = new LinkedHashMap<>();
                 response.put("totalWellnessHubs", totalWellnessHubs);
@@ -81,12 +85,13 @@ public class DashboardService {
         }
 
         private List<Map<String, Object>> getWellnessHubsByCategory(
+                        List<WellnessHub> allHubs,
+                        List<EmergencyService> allEmergency,
                         long totalWellnessHubs) {
 
                 Map<String, Map<String, Object>> categoryResults = new LinkedHashMap<>();
 
-                for (WellnessHub wellnessHub : wellnessHubRepository.findAll()) {
-
+                for (WellnessHub wellnessHub : allHubs) {
                         if (wellnessHub.getCategory() == null ||
                                         wellnessHub.getCategory().getCategoryId() == null) {
                                 continue;
@@ -94,16 +99,11 @@ public class DashboardService {
 
                         addCategoryCount(
                                         categoryResults,
-                                        wellnessHub
-                                                        .getCategory()
-                                                        .getCategoryId(),
-                                        wellnessHub
-                                                        .getCategory()
-                                                        .getCategoryName());
+                                        wellnessHub.getCategory().getCategoryId(),
+                                        wellnessHub.getCategory().getCategoryName());
                 }
 
-                for (EmergencyService emergencyService : emergencyServiceRepository.findAll()) {
-
+                for (EmergencyService emergencyService : allEmergency) {
                         if (emergencyService.getCategory() == null ||
                                         emergencyService.getCategory().getCategoryId() == null) {
                                 continue;
@@ -111,18 +111,13 @@ public class DashboardService {
 
                         addCategoryCount(
                                         categoryResults,
-                                        emergencyService
-                                                        .getCategory()
-                                                        .getCategoryId(),
-                                        emergencyService
-                                                        .getCategory()
-                                                        .getCategoryName());
+                                        emergencyService.getCategory().getCategoryId(),
+                                        emergencyService.getCategory().getCategoryName());
                 }
 
                 List<Map<String, Object>> results = new ArrayList<>();
 
                 for (Map<String, Object> categoryResult : categoryResults.values()) {
-
                         long wellnessHubCount = convertToLong(
                                         categoryResult.get("wellnessHubCount"));
 
@@ -151,166 +146,88 @@ public class DashboardService {
                 Map<String, Object> categoryResult = categoryResults.get(categoryId);
 
                 if (categoryResult == null) {
-
                         categoryResult = new LinkedHashMap<>();
-
-                        categoryResult.put(
-                                        "categoryId",
-                                        categoryId);
-
-                        categoryResult.put(
-                                        "categoryName",
-                                        categoryName);
-
-                        categoryResult.put(
-                                        "wellnessHubCount",
-                                        0L);
-
-                        categoryResults.put(
-                                        categoryId,
-                                        categoryResult);
+                        categoryResult.put("categoryId", categoryId);
+                        categoryResult.put("categoryName", categoryName);
+                        categoryResult.put("wellnessHubCount", 0L);
+                        categoryResults.put(categoryId, categoryResult);
                 }
 
-                long currentCount = convertToLong(
-                                categoryResult.get("wellnessHubCount"));
-
-                categoryResult.put(
-                                "wellnessHubCount",
-                                currentCount + 1);
+                long currentCount = convertToLong(categoryResult.get("wellnessHubCount"));
+                categoryResult.put("wellnessHubCount", currentCount + 1);
         }
 
-        private List<Map<String, Object>> getWellnessHubsByDistrict() {
-
-                List<Map<String, Object>> wellnessHubDistrictResults = wellnessHubRepository
-                                .countWellnessHubsByDistrict();
+        private List<Map<String, Object>> getWellnessHubsByDistrict(
+                        List<WellnessHub> allHubs,
+                        List<EmergencyService> allEmergency) {
 
                 Map<Integer, Map<String, Object>> districtResults = new LinkedHashMap<>();
-
                 Map<Integer, Map<String, Map<String, Object>>> categoryResultsByDistrict = new LinkedHashMap<>();
 
-                for (Map<String, Object> districtResult : wellnessHubDistrictResults) {
-
-                        Integer districtId = convertToInteger(
-                                        districtResult.get("districtId"));
-
-                        Map<String, Object> combinedResult = new LinkedHashMap<>();
-
-                        combinedResult.put(
-                                        "districtId",
-                                        districtId);
-
-                        combinedResult.put(
-                                        "districtName",
-                                        districtResult.get("districtName"));
-
-                        combinedResult.put(
-                                        "wellnessHubCount",
-                                        convertToLong(
-                                                        districtResult.get("wellnessHubCount")));
-
-                        districtResults.put(
-                                        districtId,
-                                        combinedResult);
-
-                        categoryResultsByDistrict.put(
-                                        districtId,
-                                        new LinkedHashMap<>());
-                }
-
-                for (WellnessHub wellnessHub : wellnessHubRepository.findAll()) {
-
+                for (WellnessHub wellnessHub : allHubs) {
                         if (wellnessHub.getDistrict() == null ||
-                                        wellnessHub.getDistrict().getDistrictId() == null ||
-                                        wellnessHub.getCategory() == null ||
-                                        wellnessHub.getCategory().getCategoryId() == null) {
+                                        wellnessHub.getDistrict().getDistrictId() == null) {
                                 continue;
                         }
 
-                        Integer districtId = wellnessHub
-                                        .getDistrict()
-                                        .getDistrictId();
+                        Integer districtId = wellnessHub.getDistrict().getDistrictId();
+                        String districtName = wellnessHub.getDistrict().getDistrictName();
 
-                        addDistrictCategoryCount(
-                                        categoryResultsByDistrict,
-                                        districtId,
-                                        wellnessHub
-                                                        .getCategory()
-                                                        .getCategoryId(),
-                                        wellnessHub
-                                                        .getCategory()
-                                                        .getCategoryName());
+                        districtResults.computeIfAbsent(districtId, id -> {
+                                Map<String, Object> map = new LinkedHashMap<>();
+                                map.put("districtId", id);
+                                map.put("districtName", districtName);
+                                map.put("wellnessHubCount", 0L);
+                                return map;
+                        });
+
+                        Map<String, Object> distResult = districtResults.get(districtId);
+                        distResult.put("wellnessHubCount", convertToLong(distResult.get("wellnessHubCount")) + 1);
+
+                        if (wellnessHub.getCategory() != null &&
+                                        wellnessHub.getCategory().getCategoryId() != null) {
+                                addDistrictCategoryCount(
+                                                categoryResultsByDistrict,
+                                                districtId,
+                                                wellnessHub.getCategory().getCategoryId(),
+                                                wellnessHub.getCategory().getCategoryName());
+                        }
                 }
 
-                for (EmergencyService emergencyService : emergencyServiceRepository.findAll()) {
-
+                for (EmergencyService emergencyService : allEmergency) {
                         if (emergencyService.getDistrict() == null ||
                                         emergencyService.getDistrict().getDistrictId() == null) {
                                 continue;
                         }
 
-                        Integer districtId = emergencyService
-                                        .getDistrict()
-                                        .getDistrictId();
+                        Integer districtId = emergencyService.getDistrict().getDistrictId();
+                        String districtName = emergencyService.getDistrict().getDistrictName();
 
-                        Map<String, Object> districtResult = districtResults.get(districtId);
+                        districtResults.computeIfAbsent(districtId, id -> {
+                                Map<String, Object> map = new LinkedHashMap<>();
+                                map.put("districtId", id);
+                                map.put("districtName", districtName);
+                                map.put("wellnessHubCount", 0L);
+                                return map;
+                        });
 
-                        if (districtResult == null) {
-
-                                districtResult = new LinkedHashMap<>();
-
-                                districtResult.put(
-                                                "districtId",
-                                                districtId);
-
-                                districtResult.put(
-                                                "districtName",
-                                                emergencyService
-                                                                .getDistrict()
-                                                                .getDistrictName());
-
-                                districtResult.put(
-                                                "wellnessHubCount",
-                                                0L);
-
-                                districtResults.put(
-                                                districtId,
-                                                districtResult);
-
-                                categoryResultsByDistrict.put(
-                                                districtId,
-                                                new LinkedHashMap<>());
-                        }
-
-                        long currentCount = convertToLong(
-                                        districtResult.get("wellnessHubCount"));
-
-                        districtResult.put(
-                                        "wellnessHubCount",
-                                        currentCount + 1);
+                        Map<String, Object> distResult = districtResults.get(districtId);
+                        distResult.put("wellnessHubCount", convertToLong(distResult.get("wellnessHubCount")) + 1);
 
                         if (emergencyService.getCategory() != null &&
-                                        emergencyService
-                                                        .getCategory()
-                                                        .getCategoryId() != null) {
-
+                                        emergencyService.getCategory().getCategoryId() != null) {
                                 addDistrictCategoryCount(
                                                 categoryResultsByDistrict,
                                                 districtId,
-                                                emergencyService
-                                                                .getCategory()
-                                                                .getCategoryId(),
-                                                emergencyService
-                                                                .getCategory()
-                                                                .getCategoryName());
+                                                emergencyService.getCategory().getCategoryId(),
+                                                emergencyService.getCategory().getCategoryName());
                         }
                 }
 
                 List<Map<String, Object>> combinedResults = new ArrayList<>();
 
                 for (Map.Entry<Integer, Map<String, Object>> entry : districtResults.entrySet()) {
-
                         Integer districtId = entry.getKey();
-
                         Map<String, Object> districtResult = entry.getValue();
 
                         Map<String, Map<String, Object>> categoryResults = categoryResultsByDistrict.getOrDefault(
@@ -325,12 +242,8 @@ public class DashboardService {
                                                         category -> -convertToLong(
                                                                         category.get("wellnessHubCount"))));
 
-                        districtResult.put(
-                                        "categoryList",
-                                        categoryList);
-
-                        combinedResults.add(
-                                        districtResult);
+                        districtResult.put("categoryList", categoryList);
+                        combinedResults.add(districtResult);
                 }
 
                 combinedResults.sort(
@@ -354,43 +267,24 @@ public class DashboardService {
                 Map<String, Object> categoryResult = categoryResults.get(categoryId);
 
                 if (categoryResult == null) {
-
                         categoryResult = new LinkedHashMap<>();
-
-                        categoryResult.put(
-                                        "categoryId",
-                                        categoryId);
-
-                        categoryResult.put(
-                                        "categoryName",
-                                        categoryName);
-
-                        categoryResult.put(
-                                        "wellnessHubCount",
-                                        0L);
-
-                        categoryResults.put(
-                                        categoryId,
-                                        categoryResult);
+                        categoryResult.put("categoryId", categoryId);
+                        categoryResult.put("categoryName", categoryName);
+                        categoryResult.put("wellnessHubCount", 0L);
+                        categoryResults.put(categoryId, categoryResult);
                 }
 
-                long currentCount = convertToLong(
-                                categoryResult.get("wellnessHubCount"));
-
-                categoryResult.put(
-                                "wellnessHubCount",
-                                currentCount + 1);
+                long currentCount = convertToLong(categoryResult.get("wellnessHubCount"));
+                categoryResult.put("wellnessHubCount", currentCount + 1);
         }
 
         private Integer convertToInteger(Object value) {
                 if (value == null) {
                         return null;
                 }
-
                 if (value instanceof Number number) {
                         return number.intValue();
                 }
-
                 return Integer.valueOf(value.toString());
         }
 
@@ -398,21 +292,16 @@ public class DashboardService {
                 if (value == null) {
                         return 0L;
                 }
-
                 if (value instanceof Number number) {
                         return number.longValue();
                 }
-
                 return Long.parseLong(value.toString());
         }
 
-        private double calculatePercentage(
-                        long amount,
-                        long total) {
+        private double calculatePercentage(long amount, long total) {
                 if (total <= 0) {
                         return 0.0;
                 }
-
                 return BigDecimal.valueOf(amount)
                                 .multiply(BigDecimal.valueOf(100))
                                 .divide(

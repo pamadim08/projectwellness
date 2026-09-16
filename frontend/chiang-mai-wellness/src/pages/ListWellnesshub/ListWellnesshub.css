@@ -1,40 +1,41 @@
 /* List WellnessHub.css */
 :root {
   --gov-green-dark: #155724;
+  --gov-green-header: #1c3b1e;
   --gov-green-main: #28a745;
-  --gov-bg: #f4f4f4;
-  --gov-border: #000000;
-  --sidebar-dark: #0b2239;
-  --gov-text: #111111;
+  --gov-bg: #f4f6f9;
+  --gov-border: #222222;
+  --sidebar-dark: #12243b;
+  --gov-text: #222222;
 }
 
 /* ครอบคลุมฟอนต์และมิติพื้นฐานภายในส่วนราชการ */
 .gov-container {
-  padding: 30px;
-  background-color: var(--gov-bg);
-}
-
-.gov-container * {
-  font-family: "Sarabun", sans-serif;
+  width: 100%;
+  padding: 0;
+  background: transparent;
   box-sizing: border-box;
 }
 
 /* Header Section */
 .gov-header {
+  width: 100%;
   border-bottom: 3px double var(--gov-green-dark);
-  /* เส้นคู่เพื่อความเป็นทางการ */
-  margin-bottom: 25px;
-  padding-bottom: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  box-sizing: border-box;
 }
 
 .gov-header h2 {
+  font-family: "Pridi", serif !important;
   color: var(--gov-green-dark);
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 600;
   margin: 0 0 5px 0;
 }
 
 .gov-header p {
+  font-family: "Sarabun", sans-serif;
   color: #333333;
   font-size: 14px;
   margin: 0;
@@ -43,10 +44,11 @@
 /* Layout โครงสร้างหลัก - บังคับให้ Sidebar เต็มจอและ Main เลื่อนได้ */
 .admin-layout {
   display: flex;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-  /* ล็อคหน้าจอหลักไม่ให้เลื่อนหลุดเฟรม */
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--gov-bg);
+  font-family: "Sarabun", sans-serif;
+  box-sizing: border-box;
 }
 
 /* ==========================================================================
@@ -187,10 +189,10 @@
 .main-content {
   flex: 1;
   min-width: 0;
+  min-height: 100vh;
+  margin-left: 0;
   background-color: var(--gov-bg);
-  overflow-y: auto;
-  /* ส่วนนี้จะเลื่อนขึ้นลงได้อิสระ */
-  padding-bottom: 60px;
+  padding: 30px 40px 60px;
   box-sizing: border-box;
 }
 
@@ -198,11 +200,11 @@
 .gov-filter-bar {
   display: flex;
   gap: 10px;
-  /* เพิ่มระยะห่างช่องไฟเล็กน้อยเพื่อให้สอดคล้องกับ UX */
   margin-bottom: 20px;
   background: #ffffff;
   padding: 15px;
   border: 1px solid var(--gov-border);
+  box-sizing: border-box;
 }
 
 .gov-input,
@@ -212,11 +214,11 @@
   border: 1px solid var(--gov-border);
   padding: 10px 12px;
   border-radius: 0px !important;
-  /* เหลี่ยมคมชัดเจน */
   background-color: #ffffff;
   color: var(--gov-text);
   height: 40px;
   outline: none;
+  box-sizing: border-box;
 }
 
 .gov-input {
@@ -231,7 +233,6 @@
 .gov-input:focus,
 .gov-select:focus {
   border: 2px solid var(--gov-green-dark);
-  /* เน้นขอบหนาชัดเจนตอนพิมพ์ */
 }
 
 /* ปุ่มค้นหาแบบราชการสีเขียวชัดเจน */
@@ -255,17 +256,20 @@
 }
 
 .action-bar-top {
-  margin-bottom: 12px;
+  width: 100%;
+  margin-bottom: 18px;
   display: flex;
   justify-content: flex-end;
+  box-sizing: border-box;
 }
 
 /* ปุ่มเพิ่มสถานประกอบการ */
 .btn-gov-add {
   background-color: var(--sidebar-dark);
   color: white;
-  padding: 10px 20px;
-  border: 1px solid var(--gov-border);
+  min-height: 42px;
+  padding: 0 20px;
+  border: 1px solid #0b1727;
   cursor: pointer;
   font-weight: bold;
   font-size: 14px;
@@ -273,35 +277,40 @@
   align-items: center;
   gap: 8px;
   border-radius: 0px !important;
+  box-sizing: border-box;
 }
 
 .btn-gov-add:hover {
-  background-color: #153554;
+  background-color: #0b1727;
 }
 
 /* ==========================================================================
    Table Section (มีเส้นคั่นชัดเจนทุกด้านสไตล์เอกสารราชการ)
    ========================================================================== */
 .gov-table-container {
+  width: 100%;
   background: white;
   border: 2px solid var(--gov-border);
-  /* ปรับขอบนอกให้หนาชัดเจน */
+  border-radius: 0px;
+  box-sizing: border-box;
+  overflow-x: auto;
 }
 
 .list-table {
   width: 100%;
   border-collapse: collapse;
-  /* ยุบขอบให้ชนกันเป็นตารางเส้นเดี่ยวเด็ดขาด */
 }
 
 .list-table th {
-  background: var(--gov-green-dark);
+  background: var(--gov-green-header);
   color: white;
-  border: 1px solid var(--gov-border);
-  padding: 14px 12px;
+  border-right: 1px solid #000000;
+  border-bottom: 1px solid #000000;
+  padding: 13px 10px;
   text-align: center;
-  font-weight: bold;
+  font-weight: 800;
   font-size: 14px;
+  font-family: "Sarabun", sans-serif;
 }
 
 .list-table td {

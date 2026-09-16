@@ -23,6 +23,13 @@ const API_URL = "http://localhost:8080/api/home/articles";
 
 const ITEMS_PER_PAGE = 9;
 
+// In-Memory Cache เพื่อให้เปิดหน้ารายการบทความได้ทันทีใน 0ms เมื่อสลับหน้า
+let articleListCache = null;
+
+export const clearArticleListCache = () => {
+  articleListCache = null;
+};
+
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== "";
 }
@@ -118,9 +125,9 @@ function getErrorMessage(error) {
 }
 
 export default function ArticleList() {
-  const [articles, setArticles] = useState([]);
+  const [articles, setArticles] = useState(() => articleListCache || []);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !articleListCache);
 
   const [error, setError] = useState("");
 
@@ -134,19 +141,25 @@ export default function ArticleList() {
 
   const [showFilters, setShowFilters] = useState(false);
 
-  const loadArticles = useCallback(async () => {
-    setLoading(true);
+  const loadArticles = useCallback(async (forceRefresh = false) => {
+    if (!articleListCache || forceRefresh) {
+      setLoading(true);
+    }
     setError("");
 
     try {
       const response = await axios.get(API_URL, {
-        timeout: 30000,
+        timeout: 20000,
       });
 
-      setArticles(Array.isArray(response.data) ? response.data : []);
+      const data = Array.isArray(response.data) ? response.data : [];
+      articleListCache = data;
+      setArticles(data);
     } catch (requestError) {
-      setArticles([]);
-      setError(getErrorMessage(requestError));
+      if (!articleListCache) {
+        setArticles([]);
+        setError(getErrorMessage(requestError));
+      }
     } finally {
       setLoading(false);
     }
@@ -157,11 +170,13 @@ export default function ArticleList() {
   }, [loadArticles]);
 
   useEffect(() => {
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: "instant",
-    });
+    if (loading) {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "instant",
+      });
+    }
   }, [loading]);
 
   useEffect(() => {
@@ -455,6 +470,8 @@ export default function ArticleList() {
                             <img
                               src={imageSource}
                               alt={article.articleTitle}
+                              loading="lazy"
+                              decoding="async"
                               onError={(event) => {
                                 event.currentTarget.classList.add(
                                   "article-list-card__image-hidden",

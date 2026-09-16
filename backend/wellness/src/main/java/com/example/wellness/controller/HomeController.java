@@ -1,5 +1,6 @@
 package com.example.wellness.controller;
 
+import com.example.wellness.dto.OfficialArticleSummaryDTO;
 import com.example.wellness.model.MainRoute;
 import com.example.wellness.model.OfficialArticle;
 import com.example.wellness.service.HomeService;
@@ -88,8 +89,8 @@ public class HomeController {
      * GET /api/home/latest-articles
      */
     @GetMapping("/latest-articles")
-    public ResponseEntity<List<OfficialArticle>> getLatestArticles() {
-        List<OfficialArticle> latestArticles = homeService.getLatestArticles();
+    public ResponseEntity<List<OfficialArticleSummaryDTO>> getLatestArticles() {
+        List<OfficialArticleSummaryDTO> latestArticles = homeService.getLatestArticles();
         return ResponseEntity.ok(latestArticles);
     }
 
@@ -114,8 +115,8 @@ public class HomeController {
      * GET /api/home/articles
      */
     @GetMapping("/articles")
-    public ResponseEntity<List<OfficialArticle>> getAllArticles() {
-        List<OfficialArticle> articles = homeService.getAllArticles();
+    public ResponseEntity<List<OfficialArticleSummaryDTO>> getAllArticles() {
+        List<OfficialArticleSummaryDTO> articles = homeService.getAllArticles();
         return ResponseEntity.ok(articles);
     }
 

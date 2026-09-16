@@ -216,14 +216,15 @@
 }
 
 .official-article-header h2 {
+  font-family: "Pridi", serif !important;
   margin: 0 0 5px;
-
   color: var(--article-green-dark);
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .official-article-header p {
+  font-family: "Sarabun", sans-serif;
   margin: 0;
   color: #333333;
   font-size: 14px;
@@ -252,17 +253,18 @@
   gap: 8px;
 
   color: #ffffff;
-  background: var(--article-green);
-  border: 1px solid #1e7e34;
+  background: var(--article-sidebar);
+  border: 1px solid #0b1727;
   border-radius: 0;
 
   text-decoration: none;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
+  box-sizing: border-box;
 }
 
 .btn-add-article:hover {
-  background: #218838;
+  background: #0b1727;
 }
 
 /* =====================================================

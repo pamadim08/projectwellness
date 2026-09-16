@@ -18,6 +18,11 @@ import {
 
 // 1. ตัวแปรเก็บ Cache และฟังก์ชัน Clear Cache สำหรับ export ไปใช้หน้าอื่น (Add/Edit)
 let wellnessHubCache = null;
+
+export const setWellnessHubCache = (data) => {
+  wellnessHubCache = data;
+};
+
 export const clearWellnessHubCache = () => {
   wellnessHubCache = null;
 };
@@ -319,15 +324,18 @@ const ListWellnessHub = () => {
             <button
               className="btn-gov-search"
               style={{ backgroundColor: "#6c757d" }}
+              title="ล้างค่าตัวกรองและรีเฟรชข้อมูลล่าสุด"
+              disabled={isLoading}
               onClick={() => {
                 setSearchQuery("");
                 setSelectedCategory("");
                 setSelectedDistrict("");
                 setCurrentPage(1);
-                loadData("", "", "");
+                wellnessHubCache = null;
+                loadData("", "", "", true);
               }}
             >
-              <FontAwesomeIcon icon={faRotate} /> ล้างค่า
+              <FontAwesomeIcon icon={faRotate} spin={isLoading} /> ล้างค่า / รีเฟรช
             </button>
           </div>
 

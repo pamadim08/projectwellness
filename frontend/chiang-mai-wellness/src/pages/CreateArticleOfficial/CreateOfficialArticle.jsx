@@ -14,7 +14,9 @@ import {
 import "./CreateOfficialArticle.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
-import { clearOfficialArticlesCache } from "../ListOfficialArticle/ListOfficialArticle";
+import { clearArticleListCache } from "../ArticleList/ArticleList";
+import { clearArticleDetailCache } from "../ArticleDetail/ArticleDetail";
+import { clearAdminArticleCache } from "../ListOfficialArticle/ListOfficialArticle";
 
 // กำหนดขนาดไฟล์สูงสุดเป็น 20MB
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
@@ -43,11 +45,37 @@ function CreateOfficialArticle() {
     message: "",
   });
 
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
+  const fileToBase64 = (file, maxWidth = 1280, maxHeight = 1280, quality = 0.8) => {
+    return new Promise((resolve) => {
+      if (!file || !(file instanceof File)) {
+        resolve(file || "");
+        return;
+      }
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth || height > maxHeight) {
+            if (width / height > maxWidth / maxHeight) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.onerror = () => resolve(event.target.result);
+      };
+      reader.onerror = () => resolve("");
       reader.readAsDataURL(file);
     });
   };
@@ -244,10 +272,8 @@ function CreateOfficialArticle() {
   const validateForm = () => {
     let err = {};
     const titleTrimmed = articleTitle.trim();
-    // 1. ชื่อบทความ: ห้ามว่าง, ภาษาไทย ภาษาอังกฤษ ตัวเลข, 10–100 ตัวอักษร
-    const titleRegex = /^[a-zA-Z0-9\u0E00-\u0E7F\s]{10,100}$/;
-
-    if (!titleTrimmed || !titleRegex.test(titleTrimmed)) {
+    // 1. ชื่อบทความ: ห้ามว่าง, 10–100 ตัวอักษร (สามารถมีอักขระพิเศษได้)
+    if (!titleTrimmed || titleTrimmed.length < 10 || titleTrimmed.length > 100) {
       err.title = "กรุณากรอกข้อมูลให้ครบถ้วน";
     }
 
@@ -324,7 +350,9 @@ function CreateOfficialArticle() {
 
       if (id) {
         await axios.put(`http://localhost:8080/api/articles/${id}`, payload);
-        clearOfficialArticlesCache();
+        clearArticleListCache();
+        clearArticleDetailCache(id);
+        clearAdminArticleCache();
         setIsSubmitting(false);
         setStatusModal({
           isOpen: true,
@@ -334,7 +362,8 @@ function CreateOfficialArticle() {
         });
       } else {
         await axios.post("http://localhost:8080/api/articles", payload);
-        clearOfficialArticlesCache();
+        clearArticleListCache();
+        clearAdminArticleCache();
         setIsSubmitting(false);
         setStatusModal({
           isOpen: true,

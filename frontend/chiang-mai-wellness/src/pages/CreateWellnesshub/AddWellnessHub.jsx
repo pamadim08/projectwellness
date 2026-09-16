@@ -152,38 +152,52 @@ const AddWellnessHub = () => {
     if (!url || typeof url !== "string") return null;
     const trimmed = url.trim();
 
+    const isValidLatLng = (lat, lng) =>
+      !isNaN(lat) &&
+      !isNaN(lng) &&
+      lat >= 17.0 &&
+      lat <= 20.5 &&
+      lng >= 98.0 &&
+      lng <= 100.0;
+
+    // 1. หมุดสถานที่จริงใน Google Maps (!3d ละติจูด, !4d ลองจิจูด) - เอาคู่สุดท้ายที่เป็นหมุดสถานที่ปลายทางจริง
+    const placeMatches = [...trimmed.matchAll(/!3d(-?\d+(?:\.\d+)?)[^!]*!4d(-?\d+(?:\.\d+)?)/g)];
+    if (placeMatches.length > 0) {
+      const lastMatch = placeMatches[placeMatches.length - 1];
+      const lat = parseFloat(lastMatch[1]);
+      const lng = parseFloat(lastMatch[2]);
+      if (isValidLatLng(lat, lng)) {
+        return { lat, lng };
+      }
+    }
+
+    // 2. Query พิกัดระบุตรงๆ เช่น ?q=lat,lng หรือ ?query=lat,lng หรือ ?ll=lat,lng
+    const qMatches = [...trimmed.matchAll(/[?&](?:q|query|ll|destination|daddr)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)];
+    if (qMatches.length > 0) {
+      const lastQ = qMatches[qMatches.length - 1];
+      const lat = parseFloat(lastQ[1]);
+      const lng = parseFloat(lastQ[2]);
+      if (isValidLatLng(lat, lng)) {
+        return { lat, lng };
+      }
+    }
+
+    // 3. Fallback: พิกัดกึ่งกลางกล้อง/หน้าจอ (@lat,lng)
     const atMatch = trimmed.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
     if (atMatch) {
       const lat = parseFloat(atMatch[1]);
       const lng = parseFloat(atMatch[2]);
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      if (isValidLatLng(lat, lng)) {
         return { lat, lng };
       }
     }
 
-    const placeMatch = trimmed.match(/!3d(-?\d+(?:\.\d+)?)(?:.*)!4d(-?\d+(?:\.\d+)?)/);
-    if (placeMatch) {
-      const lat = parseFloat(placeMatch[1]);
-      const lng = parseFloat(placeMatch[2]);
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        return { lat, lng };
-      }
-    }
-
-    const qMatch = trimmed.match(/[?&](?:q|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-    if (qMatch) {
-      const lat = parseFloat(qMatch[1]);
-      const lng = parseFloat(qMatch[2]);
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        return { lat, lng };
-      }
-    }
-
+    // 4. Direction/Search path พิกัดปลายทาง
     const dirMatch = trimmed.match(/\/(?:dir|search)\/[^/]*\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) || trimmed.match(/\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
     if (dirMatch) {
       const lat = parseFloat(dirMatch[1]);
       const lng = parseFloat(dirMatch[2]);
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      if (isValidLatLng(lat, lng)) {
         return { lat, lng };
       }
     }
@@ -258,13 +272,13 @@ const AddWellnessHub = () => {
       return;
     }
 
-    // 6. เบอร์โทรศัพท์ (ถ้ามี): 9-10 หลัก
-    if (tel && !/^0\d{8,9}$/.test(tel) && !/^[0-9\-+\s]{9,15}$/.test(tel)) {
+    // 6. เบอร์โทรศัพท์ (ถ้ามี): 9-10 หลัก หรือเบอร์ฉุกเฉิน
+    if (tel && !/^(1669|[0-9]{3,4}|[0-9]{9,10})$/.test(tel) && !/^[0-9\-+\s]{4,15}$/.test(tel)) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุเบอร์โทรศัพท์ติดต่อให้ถูกต้อง เช่น 0812345678)",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุเบอร์โทรศัพท์ติดต่อ 9-10 หลัก หรือเบอร์ฉุกเฉิน เช่น 1669)",
       });
       return;
     }

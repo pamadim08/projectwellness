@@ -16,6 +16,10 @@ import {
 // 🌟 1. ประกาศตัวแปร In-Memory Cache ไว้นอก Component
 let mainRouteCache = null;
 
+export const setMainRouteCache = (data) => {
+  mainRouteCache = data;
+};
+
 // ฟังก์ชันสำหรับเรียกเคลียร์ Cache จากหน้า CreateMainRoute หรือ EditMainRoute
 export const clearMainRouteCache = () => {
   mainRouteCache = null;

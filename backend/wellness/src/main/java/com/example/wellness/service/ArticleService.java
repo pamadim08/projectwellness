@@ -81,7 +81,8 @@ public class ArticleService {
                 .collect(Collectors.toList());
     }
 
-    // 🆕 กรองบทความตามหมวดหมู่/อำเภอ (คำนวณสดจาก trip ที่แนบทุกครั้ง) — ใช้ในหน้าฟีด
+    // 🆕 กรองบทความตามหมวดหมู่/อำเภอ (คำนวณสดจาก trip ที่แนบทุกครั้ง) —
+    // ใช้ในหน้าฟีด
     public List<ArticleDTO> filterArticles(String categoryId, Integer districtId) {
         return articleRepository.filterArticles(categoryId, districtId)
                 .stream()
@@ -100,14 +101,17 @@ public class ArticleService {
         articleRepository.delete(article);
     }
 
-    // 🆕 จำนวนรูปสูงสุดต่อบทความ — เช็คซ้ำที่ backend เผื่อมีใครยิง API ข้าม UI ไปโดยตรง
-    // (ฝั่ง Flutter จำกัดไว้ที่ 4 อยู่แล้วเช่นกัน แต่ backend ต้องเป็นด่านสุดท้ายที่พึ่งพาได้เสมอ)
+    // 🆕 จำนวนรูปสูงสุดต่อบทความ — เช็คซ้ำที่ backend เผื่อมีใครยิง API ข้าม UI
+    // ไปโดยตรง
+    // (ฝั่ง Flutter จำกัดไว้ที่ 4 อยู่แล้วเช่นกัน แต่ backend
+    // ต้องเป็นด่านสุดท้ายที่พึ่งพาได้เสมอ)
     private static final int MAX_IMAGES_PER_ARTICLE = 4;
 
-    // สร้างบทความใหม่ — 🆕 บังคับแนบเส้นทางเสมอ (ไม่รับ categoryId แล้ว คำนวณจาก trip แทน)
+    // สร้างบทความใหม่ — 🆕 บังคับแนบเส้นทางเสมอ (ไม่รับ categoryId แล้ว คำนวณจาก
+    // trip แทน)
     @Transactional
     public Integer createArticle(Integer memberId, String content, Integer travelTripId,
-                                 List<MultipartFile> images) throws IOException {
+            List<MultipartFile> images) throws IOException {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NoSuchElementException("ไม่พบสมาชิก"));
 
@@ -133,7 +137,8 @@ public class ArticleService {
             Files.createDirectories(uploadPath);
 
             for (MultipartFile file : images) {
-                if (file == null || file.isEmpty()) continue;
+                if (file == null || file.isEmpty())
+                    continue;
 
                 String original = file.getOriginalFilename();
                 String extension = "";
@@ -167,8 +172,8 @@ public class ArticleService {
     // แก้ไขบทความ — 🆕 บังคับแนบเส้นทางเสมอเช่นกัน (ไม่รับ categoryId แล้ว)
     @Transactional
     public void updateArticle(Integer articleId, Integer memberId, String content,
-                              Integer travelTripId, List<String> existingImagePaths,
-                              List<MultipartFile> newImages) throws IOException {
+            Integer travelTripId, List<String> existingImagePaths,
+            List<MultipartFile> newImages) throws IOException {
         Article article = articleRepository.findById(articleId)
                 .orElseThrow(() -> new NoSuchElementException("ไม่พบบทความ"));
 
@@ -204,7 +209,8 @@ public class ArticleService {
             Files.createDirectories(uploadPath);
 
             for (MultipartFile file : newImages) {
-                if (file == null || file.isEmpty()) continue;
+                if (file == null || file.isEmpty())
+                    continue;
 
                 String original = file.getOriginalFilename();
                 String extension = "";
@@ -244,11 +250,13 @@ public class ArticleService {
     }
 
     private List<String> parseImages(String raw) {
-        if (raw == null || raw.isEmpty()) return new ArrayList<>();
+        if (raw == null || raw.isEmpty())
+            return new ArrayList<>();
         if (raw.startsWith("[")) {
             try {
                 ObjectMapper mapper = new ObjectMapper();
-                return new ArrayList<>(mapper.readValue(raw, new TypeReference<List<String>>() {}));
+                return new ArrayList<>(mapper.readValue(raw, new TypeReference<List<String>>() {
+                }));
             } catch (Exception e) {
                 return new ArrayList<>(List.of(raw));
             }
@@ -256,9 +264,11 @@ public class ArticleService {
         return new ArrayList<>(List.of(raw));
     }
 
-    // 🆕 แปลง OfficialArticle (ของเพื่อน) ให้เป็น ArticleDTO รูปแบบเดียวกับบทความ user
+    // 🆕 แปลง OfficialArticle (ของเพื่อน) ให้เป็น ArticleDTO รูปแบบเดียวกับบทความ
+    // user
     // เพื่อรวมแสดงในฟีดเดียวกันได้ — เก็บภาพปก (img) เป็นตัวแรกของ images เสมอ
-    // ตามด้วยภาพเพิ่มเติมจาก articleImages (ทั้งคู่เป็น Base64 อยู่แล้ว ไม่ต้องแปลงอะไร
+    // ตามด้วยภาพเพิ่มเติมจาก articleImages (ทั้งคู่เป็น Base64 อยู่แล้ว
+    // ไม่ต้องแปลงอะไร
     // ฝั่ง Flutter จะเช็คเองว่าเป็น Base64 หรือ URL แล้ว render ให้ถูกแบบ)
     private ArticleDTO convertOfficialToDTO(OfficialArticle official) {
         ArticleDTO dto = new ArticleDTO();
@@ -289,8 +299,7 @@ public class ArticleService {
         dto.setCategoryNames(
                 official.getArticleCategory() != null
                         ? List.of(official.getArticleCategory())
-                        : List.of()
-        );
+                        : List.of());
         dto.setDistrictIds(List.of());
         dto.setDistrictNames(List.of());
 
@@ -315,7 +324,8 @@ public class ArticleService {
                 try {
                     ObjectMapper mapper = new ObjectMapper();
                     List<String> imgList = mapper.readValue(raw,
-                            new TypeReference<List<String>>() {});
+                            new TypeReference<List<String>>() {
+                            });
                     dto.setImages(imgList);
                 } catch (Exception e) {
                     dto.setImages(List.of(raw));
@@ -342,7 +352,8 @@ public class ArticleService {
                 Set<String> seenCatIds = new LinkedHashSet<>();
                 for (MyTravelTripDetail detail : trip.getTripDetails()) {
                     if (detail.getWellnessHub() == null
-                            || detail.getWellnessHub().getCategory() == null) continue;
+                            || detail.getWellnessHub().getCategory() == null)
+                        continue;
                     String catId = detail.getWellnessHub().getCategory().getCategoryId();
                     if (seenCatIds.add(catId)) {
                         catIds.add(catId);
@@ -353,7 +364,8 @@ public class ArticleService {
             dto.setCategoryIds(catIds);
             dto.setCategoryNames(catNames);
 
-            // อำเภอต้นทาง-ปลายทางของเส้นทางนี้ (ไม่ซ้ำ เผื่อต้นทาง-ปลายทางเป็นอำเภอเดียวกัน)
+            // อำเภอต้นทาง-ปลายทางของเส้นทางนี้ (ไม่ซ้ำ
+            // เผื่อต้นทาง-ปลายทางเป็นอำเภอเดียวกัน)
             List<Integer> distIds = new ArrayList<>();
             List<String> distNames = new ArrayList<>();
             if (trip.getOriginDistrict() != null) {
@@ -362,15 +374,16 @@ public class ArticleService {
             }
             if (trip.getDestinationDistrict() != null
                     && (trip.getOriginDistrict() == null
-                    || !trip.getOriginDistrict().getDistrictId()
-                    .equals(trip.getDestinationDistrict().getDistrictId()))) {
+                            || !trip.getOriginDistrict().getDistrictId()
+                                    .equals(trip.getDestinationDistrict().getDistrictId()))) {
                 distIds.add(trip.getDestinationDistrict().getDistrictId());
                 distNames.add(trip.getDestinationDistrict().getDistrictName());
             }
             dto.setDistrictIds(distIds);
             dto.setDistrictNames(distNames);
         } else {
-            // บทความเก่าก่อนหน้านี้ที่ไม่มี trip แนบ (สร้างไว้ก่อนบังคับ) — คืน list ว่างไปเฉยๆ
+            // บทความเก่าก่อนหน้านี้ที่ไม่มี trip แนบ (สร้างไว้ก่อนบังคับ) — คืน list
+            // ว่างไปเฉยๆ
             dto.setCategoryIds(List.of());
             dto.setCategoryNames(List.of());
             dto.setDistrictIds(List.of());

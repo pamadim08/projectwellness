@@ -18,6 +18,17 @@ import "./ArticleDetail.css";
 
 const API_URL = "http://localhost:8080/api/articles";
 
+// In-Memory Cache สำหรับเก็บบทความที่เคยเปิดอ่านแล้ว เปิดซ้ำได้ทันทีใน 0ms
+const articleDetailCache = new Map();
+
+export const clearArticleDetailCache = (id) => {
+  if (id) {
+    articleDetailCache.delete(String(id));
+  } else {
+    articleDetailCache.clear();
+  }
+};
+
 const ALLOWED_ARTICLE_TAGS = new Set([
   "P",
   "BR",
@@ -312,13 +323,13 @@ function getErrorMessage(error) {
 export default function ArticleDetail() {
   const { articleId } = useParams();
 
-  const [article, setArticle] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [article, setArticle] = useState(() => (articleId ? articleDetailCache.get(String(articleId)) || null : null));
+  const [loading, setLoading] = useState(() => (articleId ? !articleDetailCache.has(String(articleId)) : true));
   const [error, setError] = useState("");
   const [imageError, setImageError] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
 
-  const loadArticle = useCallback(async () => {
+  const loadArticle = useCallback(async (forceRefresh = false) => {
     if (!hasValue(articleId)) {
       setArticle(null);
       setError("ไม่พบรหัสบทความ");
@@ -326,19 +337,34 @@ export default function ArticleDetail() {
       return;
     }
 
-    setLoading(true);
+    const cached = articleDetailCache.get(String(articleId));
+    if (cached && !forceRefresh) {
+      setArticle(cached);
+      setLoading(false);
+      return;
+    }
+
+    if (!cached) {
+      setLoading(true);
+    }
     setError("");
     setImageError(false);
 
     try {
       const response = await axios.get(`${API_URL}/${articleId}`, {
-        timeout: 30000,
+        timeout: 20000,
       });
 
-      setArticle(response.data || null);
+      const data = response.data || null;
+      if (data) {
+        articleDetailCache.set(String(articleId), data);
+      }
+      setArticle(data);
     } catch (requestError) {
-      setArticle(null);
-      setError(getErrorMessage(requestError));
+      if (!cached) {
+        setArticle(null);
+        setError(getErrorMessage(requestError));
+      }
     } finally {
       setLoading(false);
     }
@@ -349,11 +375,13 @@ export default function ArticleDetail() {
   }, [loadArticle]);
 
   useEffect(() => {
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: "instant",
-    });
+    if (loading) {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "instant",
+      });
+    }
   }, [articleId, loading]);
 
   // Keyboard shortcut สำหรับปิด Modal (Escape)

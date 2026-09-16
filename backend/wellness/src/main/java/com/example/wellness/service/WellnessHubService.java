@@ -124,14 +124,15 @@ public class WellnessHubService {
     }
 
     public List<WellnessHub> listWellnessHub() {
-        List<WellnessHub> results = new ArrayList<>(wellnessHubRepository.findAll());
+        List<WellnessHub> results = new ArrayList<>(wellnessHubRepository.findAllWithCategoryAndDistrict());
 
-        List<WellnessHub> emergencyResults = emergencyServiceRepository.findAll()
+        List<WellnessHub> emergencyResults = emergencyServiceRepository.findAllWithCategoryAndDistrict()
                 .stream()
                 .map(this::convertEmergencyToWellnessHub)
                 .toList();
 
         results.addAll(emergencyResults);
+        results.forEach(hub -> hub.setWellnessHubGallery(null));
 
         return sortWellnessHubList(results);
     }
@@ -167,12 +168,11 @@ public class WellnessHubService {
             }
         }
 
-        // 1. Query filtered WellnessHub directly from DB
+        // 1. Query filtered WellnessHub directly from DB (with JOIN FETCH)
         List<WellnessHub> results = new ArrayList<>(
                 wellnessHubRepository.searchWithFilter(keyword, categoryIdStr, districtId));
 
-        // 2. Query filtered EmergencyService directly from DB (if category is null or
-        // emergency category)
+        // 2. Query filtered EmergencyService directly from DB (if category is null or emergency category)
         boolean checkEmergency = (categoryIdStr == null
                 || EMERGENCY_CATEGORY_IDS.contains(categoryIdStr.toUpperCase()));
         if (checkEmergency) {
@@ -183,6 +183,8 @@ public class WellnessHubService {
                     .toList();
             results.addAll(emergencyResults);
         }
+
+        results.forEach(hub -> hub.setWellnessHubGallery(null));
 
         return sortWellnessHubList(results);
     }
@@ -322,11 +324,11 @@ public class WellnessHubService {
             Double lat = wellnessHub.getWellnessHubLatitude();
             Double lng = wellnessHub.getWellnessHubLongitude();
 
-            if (lat < -90.0 || lat > 90.0) {
-                throw new IllegalArgumentException("ละติจูดต้องอยู่ระหว่าง -90 ถึง 90");
+            if (lat < 17.0 || lat > 20.5) {
+                throw new IllegalArgumentException("ละติจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 17.0 ถึง 20.5)");
             }
-            if (lng < -180.0 || lng > 180.0) {
-                throw new IllegalArgumentException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
+            if (lng < 98.0 || lng > 100.0) {
+                throw new IllegalArgumentException("ลองจิจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 98.0 ถึง 100.0)");
             }
         } else {
             wellnessHub.setWellnessHubLatitude(null);
@@ -383,39 +385,68 @@ public class WellnessHubService {
 
         String finalUrl = originalUrl.trim();
 
-        if (finalUrl.contains("goo.gl") || finalUrl.contains("maps.app.goo.gl")) {
+        if (finalUrl.contains("goo.gl") || finalUrl.contains("maps.app.goo.gl") || finalUrl.contains("maps.app")) {
             finalUrl = expandShortUrl(finalUrl);
         }
 
-        Pattern patternPlace = Pattern.compile("!3d(-?\\d+\\.\\d+)!4d(-?\\d+\\.\\d+)");
+        // 1. หมุดสถานที่จริง (!3d, !4d) - ความสำคัญสูงสุด (เอาหมุดตัวสุดท้ายซึ่งเป็นสถานที่เป้าหมาย)
+        Pattern patternPlace = Pattern.compile("!3d(-?\\d+(?:\\.\\d+)?)[^!]*!4d(-?\\d+(?:\\.\\d+)?)");
         Matcher matcherPlace = patternPlace.matcher(finalUrl);
 
-        Pattern patternAt = Pattern.compile("@(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
+        // 2. Query พิกัดระบุตรงๆ (?q=, ?query=, ?ll=, ?destination=, ?daddr=)
+        Pattern patternQuery = Pattern.compile("[?&](?:q|query|ll|destination|daddr)=(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+        Matcher matcherQuery = patternQuery.matcher(finalUrl);
+
+        // 3. Fallback: พิกัดกึ่งกลางกล้อง/หน้าจอ (@lat,lng)
+        Pattern patternAt = Pattern.compile("@(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
         Matcher matcherAt = patternAt.matcher(finalUrl);
 
-        Pattern patternQuery = Pattern.compile("[?&]q=(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
-        Matcher matcherQuery = patternQuery.matcher(finalUrl);
+        // 4. Direction/Search/Place path หรือระบุพิกัดใน path โดยตรง
+        Pattern patternDir = Pattern.compile("/(?:dir|search|place)/[^/]*/(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+        Pattern patternDirect = Pattern.compile("/(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+        Matcher matcherDir = patternDir.matcher(finalUrl);
 
         Double lat = null;
         Double lng = null;
 
-        if (matcherPlace.find()) {
+        while (matcherPlace.find()) {
             lat = Double.parseDouble(matcherPlace.group(1));
             lng = Double.parseDouble(matcherPlace.group(2));
-            System.out.println("📌 ใช้ Pattern !3d!4d");
-        } else if (matcherQuery.find()) {
-            lat = Double.parseDouble(matcherQuery.group(1));
-            lng = Double.parseDouble(matcherQuery.group(2));
-            System.out.println("📌 ใช้ Pattern q");
-        } else if (matcherAt.find()) {
-            lat = Double.parseDouble(matcherAt.group(1));
-            lng = Double.parseDouble(matcherAt.group(2));
-            System.out.println("📌 ใช้ Pattern @ fallback");
+        }
+
+        if (lat == null || lng == null) {
+            while (matcherQuery.find()) {
+                lat = Double.parseDouble(matcherQuery.group(1));
+                lng = Double.parseDouble(matcherQuery.group(2));
+            }
+        }
+
+        if (lat == null || lng == null) {
+            if (matcherAt.find()) {
+                lat = Double.parseDouble(matcherAt.group(1));
+                lng = Double.parseDouble(matcherAt.group(2));
+            }
+        }
+
+        if (lat == null || lng == null) {
+            while (matcherDir.find()) {
+                lat = Double.parseDouble(matcherDir.group(1));
+                lng = Double.parseDouble(matcherDir.group(2));
+            }
+        }
+
+        if (lat == null || lng == null) {
+            Matcher matcherDirect = patternDirect.matcher(finalUrl);
+            while (matcherDirect.find()) {
+                lat = Double.parseDouble(matcherDirect.group(1));
+                lng = Double.parseDouble(matcherDirect.group(2));
+            }
         }
 
         if (isValidCoordinate(lat, lng)) {
             hub.setWellnessHubLatitude(lat);
             hub.setWellnessHubLongitude(lng);
+            System.out.println("✅ สกัดพิกัดสำเร็จ: lat=" + lat + ", lng=" + lng);
         } else {
             hub.setWellnessHubLatitude(null);
             hub.setWellnessHubLongitude(null);
@@ -426,7 +457,7 @@ public class WellnessHubService {
     private void extractCoordinates(EmergencyService emergency) {
         String originalUrl = emergency.getGoogleMapsLink();
 
-        if (originalUrl == null || originalUrl.trim().isEmpty()) {
+        if (originalUrl == null || originalUrl.trim().isEmpty() || originalUrl.trim().equals("#")) {
             emergency.setWellnessHubLatitude(null);
             emergency.setWellnessHubLongitude(null);
             return;
@@ -434,30 +465,56 @@ public class WellnessHubService {
 
         String finalUrl = originalUrl.trim();
 
-        if (finalUrl.contains("goo.gl") || finalUrl.contains("maps.app.goo.gl")) {
+        if (finalUrl.contains("goo.gl") || finalUrl.contains("maps.app.goo.gl") || finalUrl.contains("maps.app")) {
             finalUrl = expandShortUrl(finalUrl);
         }
 
-        Pattern patternPlace = Pattern.compile("!3d(-?\\d+(?:\\.\\d+)?)!4d(-?\\d+(?:\\.\\d+)?)");
-        Pattern patternQuery = Pattern.compile("[?&]q=(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+        Pattern patternPlace = Pattern.compile("!3d(-?\\d+(?:\\.\\d+)?)[^!]*!4d(-?\\d+(?:\\.\\d+)?)");
+        Pattern patternQuery = Pattern.compile("[?&](?:q|query|ll|destination|daddr)=(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
         Pattern patternAt = Pattern.compile("@(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+        Pattern patternDir = Pattern.compile("/(?:dir|search|place)/[^/]*/(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+        Pattern patternDirect = Pattern.compile("/(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
 
         Matcher matcherPlace = patternPlace.matcher(finalUrl);
         Matcher matcherQuery = patternQuery.matcher(finalUrl);
         Matcher matcherAt = patternAt.matcher(finalUrl);
+        Matcher matcherDir = patternDir.matcher(finalUrl);
 
         Double latitude = null;
         Double longitude = null;
 
-        if (matcherPlace.find()) {
+        while (matcherPlace.find()) {
             latitude = Double.parseDouble(matcherPlace.group(1));
             longitude = Double.parseDouble(matcherPlace.group(2));
-        } else if (matcherQuery.find()) {
-            latitude = Double.parseDouble(matcherQuery.group(1));
-            longitude = Double.parseDouble(matcherQuery.group(2));
-        } else if (matcherAt.find()) {
-            latitude = Double.parseDouble(matcherAt.group(1));
-            longitude = Double.parseDouble(matcherAt.group(2));
+        }
+
+        if (latitude == null || longitude == null) {
+            while (matcherQuery.find()) {
+                latitude = Double.parseDouble(matcherQuery.group(1));
+                longitude = Double.parseDouble(matcherQuery.group(2));
+            }
+        }
+
+        if (latitude == null || longitude == null) {
+            if (matcherAt.find()) {
+                latitude = Double.parseDouble(matcherAt.group(1));
+                longitude = Double.parseDouble(matcherAt.group(2));
+            }
+        }
+
+        if (latitude == null || longitude == null) {
+            while (matcherDir.find()) {
+                latitude = Double.parseDouble(matcherDir.group(1));
+                longitude = Double.parseDouble(matcherDir.group(2));
+            }
+        }
+
+        if (latitude == null || longitude == null) {
+            Matcher matcherDirect = patternDirect.matcher(finalUrl);
+            while (matcherDirect.find()) {
+                latitude = Double.parseDouble(matcherDirect.group(1));
+                longitude = Double.parseDouble(matcherDirect.group(2));
+            }
         }
 
         if (isValidCoordinate(latitude, longitude)) {
@@ -472,8 +529,11 @@ public class WellnessHubService {
     private boolean isValidCoordinate(Double lat, Double lng) {
         return lat != null
                 && lng != null
-                && lat >= -90 && lat <= 90
-                && lng >= -180 && lng <= 180;
+                && !lat.isNaN()
+                && !lng.isNaN()
+                && !(lat == 0.0 && lng == 0.0)
+                && lat >= 17.0 && lat <= 20.5
+                && lng >= 98.0 && lng <= 100.0;
     }
 
     private String expandShortUrl(String shortenedUrl) {
@@ -553,8 +613,8 @@ public class WellnessHubService {
                 throw new IllegalArgumentException("กรุณาระบุเบอร์โทรศัพท์");
             }
             String tel = updatedData.getTelInformation().trim();
-            if (!tel.matches("^[0-9]{9,10}$")) {
-                throw new IllegalArgumentException("เบอร์โทรศัพท์ต้องเป็นตัวเลข 9-10 หลัก และไม่มีช่องว่าง");
+            if (!tel.matches("^(1669|[0-9]{3,4}|[0-9]{9,10})$")) {
+                throw new IllegalArgumentException("เบอร์โทรศัพท์ต้องเป็นตัวเลข 9-10 หลัก หรือเบอร์ฉุกเฉิน (เช่น 1669) และไม่มีช่องว่าง");
             }
 
             // 3. contactInformation: optional, if provided 3–255
@@ -595,20 +655,21 @@ public class WellnessHubService {
             Double lat = null;
             Double lng = null;
             if (!googleMapsLink.equals("#")) {
-                lat = updatedData.getWellnessHubLatitude();
-                lng = updatedData.getWellnessHubLongitude();
+                WellnessHub temp = new WellnessHub();
+                temp.setGoogleMapsLink(googleMapsLink);
+                extractCoordinates(temp);
+                lat = temp.getWellnessHubLatitude();
+                lng = temp.getWellnessHubLongitude();
+
                 if (lat == null || lng == null) {
-                    WellnessHub temp = new WellnessHub();
-                    temp.setGoogleMapsLink(googleMapsLink);
-                    extractCoordinates(temp);
-                    lat = temp.getWellnessHubLatitude();
-                    lng = temp.getWellnessHubLongitude();
+                    lat = updatedData.getWellnessHubLatitude();
+                    lng = updatedData.getWellnessHubLongitude();
                 }
-                if (lat != null && (lat < -90.0 || lat > 90.0)) {
-                    throw new IllegalArgumentException("ละติจูดต้องอยู่ระหว่าง -90 ถึง 90");
+                if (lat != null && (lat < 17.0 || lat > 20.5)) {
+                    throw new IllegalArgumentException("ละติจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 17.0 ถึง 20.5)");
                 }
-                if (lng != null && (lng < -180.0 || lng > 180.0)) {
-                    throw new IllegalArgumentException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
+                if (lng != null && (lng < 98.0 || lng > 100.0)) {
+                    throw new IllegalArgumentException("ลองจิจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 98.0 ถึง 100.0)");
                 }
             }
 
@@ -784,12 +845,12 @@ public class WellnessHubService {
             }
         }
 
-        // 6. telInformation: optional, ตัวเลข 9-10 หลัก ไม่มีช่องว่าง (ถ้ามีระบุ)
+        // 6. telInformation: optional, ตัวเลข 9-10 หลัก หรือเบอร์ฉุกเฉิน ไม่มีช่องว่าง (ถ้ามีระบุ)
         String tel = null;
         if (updatedData.getTelInformation() != null && !updatedData.getTelInformation().trim().isEmpty()) {
             tel = updatedData.getTelInformation().trim();
-            if (!tel.matches("^[0-9]{9,10}$")) {
-                throw new IllegalArgumentException("เบอร์โทรศัพท์ต้องเป็นตัวเลข 9-10 หลัก และไม่มีช่องว่าง");
+            if (!tel.matches("^(1669|[0-9]{3,4}|[0-9]{9,10})$")) {
+                throw new IllegalArgumentException("เบอร์โทรศัพท์ต้องเป็นตัวเลข 9-10 หลัก หรือเบอร์ฉุกเฉิน (เช่น 1669) และไม่มีช่องว่าง");
             }
         }
 
@@ -812,20 +873,21 @@ public class WellnessHubService {
         Double lat = null;
         Double lng = null;
         if (!googleMapsLink.equals("#")) {
-            lat = updatedData.getWellnessHubLatitude();
-            lng = updatedData.getWellnessHubLongitude();
+            WellnessHub temp = new WellnessHub();
+            temp.setGoogleMapsLink(googleMapsLink);
+            extractCoordinates(temp);
+            lat = temp.getWellnessHubLatitude();
+            lng = temp.getWellnessHubLongitude();
+
             if (lat == null || lng == null) {
-                WellnessHub temp = new WellnessHub();
-                temp.setGoogleMapsLink(googleMapsLink);
-                extractCoordinates(temp);
-                lat = temp.getWellnessHubLatitude();
-                lng = temp.getWellnessHubLongitude();
+                lat = updatedData.getWellnessHubLatitude();
+                lng = updatedData.getWellnessHubLongitude();
             }
-            if (lat != null && (lat < -90.0 || lat > 90.0)) {
-                throw new IllegalArgumentException("ละติจูดต้องอยู่ระหว่าง -90 ถึง 90");
+            if (lat != null && (lat < 17.0 || lat > 20.5)) {
+                throw new IllegalArgumentException("ละติจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 17.0 ถึง 20.5)");
             }
-            if (lng != null && (lng < -180.0 || lng > 180.0)) {
-                throw new IllegalArgumentException("ลองจิจูดต้องอยู่ระหว่าง -180 ถึง 180");
+            if (lng != null && (lng < 98.0 || lng > 100.0)) {
+                throw new IllegalArgumentException("ลองจิจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 98.0 ถึง 100.0)");
             }
         }
 

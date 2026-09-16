@@ -294,10 +294,10 @@
 }
 
 .dashboard-header h1 {
+  font-family: "Pridi", serif !important;
   margin: 0 0 7px;
-
   font-size: 28px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .dashboard-header p {

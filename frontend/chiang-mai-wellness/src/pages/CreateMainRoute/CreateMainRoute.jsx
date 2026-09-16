@@ -43,10 +43,10 @@ const hasValidCoordinates = (hub) => {
     Number.isFinite(latitude) &&
     Number.isFinite(longitude) &&
     !(latitude === 0 && longitude === 0) &&
-    latitude >= -90 &&
-    latitude <= 90 &&
-    longitude >= -180 &&
-    longitude <= 180
+    latitude >= 17.0 &&
+    latitude <= 20.5 &&
+    longitude >= 98.0 &&
+    longitude <= 100.0
   );
 };
 
@@ -514,10 +514,10 @@ const CreateMainRoute = () => {
       if (
         !Number.isFinite(latitude) ||
         !Number.isFinite(longitude) ||
-        latitude < -90 ||
-        latitude > 90 ||
-        longitude < -180 ||
-        longitude > 180
+        latitude < 17.0 ||
+        latitude > 20.5 ||
+        longitude < 98.0 ||
+        longitude > 100.0
       ) {
         return;
       }
@@ -575,10 +575,10 @@ const CreateMainRoute = () => {
         if (
           !Number.isFinite(latitude) ||
           !Number.isFinite(longitude) ||
-          latitude < -90 ||
-          latitude > 90 ||
-          longitude < -180 ||
-          longitude > 180
+          latitude < 17.0 ||
+          latitude > 20.5 ||
+          longitude < 98.0 ||
+          longitude > 100.0
         ) {
           return null;
         }

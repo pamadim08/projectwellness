@@ -20,9 +20,22 @@ import {
 import "./ListOfficialArticle.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
+import { clearArticleListCache } from "../ArticleList/ArticleList";
+import { clearArticleDetailCache } from "../ArticleDetail/ArticleDetail";
 
 const API_URL = "http://localhost:8080/api/articles";
 const ROWS_PER_PAGE = 10;
+
+// In-Memory Cache เพื่อให้เปิดหน้ารายการบทความฝั่ง Admin ได้ทันทีใน 0ms
+let adminArticlesCache = null;
+
+export const setAdminArticlesCache = (data) => {
+  adminArticlesCache = data;
+};
+
+export const clearAdminArticleCache = () => {
+  adminArticlesCache = null;
+};
 
 const SYSTEM_CATEGORIES = [
   "ข่าวประชาสัมพันธ์",
@@ -31,19 +44,17 @@ const SYSTEM_CATEGORIES = [
   "บทความสุขภาพ",
 ];
 
-// In-Memory Cache for Official Articles
-let officialArticlesCache = null;
-export const clearOfficialArticlesCache = () => {
-  officialArticlesCache = null;
-};
-
 function ListOfficialArticle() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [articles, setArticles] = useState(() => officialArticlesCache || []);
+  const [articles, setArticles] = useState(() =>
+    Array.isArray(adminArticlesCache) ? adminArticlesCache : [],
+  );
   const [adminName, setAdminName] = useState("Admin");
-  const [isLoading, setIsLoading] = useState(() => !officialArticlesCache);
+  const [isLoading, setIsLoading] = useState(
+    () => !Array.isArray(adminArticlesCache),
+  );
 
   // State สำหรับ Popup ยืนยันลบ
   const [deletingId, setDeletingId] = useState(null);
@@ -57,7 +68,7 @@ function ListOfficialArticle() {
   // Status Modal State
   const [statusModal, setStatusModal] = useState({
     isOpen: false,
-    type: "info",
+    type: "success",
     title: "",
     message: "",
   });
@@ -69,7 +80,7 @@ function ListOfficialArticle() {
       setAdminName(storedAdminName);
     }
 
-    loadArticles("", "", false);
+    loadArticles("", "");
   }, []);
 
   const loadArticles = async (
@@ -77,10 +88,10 @@ function ListOfficialArticle() {
     category = selectedCategory,
     forceRefresh = false,
   ) => {
-    const isDefault = !keyword && !category;
+    const isDefaultFilter = !keyword && !category;
 
-    if (officialArticlesCache && isDefault && !forceRefresh) {
-      setArticles(officialArticlesCache);
+    if (Array.isArray(adminArticlesCache) && isDefaultFilter && !forceRefresh) {
+      setArticles(adminArticlesCache);
       setIsLoading(false);
       return;
     }
@@ -99,14 +110,16 @@ function ListOfficialArticle() {
       const response = await axios.get(API_URL, { params });
       const data = Array.isArray(response.data) ? response.data : [];
 
-      if (isDefault) {
-        officialArticlesCache = data;
+      if (isDefaultFilter) {
+        adminArticlesCache = data;
       }
 
       setArticles(data);
     } catch (error) {
       console.error("ไม่สามารถโหลดรายการบทความได้", error);
-      setArticles([]);
+      if (!adminArticlesCache) {
+        setArticles([]);
+      }
       setStatusModal({
         isOpen: true,
         type: "error",
@@ -133,7 +146,7 @@ function ListOfficialArticle() {
     setSearchQuery("");
     setSelectedCategory("");
     setCurrentPage(1);
-    loadArticles("", "");
+    loadArticles("", "", true);
   };
 
   const handleLogout = () => {
@@ -157,7 +170,15 @@ function ListOfficialArticle() {
     try {
       await axios.delete(`${API_URL}/${selectedArticle.articleId}`);
 
-      officialArticlesCache = null;
+      clearArticleListCache();
+      clearArticleDetailCache(selectedArticle.articleId);
+
+      if (Array.isArray(adminArticlesCache)) {
+        adminArticlesCache = adminArticlesCache.filter(
+          (item) => item.articleId !== selectedArticle.articleId,
+        );
+      }
+
       setArticles((previousArticles) =>
         previousArticles.filter(
           (item) => item.articleId !== selectedArticle.articleId,

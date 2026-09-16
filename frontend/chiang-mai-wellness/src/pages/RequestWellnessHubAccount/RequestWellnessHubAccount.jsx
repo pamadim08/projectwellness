@@ -378,8 +378,8 @@ export default function RequestWellnessHubAccount() {
     const tellInfo = formData.tellInformation.trim();
     if (!tellInfo) {
       errors.tellInformation = "กรุณาระบุเบอร์โทรศัพท์";
-    } else if (!/^[0-9]{9,10}$/.test(tellInfo)) {
-      errors.tellInformation = "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก และไม่มีสัญลักษณ์พิเศษหรือช่องว่าง";
+    } else if (!/^(1669|[0-9]{3,4}|[0-9]{9,10})$/.test(tellInfo)) {
+      errors.tellInformation = "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก หรือเบอร์ฉุกเฉิน (เช่น 1669) และไม่มีสัญลักษณ์พิเศษหรือช่องว่าง";
     }
 
     // ข้อมูลบัญชีผู้ใช้
@@ -484,38 +484,52 @@ export default function RequestWellnessHubAccount() {
     if (!url || typeof url !== "string") return null;
     const trimmed = url.trim();
 
+    const isValidLatLng = (lat, lng) =>
+      !isNaN(lat) &&
+      !isNaN(lng) &&
+      lat >= 17.0 &&
+      lat <= 20.5 &&
+      lng >= 98.0 &&
+      lng <= 100.0;
+
+    // 1. หมุดสถานที่จริงใน Google Maps (!3d ละติจูด, !4d ลองจิจูด) - เอาคู่สุดท้ายที่เป็นหมุดสถานที่ปลายทางจริง
+    const placeMatches = [...trimmed.matchAll(/!3d(-?\d+(?:\.\d+)?)[^!]*!4d(-?\d+(?:\.\d+)?)/g)];
+    if (placeMatches.length > 0) {
+      const lastMatch = placeMatches[placeMatches.length - 1];
+      const lat = parseFloat(lastMatch[1]);
+      const lng = parseFloat(lastMatch[2]);
+      if (isValidLatLng(lat, lng)) {
+        return { lat, lng };
+      }
+    }
+
+    // 2. Query พิกัดระบุตรงๆ เช่น ?q=lat,lng หรือ ?query=lat,lng หรือ ?ll=lat,lng
+    const qMatches = [...trimmed.matchAll(/[?&](?:q|query|ll|destination|daddr)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)];
+    if (qMatches.length > 0) {
+      const lastQ = qMatches[qMatches.length - 1];
+      const lat = parseFloat(lastQ[1]);
+      const lng = parseFloat(lastQ[2]);
+      if (isValidLatLng(lat, lng)) {
+        return { lat, lng };
+      }
+    }
+
+    // 3. Fallback: พิกัดกึ่งกลางกล้อง/หน้าจอ (@lat,lng)
     const atMatch = trimmed.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
     if (atMatch) {
       const lat = parseFloat(atMatch[1]);
       const lng = parseFloat(atMatch[2]);
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      if (isValidLatLng(lat, lng)) {
         return { lat, lng };
       }
     }
 
-    const placeMatch = trimmed.match(/!3d(-?\d+(?:\.\d+)?)(?:.*)!4d(-?\d+(?:\.\d+)?)/);
-    if (placeMatch) {
-      const lat = parseFloat(placeMatch[1]);
-      const lng = parseFloat(placeMatch[2]);
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        return { lat, lng };
-      }
-    }
-
-    const qMatch = trimmed.match(/[?&](?:q|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-    if (qMatch) {
-      const lat = parseFloat(qMatch[1]);
-      const lng = parseFloat(qMatch[2]);
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        return { lat, lng };
-      }
-    }
-
+    // 4. Direction/Search path พิกัดปลายทาง
     const dirMatch = trimmed.match(/\/(?:dir|search)\/[^/]*\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) || trimmed.match(/\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
     if (dirMatch) {
       const lat = parseFloat(dirMatch[1]);
       const lng = parseFloat(dirMatch[2]);
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      if (isValidLatLng(lat, lng)) {
         return { lat, lng };
       }
     }

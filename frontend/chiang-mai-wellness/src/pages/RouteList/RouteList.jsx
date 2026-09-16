@@ -250,9 +250,8 @@ export default function RouteList() {
 
             <button
               type="button"
-              className={`route-list-filter-toggle ${
-                showFilters ? "route-list-filter-toggle--active" : ""
-              }`}
+              className={`route-list-filter-toggle ${showFilters ? "route-list-filter-toggle--active" : ""
+                }`}
               onClick={() => setShowFilters((previousValue) => !previousValue)}
             >
               <Filter />

@@ -37,10 +37,22 @@ public class OfficialArticleService {
         String trimmedKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
         String trimmedCategory = (category != null && !category.trim().isEmpty()) ? category.trim() : null;
 
+        List<OfficialArticle> list;
         if (trimmedKeyword == null && trimmedCategory == null) {
-            return repository.findAllByOrderByArticleIdDesc();
+            list = repository.findAllByOrderByArticleIdDesc();
+        } else {
+            list = repository.searchArticles(trimmedKeyword, trimmedCategory);
         }
-        return repository.searchArticles(trimmedKeyword, trimmedCategory);
+
+        // ล้างข้อมูล articleImages (ภาพแกลเลอรี) ออกจากรายการ เพื่อลดขนาด Payload ไม่ให้ช้า
+        if (list != null) {
+            list.forEach(article -> {
+                if (article != null) {
+                    article.setArticleImages(null);
+                }
+            });
+        }
+        return list;
     }
 
     // ดึงตาม id
@@ -55,16 +67,13 @@ public class OfficialArticleService {
             throw new IllegalArgumentException("กรุณาระบุข้อมูลบทความ");
         }
 
-        // 1. articleTitle: required, ไทย/อังกฤษ/ตัวเลข/ช่องว่าง, 10–100 ตัว
+        // 1. articleTitle: required, 10–100 ตัว (สามารถมีอักขระพิเศษได้)
         if (article.getArticleTitle() == null || article.getArticleTitle().trim().isEmpty()) {
             throw new IllegalArgumentException("กรุณาระบุหัวข้อบทความ");
         }
         String title = article.getArticleTitle().trim();
         if (title.length() < 10 || title.length() > 100) {
             throw new IllegalArgumentException("หัวข้อบทความต้องมีความยาว 10-100 ตัวอักษร");
-        }
-        if (!title.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
-            throw new IllegalArgumentException("หัวข้อบทความต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
         }
         article.setArticleTitle(title);
 
@@ -116,16 +125,13 @@ public class OfficialArticleService {
             return null;
         }
 
-        // 1. articleTitle: required 10–100 ตัว
+        // 1. articleTitle: required 10–100 ตัว (สามารถมีอักขระพิเศษได้)
         if (data.getArticleTitle() == null || data.getArticleTitle().trim().isEmpty()) {
             throw new IllegalArgumentException("กรุณาระบุหัวข้อบทความ");
         }
         String title = data.getArticleTitle().trim();
         if (title.length() < 10 || title.length() > 100) {
             throw new IllegalArgumentException("หัวข้อบทความต้องมีความยาว 10-100 ตัวอักษร");
-        }
-        if (!title.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
-            throw new IllegalArgumentException("หัวข้อบทความต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
         }
         oldArticle.setArticleTitle(title);
 

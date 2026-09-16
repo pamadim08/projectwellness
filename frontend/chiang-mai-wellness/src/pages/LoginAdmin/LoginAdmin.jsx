@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./LoginAdmin.css";
+import { prefetchAdminData } from "../../utils/adminPrefetcher";
 
 function LoginAdmin() {
   const [username, setUsername] = useState("");
@@ -47,6 +48,7 @@ function LoginAdmin() {
           JSON.stringify({ username: loggedInUsername, role: "ADMIN" })
         );
         localStorage.setItem("showWelcome", "true");
+        prefetchAdminData();
         navigate("/listAccountRequest");
       }
     } catch (err) {

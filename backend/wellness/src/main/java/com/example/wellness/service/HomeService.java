@@ -1,5 +1,6 @@
 package com.example.wellness.service;
 
+import com.example.wellness.dto.OfficialArticleSummaryDTO;
 import com.example.wellness.model.Category;
 import com.example.wellness.model.District;
 import com.example.wellness.model.EmergencyService;
@@ -67,7 +68,7 @@ public class HomeService {
          */
         public Map<String, Object> getHomeData() {
                 List<MainRoute> recommendedRoutes = homeRepository.findRecommendedRoutes();
-                List<OfficialArticle> latestArticles = homeRepository.findLatestArticles();
+                List<OfficialArticleSummaryDTO> latestArticles = homeRepository.findLatestArticles();
 
                 Map<String, Object> homeData = new LinkedHashMap<>();
                 homeData.put("recommendedRoutes", recommendedRoutes);
@@ -204,12 +205,32 @@ public class HomeService {
                 return map;
         }
 
-        public List<OfficialArticle> getLatestArticles() {
-                return homeRepository.findLatestArticles();
+        public List<OfficialArticleSummaryDTO> getLatestArticles() {
+                List<OfficialArticleSummaryDTO> list = homeRepository.findLatestArticles();
+                return sanitizeSummaryList(list);
         }
 
-        public List<OfficialArticle> getAllArticles() {
-                return homeRepository.findAllArticles();
+        public List<OfficialArticleSummaryDTO> getAllArticles() {
+                List<OfficialArticleSummaryDTO> list = homeRepository.findAllArticles();
+                return sanitizeSummaryList(list);
+        }
+
+        private List<OfficialArticleSummaryDTO> sanitizeSummaryList(List<OfficialArticleSummaryDTO> list) {
+                if (list == null) return new ArrayList<>();
+                for (OfficialArticleSummaryDTO dto : list) {
+                        if (dto != null && dto.getArticleDetail() != null) {
+                                String clean = dto.getArticleDetail()
+                                                .replaceAll("<[^>]*>", " ")
+                                                .replaceAll("&nbsp;", " ")
+                                                .replaceAll("\\s+", " ")
+                                                .trim();
+                                if (clean.length() > 200) {
+                                        clean = clean.substring(0, 200) + "...";
+                                }
+                                dto.setArticleDetail(clean);
+                        }
+                }
+                return list;
         }
 
         /*
@@ -563,7 +584,7 @@ public class HomeService {
                 return map;
         }
 
-        private Map<String, Object> convertArticleSearchResult(OfficialArticle article) {
+        private Map<String, Object> convertArticleSearchResult(OfficialArticleSummaryDTO article) {
                 Map<String, Object> map = new LinkedHashMap<>();
 
                 map.put("articleId", article.getArticleId());
@@ -713,7 +734,7 @@ public class HomeService {
                 if (lat.isNaN() || lng.isNaN() || (lat == 0.0 && lng == 0.0)) {
                         return false;
                 }
-                return lat >= -90.0 && lat <= 90.0 && lng >= -180.0 && lng <= 180.0;
+                return lat >= 17.0 && lat <= 20.5 && lng >= 98.0 && lng <= 100.0;
         }
 
         private boolean isValidForMapEmergency(EmergencyService emergency) {
@@ -727,7 +748,7 @@ public class HomeService {
                 if (emergency.getGoogleMapsLink() == null || emergency.getGoogleMapsLink().trim().isEmpty()) {
                         return false;
                 }
-                // 3. ต้องมีพิกัด ละติจูด และ ลองติจูด ที่ถูกต้อง
+                // 3. ต้องมีพิกัด ละติจูด และ ลองติจูด ที่ถูกต้อง (อยู่ใน จ.เชียงใหม่)
                 Double lat = emergency.getWellnessHubLatitude();
                 Double lng = emergency.getWellnessHubLongitude();
                 if (lat == null || lng == null) {
@@ -736,7 +757,7 @@ public class HomeService {
                 if (lat.isNaN() || lng.isNaN() || (lat == 0.0 && lng == 0.0)) {
                         return false;
                 }
-                return lat >= -90.0 && lat <= 90.0 && lng >= -180.0 && lng <= 180.0;
+                return lat >= 17.0 && lat <= 20.5 && lng >= 98.0 && lng <= 100.0;
         }
 
         private void putIfNotBlank(
