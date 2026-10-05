@@ -82,10 +82,10 @@ function Dashboard() {
     if (dashboardCache && !forceRefresh) {
       setDashboard(dashboardCache);
       setIsLoading(false);
-      return;
+    } else {
+      setIsLoading(true);
     }
 
-    setIsLoading(true);
     setHasError(false);
 
     try {

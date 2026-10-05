@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import axiosInstance from "axios";
 import L from "leaflet";
@@ -7,6 +7,10 @@ import { getCategoryMarkerIcon } from "../../utils/categoryMarkerIcons";
 import "./CreateMainRoute.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCircleInfo, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { clearMainRouteCache } from "../ListMainroute/ListMainroute";
+import { clearDashboardCache } from "../Dashboard/Dashboard";
 
 // 🌟 1. ค่าคงที่และ Helper function ด้านนอก Component
 const REQUIRED_EMERGENCY_CATEGORY_IDS = ["EM01", "EM02"];
@@ -66,8 +70,107 @@ const isValidHubForMap = (hub) => {
     return false;
   }
 
-  // 3. มีพิกัด ละติจูด ลองติจูด ที่ถูกต้อง
+  // 3. ต้องมีพิกัดที่ถูกต้อง
   return hasValidCoordinates(hub);
+};
+
+// 📏 คำนวณระยะทางระหว่าง 2 พิกัดด้วยสูตร Haversine (กิโลเมตร)
+const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+  const numLat1 = Number(lat1);
+  const numLon1 = Number(lon1);
+  const numLat2 = Number(lat2);
+  const numLon2 = Number(lon2);
+  if (isNaN(numLat1) || isNaN(numLon1) || isNaN(numLat2) || isNaN(numLon2)) return 0;
+
+  const R = 6371; // รัศมีโลกเฉลี่ย (km)
+  const dLat = ((numLat2 - numLat1) * Math.PI) / 180;
+  const dLon = ((numLon2 - numLon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((numLat1 * Math.PI) / 180) *
+      Math.cos((numLat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+// 🗺️ คำนวณระยะทางรวมของเส้นทางตามลำดับอำเภอ (กิโลเมตร)
+const calculateTotalRouteDistance = (routeList) => {
+  if (!Array.isArray(routeList) || routeList.length < 2) return 0;
+  let totalKm = 0;
+  for (let i = 0; i < routeList.length - 1; i++) {
+    const from = routeList[i];
+    const to = routeList[i + 1];
+    const lat1 = Number(from.district?.latitude ?? from.latitude);
+    const lon1 = Number(from.district?.longitude ?? from.longitude);
+    const lat2 = Number(to.district?.latitude ?? to.latitude);
+    const lon2 = Number(to.district?.longitude ?? to.longitude);
+    totalKm += calculateDistanceKm(lat1, lon1, lat2, lon2);
+  }
+  return totalKm;
+};
+
+// ⚡ จัดเรียงลำดับเส้นทางอัตโนมัติ (Nearest Neighbor + 2-Opt TSP Algorithm)
+const optimizeRouteOrder = (routeList) => {
+  if (!Array.isArray(routeList) || routeList.length <= 2) return routeList;
+
+  // 1. Greedy Nearest Neighbor เริ่มจากจุดเริ่มต้น (อำเภอแรกที่ผู้ใช้เลือก)
+  const unvisited = [...routeList];
+  const optimized = [unvisited.shift()];
+
+  while (unvisited.length > 0) {
+    const current = optimized[optimized.length - 1];
+    const currLat = Number(current.district?.latitude ?? current.latitude);
+    const currLng = Number(current.district?.longitude ?? current.longitude);
+
+    let nearestIndex = 0;
+    let minDistance = Infinity;
+
+    for (let i = 0; i < unvisited.length; i++) {
+      const candidate = unvisited[i];
+      const candLat = Number(candidate.district?.latitude ?? candidate.latitude);
+      const candLng = Number(candidate.district?.longitude ?? candidate.longitude);
+      const dist = calculateDistanceKm(currLat, currLng, candLat, candLng);
+
+      if (dist < minDistance) {
+        minDistance = dist;
+        nearestIndex = i;
+      }
+    }
+
+    optimized.push(unvisited.splice(nearestIndex, 1)[0]);
+  }
+
+  // 2. 2-Opt Local Search แก้ปัญหาเส้นทางตัดกัน (Untangle crossing paths)
+  let improved = true;
+  let bestRoute = [...optimized];
+  let iterations = 0;
+
+  while (improved && iterations < 50) {
+    improved = false;
+    iterations++;
+
+    for (let i = 1; i < bestRoute.length - 1; i++) {
+      for (let k = i + 1; k < bestRoute.length; k++) {
+        const newRoute = [
+          ...bestRoute.slice(0, i),
+          ...bestRoute.slice(i, k + 1).reverse(),
+          ...bestRoute.slice(k + 1),
+        ];
+
+        if (calculateTotalRouteDistance(newRoute) < calculateTotalRouteDistance(bestRoute) - 0.05) {
+          bestRoute = newRoute;
+          improved = true;
+          break;
+        }
+      }
+      if (improved) break;
+    }
+  }
+
+  return bestRoute;
 };
 
 const CreateMainRoute = () => {
@@ -105,6 +208,8 @@ const CreateMainRoute = () => {
     title: "",
     message: "",
   });
+  const [showLegendModal, setShowLegendModal] = useState(false);
+  const [optimizationFeedback, setOptimizationFeedback] = useState("");
 
   // Image upload states
   const [imageFile, setImageFile] = useState(null);
@@ -296,75 +401,13 @@ const CreateMainRoute = () => {
     setImageError("");
   };
 
-  const loadRouteData = async (routeId, currentDistricts) => {
-    try {
-      const routeRes = await axiosInstance.get(
-        `http://localhost:8080/api/main-routes/${routeId}`,
-      );
-
-      if (routeRes.data) {
-        const data = routeRes.data;
-        setRouteName(data.routeName || "");
-        setRouteDescription(data.routeDescription || "");
-
-        if (data.routeImage) {
-          setImageExistingName(data.routeImage);
-          setImagePreview(normalizeRouteImage(data.routeImage));
-          setImageFileName(data.routeImage);
-        }
-
-        if (data.categoryId) {
-          try {
-            const parsedCategoryIds = JSON.parse(data.categoryId);
-            setSelectedCategoryIds(
-              mergeRequiredCategories(
-                Array.isArray(parsedCategoryIds)
-                  ? parsedCategoryIds
-                  : [parsedCategoryIds],
-              ),
-            );
-          } catch (error) {
-            setSelectedCategoryIds(
-              mergeRequiredCategories([String(data.categoryId)]),
-            );
-          }
-        } else {
-          setSelectedCategoryIds(REQUIRED_EMERGENCY_CATEGORY_IDS);
-        }
-
-        if (data.details && data.details.length > 0) {
-          const sortedDetails = [...data.details].sort(
-            (a, b) => a.orderNumber - b.orderNumber,
-          );
-
-          const mappedDistricts = sortedDetails
-            .map((detail) => {
-              const districtId =
-                detail.district?.districtId ?? detail.districtId;
-              return currentDistricts.find(
-                (district) =>
-                  String(district.districtId) === String(districtId),
-              );
-            })
-            .filter(Boolean);
-
-          setOrderedRouteDetails(mappedDistricts);
-        }
-      }
-    } catch (err) {
-      console.error("❌ ไม่สามารถดึงข้อมูลเส้นทางเดิมได้", err);
-      throw err;
-    }
-  };
-
-  // โหลด Master Data
+  // โหลด Master Data และ Route เดิม (ถ้ามี id) พร้อมกันในรอบเดียว
   useEffect(() => {
+    const controller = new AbortController();
     const storedAdmin = localStorage.getItem("adminName");
-    if (storedAdmin) {
-      setAdminName(storedAdmin);
-    }
+    if (storedAdmin) setAdminName(storedAdmin);
 
-    const fetchSystemDBData = async () => {
+    const fetchAllData = async () => {
       setLoadingRoute(true);
       setStatusModal({
         isOpen: true,
@@ -376,69 +419,88 @@ const CreateMainRoute = () => {
       });
 
       try {
-        const [catRes, distRes, hubRes] = await Promise.all([
-          axiosInstance.get("http://localhost:8080/api/categories"),
-          axiosInstance.get("http://localhost:8080/api/districts"),
-          axiosInstance.get("http://localhost:8080/api/wellness-hubs"),
-        ]);
+        // รวมคำขอ API ทั้งหมดให้โหลดพร้อมกันในรอบเดียว
+        const requests = [
+          axiosInstance.get("http://localhost:8080/api/categories", { signal: controller.signal }),
+          axiosInstance.get("http://localhost:8080/api/districts", { signal: controller.signal }),
+          axiosInstance.get("http://localhost:8080/api/wellness-hubs", { signal: controller.signal }),
+        ];
 
+        if (id) {
+          requests.push(
+            axiosInstance.get(`http://localhost:8080/api/main-routes/${id}`, { signal: controller.signal })
+          );
+        }
+
+        const [catRes, distRes, hubRes, routeRes] = await Promise.all(requests);
+        if (controller.signal.aborted) return;
+
+        const currentDistricts = distRes.data || [];
         setCategories(catRes.data || []);
-        setDistricts(distRes.data || []);
+        setDistricts(currentDistricts);
         setWellnessHubs(hubRes.data || []);
 
-        if (!id) {
-          setLoadingRoute(false);
-          setStatusModal((prev) => ({ ...prev, isOpen: false }));
+        // จัดการข้อมูลเส้นทางเดิม (ถ้าเป็นการเปิดหน้าเพื่อ Edit)
+        if (id && routeRes?.data) {
+          const data = routeRes.data;
+          setRouteName(data.routeName || "");
+          setRouteDescription(data.routeDescription || "");
+
+          if (data.routeImage) {
+            setImageExistingName(data.routeImage);
+            setImagePreview(normalizeRouteImage(data.routeImage));
+            setImageFileName(data.routeImage);
+          }
+
+          if (data.categoryId) {
+            try {
+              const parsedCategoryIds = JSON.parse(data.categoryId);
+              setSelectedCategoryIds(
+                mergeRequiredCategories(Array.isArray(parsedCategoryIds) ? parsedCategoryIds : [parsedCategoryIds])
+              );
+            } catch {
+              setSelectedCategoryIds(mergeRequiredCategories([String(data.categoryId)]));
+            }
+          } else {
+            setSelectedCategoryIds(REQUIRED_EMERGENCY_CATEGORY_IDS);
+          }
+
+          if (data.details && data.details.length > 0) {
+            const sortedDetails = [...data.details].sort((a, b) => a.orderNumber - b.orderNumber);
+            const mappedDistricts = sortedDetails
+              .map((detail) => {
+                const districtId = detail.district?.districtId ?? detail.districtId;
+                return currentDistricts.find((d) => String(d.districtId) === String(districtId));
+              })
+              .filter(Boolean);
+
+            setOrderedRouteDetails(mappedDistricts);
+          }
         }
+
+        setStatusModal((prev) => ({ ...prev, isOpen: false }));
       } catch (err) {
+        if (controller.signal.aborted) return;
         console.error("❌ ดึงข้อมูลล้มเหลว", err);
-        setLoadingRoute(false);
+        const is404 = err.response && err.response.status === 404;
         setStatusModal({
           isOpen: true,
           type: "error",
-          title: "เกิดข้อผิดพลาดในการโหลดข้อมูล",
-          message: "ไม่สามารถดึงข้อมูลระบบได้ กรุณาลองใหม่อีกครั้ง",
+          title: is404 ? "ไม่พบข้อมูลเส้นทาง" : "เกิดข้อผิดพลาดในการโหลดข้อมูล",
+          message: is404
+            ? "ไม่พบข้อมูลเส้นทางหลักที่ต้องการแก้ไข กรุณาตรวจสอบรหัสเส้นทางอีกครั้ง"
+            : "ไม่สามารถดึงข้อมูลระบบได้ กรุณาลองใหม่อีกครั้ง",
         });
-      }
-    };
-
-    fetchSystemDBData();
-  }, [id]);
-
-  // โหลด Route เดิมเมื่อมีข้อมูลอำเภอพร้อม
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchExistingRoute = async () => {
-      if (id && districts.length > 0) {
-        try {
-          await loadRouteData(id, districts);
-          if (isMounted) {
-            setStatusModal((prev) => ({ ...prev, isOpen: false }));
-          }
-        } catch (err) {
-          console.error("❌ เกิดข้อผิดพลาดขณะโหลดเส้นทางเก่า:", err);
-          const is404 = err.response && err.response.status === 404;
-          setStatusModal({
-            isOpen: true,
-            type: "error",
-            title: is404 ? "ไม่พบข้อมูลเส้นทาง" : "เกิดข้อผิดพลาดในการโหลดข้อมูล",
-            message: is404
-              ? "ไม่พบข้อมูลเส้นทางหลักที่ต้องการแก้ไข กรุณาตรวจสอบรหัสเส้นทางอีกครั้ง"
-              : "ไม่สามารถเชื่อมต่อระบบเพื่อดึงข้อมูลเส้นทางได้ กรุณาลองใหม่อีกครั้ง",
-          });
-        } finally {
-          if (isMounted) setLoadingRoute(false);
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingRoute(false);
         }
       }
     };
 
-    fetchExistingRoute();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [id, districts]);
+    fetchAllData();
+    return () => controller.abort();
+  }, [id]);
 
   // Initial Leaflet Map (ใช้การตั้งค่าและ Tile Layer เดียวกับหน้า RouteDetail)
   useEffect(() => {
@@ -674,7 +736,7 @@ const CreateMainRoute = () => {
         const popupHtml = `
             <div style="font-family:'Sarabun',sans-serif; padding:2px; min-width:140px;">
               <strong style="font-size:13px; color:#111; display:block; margin-bottom:4px;">
-                🏢 ${hub.wellnessHubName}
+                ${hub.wellnessHubName}
               </strong>
 
               <span style="font-size:11px; color:#666; display:block;">
@@ -682,7 +744,7 @@ const CreateMainRoute = () => {
               </span>
 
               <span style="font-size:12px; color:${styleInfo.color}; font-weight:bold; display:block; margin-top:4px;">
-                ✨ ${catName || styleInfo.label}
+                ${catName || styleInfo.label}
               </span>
             </div>
           `;
@@ -825,7 +887,7 @@ const CreateMainRoute = () => {
     if (isDuplicate) {
       setErrors({
         ...errors,
-        orderedDistricts: "❌ อำเภอนี้ถูกจัดอยู่ในลำดับเส้นทางเรียบร้อยแล้ว",
+        orderedDistricts: "อำเภอนี้ถูกจัดอยู่ในลำดับเส้นทางเรียบร้อยแล้ว",
       });
       return;
     }
@@ -865,6 +927,88 @@ const CreateMainRoute = () => {
     );
   };
 
+  // 📍 คำนวณระยะทางรวมของเส้นทางปัจจุบัน (กม.)
+  const totalRouteDistance = useMemo(() => {
+    return calculateTotalRouteDistance(orderedRouteDetails);
+  }, [orderedRouteDetails]);
+
+  // 💡 แนะนำอำเภอถัดไปที่ใกล้ที่สุด (Smart Next District Suggestions)
+  const suggestedNextDistricts = useMemo(() => {
+    if (orderedRouteDetails.length === 0 || districts.length === 0) return [];
+
+    // ดึงอำเภอล่าสุดที่เป็นปลายเส้นทาง
+    const lastDistrict = orderedRouteDetails[orderedRouteDetails.length - 1];
+    const lastLat = Number(
+      lastDistrict.district?.latitude ?? lastDistrict.latitude,
+    );
+    const lastLng = Number(
+      lastDistrict.district?.longitude ?? lastDistrict.longitude,
+    );
+    if (!lastLat || !lastLng) return [];
+
+    // ดึงรายการ districtId ที่อยู่ในเส้นทางแล้ว
+    const selectedIds = new Set(
+      orderedRouteDetails.map((d) =>
+        String(d.district?.districtId ?? d.districtId),
+      ),
+    );
+
+    // คำนวณระยะห่างไปยังอำเภอที่ยังไม่ได้เลือก
+    return districts
+      .filter(
+        (d) =>
+          !selectedIds.has(String(d.districtId)) && d.latitude && d.longitude,
+      )
+      .map((d) => ({
+        ...d,
+        distanceKm: calculateDistanceKm(
+          lastLat,
+          lastLng,
+          Number(d.latitude),
+          Number(d.longitude),
+        ),
+      }))
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, 4); // แนะนำ 4 อำเภอที่ใกล้ที่สุด
+  }, [orderedRouteDetails, districts]);
+
+  // จัดเรียงลำดับเส้นทางอัตโนมัติ (Auto Sort / Optimize Route)
+  const handleAutoSortRoute = () => {
+    if (orderedRouteDetails.length < 3) {
+      setOptimizationFeedback(
+        "เลือกอย่างน้อย 3 อำเภอเพื่อจัดเรียงเส้นทางให้มีประสิทธิภาพสูงสุด",
+      );
+      setTimeout(() => setOptimizationFeedback(""), 3500);
+      return;
+    }
+
+    const oldDistance = calculateTotalRouteDistance(orderedRouteDetails);
+    const optimized = optimizeRouteOrder(orderedRouteDetails);
+    const newDistance = calculateTotalRouteDistance(optimized);
+    const savedKm = oldDistance - newDistance;
+
+    setOrderedRouteDetails(optimized);
+    if (savedKm > 0.5) {
+      setOptimizationFeedback(
+        `จัดเส้นทางใหม่ ประหยัดระยะทางได้ ~${savedKm.toFixed(1)} กม. (ระยะทางรวม ~${newDistance.toFixed(1)} กม.)`,
+      );
+    } else {
+      setOptimizationFeedback(
+        `จัดเรียงตามลำดับที่เหมาะสมเรียบร้อย (~${newDistance.toFixed(1)} กม.)`,
+      );
+    }
+    setTimeout(() => setOptimizationFeedback(""), 4500);
+  };
+
+  // ➕ เพิ่มอำเภอที่ระบบแนะนำลงในเส้นทางโดยตรง
+  const handleAddSuggestedDistrict = (district) => {
+    if (!district) return;
+    setOrderedRouteDetails((prev) => [...prev, district]);
+    if (errors.orderedDistricts) {
+      setErrors((prev) => ({ ...prev, orderedDistricts: "" }));
+    }
+  };
+
   // 🌟 ฟังก์ชันจัดการ Submit Form อัปเดตและบันทึกภาพปก
   const handleSubmitFinalForm = async (event) => {
     event.preventDefault();
@@ -872,7 +1016,6 @@ const CreateMainRoute = () => {
     if (isSubmitting) return;
 
     const trimmedRouteName = routeName.trim();
-    const routeNameRegex = /^[a-zA-Z0-9\u0E00-\u0E7F\s]{5,50}$/;
     const trimmedDescription = routeDescription.trim();
 
     // 1. ตรวจสอบจำนวนอำเภอ (อย่างน้อย 2 อำเภอ)
@@ -886,13 +1029,13 @@ const CreateMainRoute = () => {
       return;
     }
 
-    // 2. ตรวจสอบชื่อเส้นทาง: 5-50 ตัวอักษร ไทย/อังกฤษ/ตัวเลข
-    if (!trimmedRouteName || !routeNameRegex.test(trimmedRouteName)) {
+    // 2. ตรวจสอบชื่อเส้นทาง: 5-50 ตัวอักษร
+    if (!trimmedRouteName || trimmedRouteName.length < 5 || trimmedRouteName.length > 50) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ครบถ้วน",
-        message: "กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อเส้นทางภาษาไทย/อังกฤษ/ตัวเลข ความยาว 5–50 ตัวอักษร)",
+        message: "กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อเส้นทางความยาว 5–50 ตัวอักษร)",
       });
       return;
     }
@@ -965,6 +1108,8 @@ const CreateMainRoute = () => {
           `http://localhost:8080/api/main-routes/${id}`,
           finalPayload,
         );
+        clearMainRouteCache();
+        clearDashboardCache();
 
         setIsSubmitting(false);
         setStatusModal({
@@ -980,6 +1125,8 @@ const CreateMainRoute = () => {
         "http://localhost:8080/api/main-routes",
         finalPayload,
       );
+      clearMainRouteCache();
+      clearDashboardCache();
 
       setIsSubmitting(false);
       setStatusModal({
@@ -1035,85 +1182,36 @@ const CreateMainRoute = () => {
 
         <div className="gov-gis-container">
           <div className="gov-map-panel">
+            {/* 📍 ปุ่มลอยมุมขวาบนของแผนที่ สไตล์ Admin สี่เหลี่ยมมุมฉาก */}
+            <button
+              type="button"
+              onClick={() => setShowLegendModal(true)}
+              style={{
+                position: "absolute",
+                top: "12px",
+                right: "12px",
+                zIndex: 500,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "7px",
+                padding: "7px 14px",
+                backgroundColor: "#ffffff",
+                color: "#14532d",
+                border: "1.5px solid #14532d",
+                borderRadius: "0px",
+                fontSize: "13px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
+                transition: "all 0.15s ease",
+              }}
+              title="คำอธิบายสัญลักษณ์หมุด"
+            >
+              <FontAwesomeIcon icon={faCircleInfo} style={{ color: "#14532d", fontSize: "14px" }} />
+              <span>คำอธิบายสัญลักษณ์หมุด</span>
+            </button>
+
             <div id="map" ref={mapContainerRef} className="gov-map-frame"></div>
-
-            {/* LEGEND สัญลักษณ์หมุด */}
-            <div className="gov-map-legend">
-              <div className="gov-legend-title">
-                ความหมายของพิกัดหมุดสัญลักษณ์
-              </div>
-
-              <div className="gov-legend-item">
-                <div
-                  className="gov-legend-color"
-                  style={{ background: "#E02873" }}
-                ></div>
-                นวด/สปาเพื่อสุขภาพ (C01)
-              </div>
-
-              <div className="gov-legend-item">
-                <div
-                  className="gov-legend-color"
-                  style={{ background: "#0B7D31" }}
-                ></div>
-                อาหารและเครื่องดื่ม (C03)
-              </div>
-
-              <div className="gov-legend-item">
-                <div
-                  className="gov-legend-color"
-                  style={{ background: "#5E27AB" }}
-                ></div>
-                ที่พักฟื้นฟูสุขภาพ (C04)
-              </div>
-
-              <div className="gov-legend-item">
-                <div
-                  className="gov-legend-color"
-                  style={{ background: "#004CB4" }}
-                ></div>
-                คลินิก/สถานพยาบาล (C02)
-              </div>
-
-              <div className="gov-legend-item">
-                <div
-                  className="gov-legend-color"
-                  style={{ background: "#009BB0" }}
-                ></div>
-                สถานที่ท่องเที่ยว (C05)
-              </div>
-
-              <div className="gov-legend-item">
-                <div
-                  className="gov-legend-color"
-                  style={{ background: "#BD0915" }}
-                ></div>
-                ALS (Advanced Hospital)
-              </div>
-
-              <div className="gov-legend-item">
-                <div
-                  className="gov-legend-color"
-                  style={{ background: "#C98600" }}
-                ></div>
-                BLS (Basic Life Support)
-              </div>
-
-              <div
-                className="gov-legend-item"
-                style={{
-                  borderTop: "1px dashed #cbd5e1",
-                  marginTop: "5px",
-                  paddingTop: "5px",
-                }}
-              >
-                <div
-                  className="gov-legend-color"
-                  style={{ background: "#1a2332" }}
-                ></div>
-                จุดตรวจสอบระดับอำเภอ
-              </div>
-            </div>
 
             {/* สรุปจำนวนหมุด */}
             <div
@@ -1242,10 +1340,191 @@ const CreateMainRoute = () => {
                 </span>
               </div>
 
-              {/* SECTION 1: ประเภทสถานที่ */}
+              {/* SECTION 1: ลำดับอำเภอที่ผ่าน */}
+              <div className="gov-form-group">
+                <div className="gov-section-title-row">
+                  <label className="gov-label-bold" style={{ margin: 0 }}>
+                    1. ลำดับอำเภอที่ผ่าน (Route Track)*
+                  </label>
+                  {orderedRouteDetails.length >= 2 && (
+                    <span className="gov-route-distance-badge">
+                      <i className="fa-solid fa-route"></i> ระยะทางรวม ~{totalRouteDistance.toFixed(1)} กม.
+                    </span>
+                  )}
+                </div>
+
+                <div className="gov-district-selector-block">
+                  <select
+                    className="gov-dropdown-select"
+                    value={selectDistrictValue}
+                    onChange={(event) =>
+                      setSelectDistrictValue(event.target.value)
+                    }
+                  >
+                    <option value="">-- เลือกรายการอำเภอหลัก --</option>
+                    {districts.map((district) => (
+                      <option
+                        key={district.districtId}
+                        value={String(district.districtId)}
+                      >
+                        อ.{district.districtName}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    className="gov-btn-add-item"
+                    onClick={handleAddDistrictToOrderList}
+                  >
+                    เพิ่ม
+                  </button>
+                </div>
+
+                {/* แถบแนะนำอำเภอถัดไป (Smart Next District Suggestions) */}
+                {suggestedNextDistricts.length > 0 && (
+                  <div className="gov-suggested-districts-container">
+                    <span className="gov-suggested-title">
+                      <i className="fa-solid fa-location-arrow"></i> แนะนำอำเภอถัดไปที่ใกล้ที่สุด:
+                    </span>
+                    <div className="gov-suggested-chips-row">
+                      {suggestedNextDistricts.map((d) => (
+                        <button
+                          key={d.districtId}
+                          type="button"
+                          className="gov-suggested-chip"
+                          onClick={() => handleAddSuggestedDistrict(d)}
+                          title={`คลิกเพื่อเพิ่ม อ.${d.districtName} (ระยะทาง ~${d.distanceKm.toFixed(1)} กม.)`}
+                        >
+                          <span className="gov-chip-name">+ อ.{d.districtName}</span>
+                          <span className="gov-chip-dist">(~{d.distanceKm.toFixed(1)} กม.)</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* แถบเครื่องมือช่วยจัดเส้นทาง (Auto Sort) */}
+                {orderedRouteDetails.length >= 2 && (
+                  <div className="gov-route-optimize-toolbar">
+                    <button
+                      type="button"
+                      className="gov-btn-optimize-sort"
+                      onClick={handleAutoSortRoute}
+                      title="คำนวณและจัดลำดับอำเภอใหม่อัตโนมัติ เพื่อให้ได้เส้นทางที่สั้นและต่อเนื่องที่สุด"
+                    >
+                      <i className="fa-solid fa-wand-magic-sparkles"></i> จัดเส้นทางอัตโนมัติ
+                    </button>
+                  </div>
+                )}
+
+                {/* ข้อความ Feedback เมื่อกดจัดเส้นทาง */}
+                {optimizationFeedback && (
+                  <div className="gov-optimize-feedback-toast">
+                    {optimizationFeedback}
+                  </div>
+                )}
+
+                <div
+                  className={`gov-order-list-container ${errors.orderedDistricts ? "gov-input-border-error" : ""
+                    }`}
+                >
+                  {orderedRouteDetails.map((dist, index) => {
+                    const currentDistId =
+                      dist.district?.districtId ?? dist.districtId;
+                    const currentDistName =
+                      dist.district?.districtName ?? dist.districtName;
+                    const districtHubsCount =
+                      getCountForDistrict(currentDistId);
+
+                    return (
+                      <div
+                        key={currentDistId}
+                        className="gov-order-row"
+                        style={{ padding: "10px 12px" }}
+                      >
+                        <div className="gov-order-left">
+                          <div className="gov-badge-number">{index + 1}</div>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                            }}
+                          >
+                            <span
+                              className="gov-order-name"
+                              style={{ fontWeight: "600" }}
+                            >
+                              อำเภอ{currentDistName}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: "11px",
+                                color: "#475569",
+                                marginTop: "1px",
+                              }}
+                            >
+                              {districtHubsCount} จุดตรวจพบ
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="gov-order-actions">
+                          <button
+                            type="button"
+                            className="gov-btn-arrow"
+                            onClick={() => handleMoveOrderStep(index, -1)}
+                            disabled={index === 0}
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            className="gov-btn-arrow"
+                            onClick={() => handleMoveOrderStep(index, 1)}
+                            disabled={index === orderedRouteDetails.length - 1}
+                          >
+                            ▼
+                          </button>
+                          <button
+                            type="button"
+                            className="gov-btn-delete-item-red"
+                            onClick={() =>
+                              handleRemoveDistrictFromList(currentDistId)
+                            }
+                          >
+                            <i className="fa-solid fa-circle-xmark"></i>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {orderedRouteDetails.length === 0 && (
+                    <p
+                      style={{
+                        textAlign: "center",
+                        color: "#888",
+                        fontSize: "13px",
+                        margin: "15px 0",
+                      }}
+                    >
+                      ยังไม่มีอำเภอถูกจัดอยู่ในโครงสร้างเส้นทาง
+                    </p>
+                  )}
+                </div>
+
+                {errors.orderedDistricts && (
+                  <span className="gov-error-label">
+                    {errors.orderedDistricts}
+                  </span>
+                )}
+              </div>
+
+              {/* SECTION 2: ประเภทสถานที่ */}
               <div className="gov-form-group">
                 <label className="gov-label-bold">
-                  1. ประเภทสถานที่ที่จะแสดง (หมุดบนแผนที่)*
+                  2. ประเภทสถานที่ที่จะแสดง (หมุดบนแผนที่)*
                 </label>
 
                 <div
@@ -1338,7 +1617,7 @@ const CreateMainRoute = () => {
                                 fontStyle: "italic",
                               }}
                             >
-                              📌 แสดงเสมอ
+                              (แสดงเสมอ)
                             </span>
                           )}
                         </div>
@@ -1349,136 +1628,6 @@ const CreateMainRoute = () => {
 
                 {errors.categories && (
                   <span className="gov-error-label">{errors.categories}</span>
-                )}
-              </div>
-
-              {/* SECTION 2: ลำดับอำเภอที่ผ่าน */}
-              <div className="gov-form-group">
-                <label className="gov-label-bold">
-                  2. ลำดับอำเภอที่ผ่าน (Route Track)*
-                </label>
-
-                <div className="gov-district-selector-block">
-                  <select
-                    className="gov-dropdown-select"
-                    value={selectDistrictValue}
-                    onChange={(event) =>
-                      setSelectDistrictValue(event.target.value)
-                    }
-                  >
-                    <option value="">-- เลือกรายการอำเภอหลัก --</option>
-                    {districts.map((district) => (
-                      <option
-                        key={district.districtId}
-                        value={String(district.districtId)}
-                      >
-                        อ.{district.districtName}
-                      </option>
-                    ))}
-                  </select>
-
-                  <button
-                    type="button"
-                    className="gov-btn-add-item"
-                    onClick={handleAddDistrictToOrderList}
-                  >
-                    เพิ่ม
-                  </button>
-                </div>
-
-                <div
-                  className={`gov-order-list-container ${errors.orderedDistricts ? "gov-input-border-error" : ""
-                    }`}
-                >
-                  {orderedRouteDetails.map((dist, index) => {
-                    const currentDistId =
-                      dist.district?.districtId ?? dist.districtId;
-                    const currentDistName =
-                      dist.district?.districtName ?? dist.districtName;
-                    const districtHubsCount =
-                      getCountForDistrict(currentDistId);
-
-                    return (
-                      <div
-                        key={currentDistId}
-                        className="gov-order-row"
-                        style={{ padding: "10px 12px" }}
-                      >
-                        <div className="gov-order-left">
-                          <div className="gov-badge-number">{index + 1}</div>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                            }}
-                          >
-                            <span
-                              className="gov-order-name"
-                              style={{ fontWeight: "600" }}
-                            >
-                              อำเภอ{currentDistName}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: "11px",
-                                color: "#475569",
-                                marginTop: "1px",
-                              }}
-                            >
-                              🏢 {districtHubsCount} จุดตรวจพบ
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="gov-order-actions">
-                          <button
-                            type="button"
-                            className="gov-btn-arrow"
-                            onClick={() => handleMoveOrderStep(index, -1)}
-                            disabled={index === 0}
-                          >
-                            ▲
-                          </button>
-                          <button
-                            type="button"
-                            className="gov-btn-arrow"
-                            onClick={() => handleMoveOrderStep(index, 1)}
-                            disabled={index === orderedRouteDetails.length - 1}
-                          >
-                            ▼
-                          </button>
-                          <button
-                            type="button"
-                            className="gov-btn-delete-item-red"
-                            onClick={() =>
-                              handleRemoveDistrictFromList(currentDistId)
-                            }
-                          >
-                            <i className="fa-solid fa-circle-xmark"></i>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {orderedRouteDetails.length === 0 && (
-                    <p
-                      style={{
-                        textAlign: "center",
-                        color: "#888",
-                        fontSize: "13px",
-                        margin: "15px 0",
-                      }}
-                    >
-                      ยังไม่มีอำเภอถูกจัดอยู่ในโครงสร้างเส้นทาง
-                    </p>
-                  )}
-                </div>
-
-                {errors.orderedDistricts && (
-                  <span className="gov-error-label">
-                    {errors.orderedDistricts}
-                  </span>
                 )}
               </div>
 
@@ -1600,6 +1749,147 @@ const CreateMainRoute = () => {
         }}
         onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
       />
+
+      {/* 📌 ป๊อปอัปคำอธิบายสัญลักษณ์หมุด (Administrative Theme) */}
+      {showLegendModal && (
+        <div
+          onClick={() => setShowLegendModal(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(3px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            boxSizing: "border-box"
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              maxHeight: "85vh",
+              backgroundColor: "#ffffff",
+              borderRadius: "0px",
+              boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.35)",
+              border: "1px solid #333",
+              borderTop: "5px solid #14532d",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden"
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid #e2e8f0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                backgroundColor: "#f8fafc"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <FontAwesomeIcon icon={faCircleInfo} style={{ color: "#14532d", fontSize: "16px" }} />
+                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#14532d" }}>
+                  ความหมายของพิกัดหมุดสัญลักษณ์
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLegendModal(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#64748b",
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  padding: "4px 8px",
+                  borderRadius: "0px"
+                }}
+              >
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div
+              style={{
+                padding: "20px",
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px"
+              }}
+            >
+              {/* จุดตรวจสอบอำเภอ */}
+              <div>
+                <div style={{ fontSize: "12px", fontWeight: "700", color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  จุดตรวจและเส้นทาง
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fafafa", borderRadius: "0px", border: "1px solid #999" }}>
+                  <span style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#1a2332", border: "2px solid #ffffff", boxShadow: "0 0 3px rgba(0,0,0,0.3)", display: "inline-block" }} />
+                  <span style={{ fontSize: "13.5px", color: "#333", fontWeight: "500" }}>จุดตรวจสอบระดับอำเภอ</span>
+                </div>
+              </div>
+
+              {/* หมวดหมู่สถานประกอบการ */}
+              <div>
+                <div style={{ fontSize: "12px", fontWeight: "700", color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  หมวดหมู่สถานประกอบการเพื่อสุขภาพ
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fafafa", borderRadius: "0px", border: "1px solid #999" }}>
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#E02873", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13.5px", color: "#333" }}>นวด/สปาเพื่อสุขภาพ (C01)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fafafa", borderRadius: "0px", border: "1px solid #999" }}>
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#0B7D31", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13.5px", color: "#333" }}>อาหารและเครื่องดื่ม (C03)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fafafa", borderRadius: "0px", border: "1px solid #999" }}>
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#5E27AB", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13.5px", color: "#333" }}>ที่พักฟื้นฟูสุขภาพ (C04)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fafafa", borderRadius: "0px", border: "1px solid #999" }}>
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#004CB4", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13.5px", color: "#333" }}>คลินิก/สถานพยาบาล (C02)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fafafa", borderRadius: "0px", border: "1px solid #999" }}>
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#009BB0", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13.5px", color: "#333" }}>สถานที่ท่องเที่ยว (C05)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* บริการฉุกเฉิน */}
+              <div>
+                <div style={{ fontSize: "12px", fontWeight: "700", color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  บริการฉุกเฉิน (Emergency Services)
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fafafa", borderRadius: "0px", border: "1px solid #999" }}>
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#BD0915", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13.5px", color: "#333" }}>ALS (Advanced Hospital / โรงพยาบาลระดับสูง)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fafafa", borderRadius: "0px", border: "1px solid #999" }}>
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#C98600", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13.5px", color: "#333" }}>BLS (Basic Life Support / หน่วยกู้ชีพ)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

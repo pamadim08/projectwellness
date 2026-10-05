@@ -471,7 +471,7 @@
   background: #e2e8f0;
   padding: 3px 8px;
   border: 1px solid #cbd5e1;
-  border-radius: 4px;
+  border-radius: 0px;
   font-weight: 600;
   color: #0f172a;
   font-size: 13.5px;
@@ -520,7 +520,7 @@
   padding: 10px 14px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
-  border-radius: 6px;
+  border-radius: 0px;
   cursor: pointer;
   color: #1d4ed8;
   font-size: 13.5px;
@@ -576,7 +576,7 @@
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-left: 3px solid #2563eb;
-  border-radius: 0 0 6px 6px;
+  border-radius: 0px;
   margin-bottom: 8px;
   animation: fadeIn 0.2s ease-in-out;
 }
@@ -595,7 +595,7 @@
 
 .email-preview-wrapper--reject {
   border-left-color: #b91c1c;
-  border-radius: 0 0 6px 6px;
+  border-radius: 0px;
 }
 
 .email-preview-header {
@@ -620,7 +620,7 @@
 .email-preview-meta {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  border-radius: 0px;
   padding: 8px 10px;
   margin-bottom: 10px;
   font-size: 12.5px;
@@ -638,7 +638,7 @@
 .email-cred-box {
   background: #f8fafc;
   border: 1px dashed #94a3b8;
-  border-radius: 4px;
+  border-radius: 0px;
   padding: 8px 12px;
   margin-top: 8px;
   font-family: 'Consolas', 'Courier New', monospace;
@@ -662,7 +662,7 @@
 .reject-form-group textarea {
   width: 100%;
   border: 1px solid #94a3b8;
-  border-radius: 4px;
+  border-radius: 0px;
   padding: 8px 10px;
   font-size: 13.5px;
   box-sizing: border-box;
@@ -797,7 +797,7 @@
   background: #2563eb;
   color: white;
   text-decoration: none;
-  border-radius: 3px;
+  border-radius: 0px;
   border: 1px solid #1d4ed8;
   font-weight: bold;
 }
@@ -839,18 +839,16 @@
 .approve-cert-display-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 8px;
 }
 
 .approve-cert-display-item {
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-  color: #1e293b;
-  line-height: 1.4;
-  padding: 4px 8px;
-  background-color: #f1f5f9;
-  border-left: 3px solid #16a34a;
-  border-radius: 4px;
+  margin: 0;
+  border: 1px solid #999;
+  padding: 10px;
+  background: #fafafa;
+  color: #333;
+  line-height: 1.5;
+  border-radius: 0;
+  word-break: break-word;
 }

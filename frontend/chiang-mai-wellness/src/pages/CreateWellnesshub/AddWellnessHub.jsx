@@ -4,6 +4,8 @@ import axios from "axios";
 import "./AddWellnessHub.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
+import { clearWellnessHubCache } from "../ListWellnesshub/ListWellnesshub";
+import { clearDashboardCache } from "../Dashboard/Dashboard";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCircleInfo,
@@ -228,13 +230,13 @@ const AddWellnessHub = () => {
       return;
     }
 
-    // 2. ชื่อสถานประกอบการ: 5-100 ตัวอักษร รองรับภาษาไทย ภาษาอังกฤษ ตัวเลข และช่องว่าง
-    if (!wellnessHubName || wellnessHubName.length < 5 || wellnessHubName.length > 100 || !/^[a-zA-Z0-9\u0E00-\u0E7F\s]+$/.test(wellnessHubName)) {
+    // 2. ชื่อสถานประกอบการ: 3-100 ตัวอักษร
+    if (!wellnessHubName || wellnessHubName.length < 3 || wellnessHubName.length > 100) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุชื่อสถานประกอบการ ภาษาไทย ภาษาอังกฤษ หรือตัวเลข 5-100 ตัวอักษร)",
+        message: "กรุณากรอกข้อมูลให้ถูกต้อง (ระบุชื่อสถานประกอบการ ความยาว 3-100 ตัวอักษร)",
       });
       return;
     }
@@ -353,6 +355,8 @@ const AddWellnessHub = () => {
 
     try {
       const res = await axios.post("http://localhost:8080/api/wellness-hubs", payload);
+      clearWellnessHubCache();
+      clearDashboardCache();
       setCreatedAccountInfo({
         licenseId: res.data?.licenseId || payload.licenseId,
         username: res.data?.username || payload.username,
@@ -403,7 +407,7 @@ const AddWellnessHub = () => {
                   type="text"
                   name="wellnessHubName"
                   className="gov-input-field"
-                  placeholder="ระบุชื่อสถานประกอบการ (5-100 ตัวอักษร)..."
+                  placeholder="ระบุชื่อสถานประกอบการ (3-100 ตัวอักษร)..."
                   maxLength={100}
                   value={formData.wellnessHubName}
                   onChange={handleChange}

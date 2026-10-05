@@ -179,7 +179,7 @@ export default function SearchResults() {
       left: 0,
       behavior: "instant",
     });
-  }, [queryKeyword, normalizedType, loading]);
+  }, [queryKeyword, normalizedType]);
 
   const routes = useMemo(
     () => (Array.isArray(searchData?.routes) ? searchData.routes : []),

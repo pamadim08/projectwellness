@@ -60,7 +60,7 @@ const ListWellnessHub = () => {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // 2. ฟังก์ชันโหลดข้อมูลพร้อมระบบตรวจสอบ Cache
+  // 2. ฟังก์ชันโหลดข้อมูลพร้อมระบบตรวจสอบ Cache (Stale-While-Revalidate)
   const loadData = async (
     search = searchQuery,
     cat = selectedCategory,
@@ -74,10 +74,10 @@ const ListWellnessHub = () => {
       setIsLoading(false);
       setHasError(false);
       setErrorMessage("");
-      return;
+    } else {
+      setIsLoading(true);
     }
 
-    setIsLoading(true);
     setHasError(false);
     setErrorMessage("");
 
@@ -102,9 +102,11 @@ const ListWellnessHub = () => {
       setErrorMessage("");
     } catch (error) {
       console.error("Error fetching data:", error);
-      setHasError(true);
-      setErrorMessage("เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง");
-      setListWellnessHub([]);
+      if (!wellnessHubCache || !isDefaultFilter) {
+        setHasError(true);
+        setErrorMessage("เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง");
+        setListWellnessHub([]);
+      }
     } finally {
       setIsLoading(false);
     }

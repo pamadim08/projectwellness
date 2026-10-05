@@ -95,8 +95,22 @@ export default function TrackAccountRequest() {
     const rawUsername = searchUsername || "";
     const normalizedUsername = rawUsername.trim();
 
-    if (!normalizedUsername || /\s/.test(rawUsername) || normalizedUsername.length < 4 || normalizedUsername.length > 20) {
-      setError("กรุณากรอกชื่อผู้ใช้งาน (Username) 4–20 ตัวอักษร ไม่มีช่องว่าง");
+    if (!normalizedUsername) {
+      setError("กรุณากรอกชื่อผู้ใช้งาน");
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+
+    if (/\s/.test(normalizedUsername)) {
+      setError("ชื่อผู้ใช้งานต้องไม่มีช่องว่าง");
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+
+    if (normalizedUsername.length < 4 || normalizedUsername.length > 20) {
+      setError("ชื่อผู้ใช้งานต้องมีความยาว 4–20 ตัวอักษร");
       setResults([]);
       setSearched(false);
       return;
@@ -150,7 +164,7 @@ export default function TrackAccountRequest() {
           <h1>ติดตามสถานะคำขอ</h1>
 
           <p className="track-request-hero__description">
-            ตรวจสอบผลการพิจารณาคำขอเปิดบัญชีผู้ใช้ด้วยชื่อผู้ใช้งาน (Username)
+            ตรวจสอบผลการพิจารณาคำขอเปิดบัญชีสถานประกอบการด้วยชื่อผู้ใช้ (Username)
           </p>
         </div>
       </header>
@@ -163,9 +177,9 @@ export default function TrackAccountRequest() {
             </div>
 
             <div>
-              <h2>ค้นหาคำขอด้วย Username</h2>
+              <h2>ค้นหาสถานะคำขอด้วยชื่อผู้ใช้</h2>
 
-              <p>ระบุชื่อผู้ใช้งาน (Username) ความยาว 4–20 ตัวอักษร ไม่มีช่องว่าง</p>
+              <p>ระบุชื่อผู้ใช้ (Username) ที่ใช้ลงทะเบียนยื่นคำขอ (ความยาว 4–20 ตัวอักษร)</p>
             </div>
           </div>
 
@@ -181,7 +195,7 @@ export default function TrackAccountRequest() {
                 type="text"
                 value={username}
                 onChange={handleUsernameChange}
-                placeholder="ระบุชื่อผู้ใช้งาน (Username) 4–20 ตัวอักษร"
+                placeholder="ระบุชื่อผู้ใช้ (Username) เช่น wellnesshub01"
                 aria-label="ระบุชื่อผู้ใช้งาน (Username)"
                 autoComplete="off"
                 maxLength={20}

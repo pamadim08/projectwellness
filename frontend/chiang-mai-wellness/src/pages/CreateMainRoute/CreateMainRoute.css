@@ -843,3 +843,131 @@
   gap: 10px;
   align-items: center;
 }
+
+/* ==========================================================================
+   🗺️ SMART ROUTE PLANNING & AUTO SORT STYLES (สไตล์ราชการ/แอดมิน เข้าชุดกับทั้งระบบ)
+   ========================================================================== */
+
+.gov-section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gov-route-distance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: bold;
+  color: #1e7e34;
+  background-color: #f4fbf6;
+  padding: 3px 8px;
+  border: 1px solid #28a745 !important;
+  border-radius: 0px !important;
+}
+
+.gov-suggested-districts-container {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  background-color: #fafafa;
+  border: 1px solid #cccccc !important;
+  border-radius: 0px !important;
+}
+
+.gov-suggested-title {
+  font-size: 12.5px;
+  font-weight: bold;
+  color: #333333;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.gov-suggested-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gov-suggested-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #ffffff !important;
+  border: 1px solid #28a745 !important;
+  border-radius: 0px !important;
+  color: #1e7e34 !important;
+  padding: 4px 8px;
+  font-size: 12.5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.gov-suggested-chip:hover {
+  background-color: #28a745 !important;
+  color: #ffffff !important;
+}
+
+.gov-chip-name {
+  font-weight: bold;
+}
+
+.gov-chip-dist {
+  font-size: 11.5px;
+  color: #666666;
+  font-weight: normal;
+}
+
+.gov-suggested-chip:hover .gov-chip-dist {
+  color: #ffffff !important;
+}
+
+.gov-route-optimize-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.gov-btn-optimize-sort {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: #1a2332 !important;
+  color: #ffffff !important;
+  border: 1px solid #111111 !important;
+  border-radius: 0px !important;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.gov-btn-optimize-sort:hover {
+  background-color: #2c3b52 !important;
+}
+
+.gov-optimize-feedback-toast {
+  background-color: #f4fbf6;
+  border: 1px solid #28a745 !important;
+  border-left: 4px solid #28a745 !important;
+  color: #1e7e34;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: bold;
+  border-radius: 0px !important;
+  margin-bottom: 8px;
+}
+
+

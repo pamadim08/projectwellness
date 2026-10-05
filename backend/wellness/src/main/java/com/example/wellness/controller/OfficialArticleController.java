@@ -1,5 +1,6 @@
 package com.example.wellness.controller;
 
+import com.example.wellness.dto.OfficialArticleSummaryDTO;
 import com.example.wellness.model.OfficialArticle;
 import com.example.wellness.service.OfficialArticleService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,7 +24,7 @@ public class OfficialArticleController {
     }
 
     @GetMapping
-    public ResponseEntity<List<OfficialArticle>> listOfficialArticle(
+    public ResponseEntity<List<OfficialArticleSummaryDTO>> listOfficialArticle(
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "category", required = false) String category) {
         return ResponseEntity.ok(service.listOfficialArticle(keyword, category));

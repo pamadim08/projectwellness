@@ -2,12 +2,15 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { clearWellnessHubCache } from "../ListWellnesshub/ListWellnesshub";
+import { clearDashboardCache } from "../Dashboard/Dashboard";
 
 import {
   AlertCircle,
   ArrowUpRight,
   Building2,
   Calendar,
+  Check,
   CheckCircle2,
   Clock3,
   Edit3,
@@ -22,8 +25,10 @@ import {
   Navigation,
   Phone,
   RefreshCw,
+  RotateCcw,
   Save,
   ShieldCheck,
+  Sparkles,
   Tag,
   Trash2,
   Upload,
@@ -483,6 +488,9 @@ export default function ProviderDashboard() {
   const [operatingHours, setOperatingHours] = useState(
     createEmptyOperatingHours(),
   );
+  const [scheduleMode, setScheduleMode] = useState("same"); // 'same' | 'custom' | '24hours'
+  const [sameOpenTime, setSameOpenTime] = useState("09:00");
+  const [sameCloseTime, setSameCloseTime] = useState("18:00");
 
   const [imagePreview, setImagePreview] = useState("");
   const [imageFileName, setImageFileName] = useState("");
@@ -625,7 +633,26 @@ export default function ProviderDashboard() {
 
     const parsedHours = parseOperatingHours(hubData.operatingHours);
     setOperatingHours(parsedHours);
-    setIs24Hours(checkIs24Hours(parsedHours));
+    const is24 = checkIs24Hours(parsedHours);
+    setIs24Hours(is24);
+
+    const activeDays = DAYS.map((d) => parsedHours[d.key]).filter((d) => d && d.active);
+    let detectedMode = "same";
+    if (is24) {
+      detectedMode = "24hours";
+    } else if (activeDays.length > 0) {
+      const firstOpen = activeDays[0].open;
+      const firstClose = activeDays[0].close;
+      const allSame = activeDays.every((d) => d.open === firstOpen && d.close === firstClose);
+      detectedMode = allSame ? "same" : "custom";
+      if (firstOpen) setSameOpenTime(firstOpen);
+      if (firstClose) setSameCloseTime(firstClose);
+    } else {
+      detectedMode = "same";
+      setSameOpenTime("09:00");
+      setSameCloseTime("18:00");
+    }
+    setScheduleMode(detectedMode);
 
     setImagePreview(mainImg);
 
@@ -717,6 +744,120 @@ export default function ProviderDashboard() {
       ...previousErrors,
       operatingHours: "",
     }));
+  };
+
+  const handleScheduleModeChange = (mode) => {
+    setScheduleMode(mode);
+    if (mode === "24hours") {
+      setIs24Hours(true);
+      const all24Hours = DAYS.reduce((result, day) => {
+        result[day.key] = {
+          active: true,
+          open: "00:00",
+          close: "23:59",
+        };
+        return result;
+      }, {});
+      setOperatingHours(all24Hours);
+    } else {
+      setIs24Hours(false);
+      if (mode === "same") {
+        setOperatingHours((prev) => {
+          const updated = { ...prev };
+          let anyActive = false;
+          DAYS.forEach((d) => {
+            if (updated[d.key]?.active) {
+              anyActive = true;
+              updated[d.key] = {
+                ...updated[d.key],
+                open: sameOpenTime || "09:00",
+                close: sameCloseTime || "18:00",
+              };
+            }
+          });
+          if (!anyActive) {
+            ["monday", "tuesday", "wednesday", "thursday", "friday"].forEach((key) => {
+              updated[key] = {
+                active: true,
+                open: sameOpenTime || "09:00",
+                close: sameCloseTime || "18:00",
+              };
+            });
+          }
+          return updated;
+        });
+      }
+    }
+    setFormErrors((prev) => ({ ...prev, operatingHours: "" }));
+  };
+
+  const handleSameDayToggle = (dayKey) => {
+    setOperatingHours((prev) => {
+      const isCurrentlyActive = Boolean(prev[dayKey]?.active);
+      const nextActive = !isCurrentlyActive;
+      return {
+        ...prev,
+        [dayKey]: {
+          active: nextActive,
+          open: nextActive ? sameOpenTime || "09:00" : "",
+          close: nextActive ? sameCloseTime || "18:00" : "",
+        },
+      };
+    });
+    setFormErrors((prev) => ({ ...prev, operatingHours: "" }));
+  };
+
+  const handleSameTimeChange = (field, value) => {
+    if (field === "open") setSameOpenTime(value);
+    if (field === "close") setSameCloseTime(value);
+
+    setOperatingHours((prev) => {
+      const updated = { ...prev };
+      DAYS.forEach((d) => {
+        if (updated[d.key]?.active) {
+          updated[d.key] = {
+            ...updated[d.key],
+            [field]: value,
+          };
+        }
+      });
+      return updated;
+    });
+    setFormErrors((prev) => ({ ...prev, operatingHours: "" }));
+  };
+
+  const handleSameQuickPreset = (preset) => {
+    const open = sameOpenTime || "09:00";
+    const close = sameCloseTime || "18:00";
+
+    setOperatingHours((prev) => {
+      const updated = { ...prev };
+      DAYS.forEach((d) => {
+        if (preset === "weekdays") {
+          const isWk = ["monday", "tuesday", "wednesday", "thursday", "friday"].includes(d.key);
+          updated[d.key] = {
+            active: isWk,
+            open: isWk ? open : "",
+            close: isWk ? close : "",
+          };
+        } else if (preset === "all") {
+          updated[d.key] = {
+            active: true,
+            open: open,
+            close: close,
+          };
+        } else if (preset === "weekends") {
+          const isWe = ["saturday", "sunday"].includes(d.key);
+          updated[d.key] = {
+            active: isWe,
+            open: isWe ? open : "",
+            close: isWe ? close : "",
+          };
+        }
+      });
+      return updated;
+    });
+    setFormErrors((prev) => ({ ...prev, operatingHours: "" }));
   };
 
   const handleDayToggle = (dayKey) => {
@@ -921,29 +1062,26 @@ export default function ProviderDashboard() {
       ? formData.wellnessHubDescription.trim()
       : "";
 
-    // 0. wellnessHubName: required, 5–100 ตัว
+    // 0. wellnessHubName: required, 3–100 ตัว
     if (!normalizedName) {
-      errors.wellnessHubName = "ชื่อสถานประกอบการ: กรุณากรอกชื่อสถานประกอบการ";
-    } else if (normalizedName.length < 5 || normalizedName.length > 100) {
-      errors.wellnessHubName = `ชื่อสถานประกอบการ: ต้องมีความยาว 5–100 ตัวอักษร (ปัจจุบัน ${normalizedName.length} ตัวอักษร)`;
-    } else if (!/^[a-zA-Z0-9\u0E00-\u0E7F\s]+$/.test(normalizedName)) {
-      errors.wellnessHubName =
-        "ชื่อสถานประกอบการ: ต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น";
+      errors.wellnessHubName = "กรุณากรอกชื่อสถานประกอบการ";
+    } else if (normalizedName.length < 3 || normalizedName.length > 100) {
+      errors.wellnessHubName = `ชื่อสถานประกอบการต้องมีความยาว 3–100 ตัวอักษร (ปัจจุบัน ${normalizedName.length} ตัวอักษร)`;
     }
 
     // 1. address: required, 10–255 ตัว
     if (!normalizedAddress) {
-      errors.address = "ที่อยู่: กรุณากรอกรายละเอียดที่อยู่";
+      errors.address = "กรุณากรอกรายละเอียดที่อยู่";
     } else if (normalizedAddress.length < 10 || normalizedAddress.length > 255) {
-      errors.address = `ที่อยู่: ต้องมีความยาว 10–255 ตัวอักษร (ปัจจุบัน ${normalizedAddress.length} ตัวอักษร)`;
+      errors.address = `ที่อยู่ต้องมีความยาว 10–255 ตัวอักษร (ปัจจุบัน ${normalizedAddress.length} ตัวอักษร)`;
     }
 
     // 2. telInformation: required, ตัวเลข 9-10 หลัก หรือเบอร์ฉุกเฉิน ไม่มีช่องว่าง
     if (!normalizedTelephone) {
-      errors.telInformation = "เบอร์โทรศัพท์: กรุณากรอกเบอร์โทรศัพท์ติดต่อ";
+      errors.telInformation = "กรุณากรอกเบอร์โทรศัพท์ติดต่อ";
     } else if (!/^(1669|[0-9]{3,4}|[0-9]{9,10})$/.test(normalizedTelephone)) {
       errors.telInformation =
-        "เบอร์โทรศัพท์: ต้องเป็นตัวเลข 9–10 หลัก หรือเบอร์ฉุกเฉิน (เช่น 1669) และไม่มีช่องว่าง";
+        "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก หรือเบอร์ฉุกเฉิน (เช่น 1669) และไม่มีช่องว่าง";
     }
 
     // 3. contactInformation: optional, ถ้ามี 3–255 ตัว
@@ -951,22 +1089,22 @@ export default function ProviderDashboard() {
       normalizedContact &&
       (normalizedContact.length < 3 || normalizedContact.length > 255)
     ) {
-      errors.contactInformation = `ช่องทางติดต่อเพิ่มเติม: ต้องมีความยาว 3–255 ตัวอักษร (ปัจจุบัน ${normalizedContact.length} ตัวอักษร)`;
+      errors.contactInformation = `ช่องทางติดต่อเพิ่มเติมต้องมีความยาว 3–255 ตัวอักษร (ปัจจุบัน ${normalizedContact.length} ตัวอักษร)`;
     }
 
     // 4. wellnessHubDescription: optional, if provided max 255 chars
     if (normalizedDesc && normalizedDesc.length > 255) {
-      errors.wellnessHubDescription = `รายละเอียดสถานประกอบการ: ต้องมีความยาวไม่เกิน 255 ตัวอักษร (ปัจจุบัน ${normalizedDesc.length} ตัวอักษร)`;
+      errors.wellnessHubDescription = `รายละเอียดสถานประกอบการต้องมีความยาวไม่เกิน 255 ตัวอักษร (ปัจจุบัน ${normalizedDesc.length} ตัวอักษร)`;
     }
 
     // 5. googleMapsLink: required, valid Google Maps URL, no whitespace
     if (!normalizedMapsLink) {
-      errors.googleMapsLink = "ลิงก์ Google Maps: กรุณากรอกลิงก์ Google Maps";
+      errors.googleMapsLink = "กรุณากรอกลิงก์ Google Maps";
     } else if (/\s/.test(normalizedMapsLink)) {
-      errors.googleMapsLink = "ลิงก์ Google Maps: ต้องไม่มีช่องว่าง (Whitespace)";
+      errors.googleMapsLink = "ลิงก์ Google Maps ต้องไม่มีช่องว่าง";
     } else if (!isGoogleMapsUrl(normalizedMapsLink)) {
       errors.googleMapsLink =
-        "ลิงก์ Google Maps: กรุณาระบุลิงก์จาก Google Maps ที่ถูกต้อง";
+        "กรุณาระบุลิงก์จาก Google Maps ที่ถูกต้อง";
     }
 
     // 6. Operating Hours: จันทร์–อาทิตย์
@@ -1137,6 +1275,9 @@ export default function ProviderDashboard() {
       if (!updatedHub) {
         throw new Error("ระบบไม่ได้ส่งข้อมูลสถานประกอบการกลับมา");
       }
+
+      clearWellnessHubCache();
+      clearDashboardCache();
 
       setHub(updatedHub);
       mapHubToForm(updatedHub);
@@ -2034,31 +2175,146 @@ export default function ProviderDashboard() {
                     </div>
                   </div>
 
-                  {/* 24 Hours Toggle Banner */}
-                  <div className="provider-dashboard-24hours-toggle">
-                    <div className="provider-dashboard-24hours-info">
-                      <span className="provider-dashboard-24hours-title">
-                        <Clock3 size={18} /> เปิดให้บริการตลอด 24 ชั่วโมง (ทุกวัน)
-                      </span>
-                      <p className="provider-dashboard-24hours-desc">
-                        สำหรับสถานพยาบาล โรงพยาบาล หรือหน่วยบริการกู้ชีพฉุกเฉิน
-                      </p>
-                    </div>
-                    <label
-                      className="provider-dashboard-switch"
-                      htmlFor="provider-toggle-24hours"
+                  {/* Mode Selector Tabs */}
+                  <div className="provider-dashboard-schedule-mode-bar">
+                    <button
+                      type="button"
+                      className={`provider-dashboard-schedule-mode-btn ${scheduleMode === "same" ? "active" : ""}`}
+                      onClick={() => handleScheduleModeChange("same")}
                     >
-                      <input
-                        id="provider-toggle-24hours"
-                        type="checkbox"
-                        checked={is24Hours}
-                        onChange={(e) => handle24HoursToggle(e.target.checked)}
-                      />
-                      <span />
-                    </label>
+                      <Clock3 size={16} />
+                      <span>เปิดเวลาเดียวกัน</span>
+                      <small>กำหนดเวลาครั้งเดียว ใช้กับทุกวันที่เลือก</small>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`provider-dashboard-schedule-mode-btn ${scheduleMode === "custom" ? "active" : ""}`}
+                      onClick={() => handleScheduleModeChange("custom")}
+                    >
+                      <Calendar size={16} />
+                      <span>กำหนดแยกรายวัน</span>
+                      <small>ตั้งเวลาแยกเฉพาะแต่ละวัน</small>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`provider-dashboard-schedule-mode-btn ${scheduleMode === "24hours" ? "active" : ""}`}
+                      onClick={() => handleScheduleModeChange("24hours")}
+                    >
+                      <Sparkles size={16} />
+                      <span>เปิดตลอด 24 ชั่วโมง</span>
+                      <small>เปิดบริการทุกวันตลอดเวลา</small>
+                    </button>
                   </div>
 
-                  {!is24Hours ? (
+                  {/* MODE 1: SAME HOURS (เปิดเวลาเดียวกัน) */}
+                  {scheduleMode === "same" && (
+                    <div className="provider-dashboard-same-hours-panel">
+                      {/* Step 1: Day Selection */}
+                      <div className="provider-dashboard-same-section">
+                        <div className="provider-dashboard-same-section-header">
+                          <label className="provider-dashboard-same-title">
+                            1. เลือกวันเปิดให้บริการ
+                          </label>
+                          <div className="provider-dashboard-same-quick-links">
+                            <button
+                              type="button"
+                              className="provider-dashboard-quick-link-btn"
+                              onClick={() => handleSameQuickPreset("weekdays")}
+                            >
+                              จันทร์ - ศุกร์
+                            </button>
+                            <span className="provider-dashboard-link-sep">•</span>
+                            <button
+                              type="button"
+                              className="provider-dashboard-quick-link-btn"
+                              onClick={() => handleSameQuickPreset("all")}
+                            >
+                              ทุกวัน (จ.-อา.)
+                            </button>
+                            <span className="provider-dashboard-link-sep">•</span>
+                            <button
+                              type="button"
+                              className="provider-dashboard-quick-link-btn"
+                              onClick={() => handleSameQuickPreset("weekends")}
+                            >
+                              เสาร์ - อาทิตย์
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="provider-dashboard-day-pills">
+                          {DAYS.map((day) => {
+                            const isActive = Boolean(operatingHours[day.key]?.active);
+                            return (
+                              <button
+                                key={day.key}
+                                type="button"
+                                className={`provider-dashboard-day-pill ${isActive ? "provider-dashboard-day-pill--active" : ""}`}
+                                onClick={() => handleSameDayToggle(day.key)}
+                                title={isActive ? `คลิกเพื่อปิด ${day.label}` : `คลิกเพื่อเปิด ${day.label}`}
+                              >
+                                <span className="provider-dashboard-day-pill-icon">
+                                  {isActive ? <Check size={14} /> : "+"}
+                                </span>
+                                <span className="provider-dashboard-day-pill-text">{day.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Step 2: Time Selection */}
+                      <div className="provider-dashboard-same-section">
+                        <label className="provider-dashboard-same-title">
+                          2. กำหนดเวลาเปิด – ปิดทำการ
+                        </label>
+
+                        <div className="provider-dashboard-same-time-box">
+                          <div className="provider-dashboard-same-time-field">
+                            <label>เวลาเปิด</label>
+                            <input
+                              type="time"
+                              value={sameOpenTime}
+                              onChange={(e) => handleSameTimeChange("open", e.target.value)}
+                            />
+                          </div>
+
+                          <span className="provider-dashboard-same-time-arrow">ถึง</span>
+
+                          <div className="provider-dashboard-same-time-field">
+                            <label>เวลาปิด</label>
+                            <input
+                              type="time"
+                              value={sameCloseTime}
+                              onChange={(e) => handleSameTimeChange("close", e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Live Summary */}
+                      <div className="provider-dashboard-same-summary">
+                        <Clock3 size={16} />
+                        <span>
+                          สรุปเวลาทำการ:{" "}
+                          <strong>
+                            {DAYS.filter((d) => operatingHours[d.key]?.active)
+                              .map((d) => d.label.replace("วัน", ""))
+                              .join(", ") || "ยังไม่ได้เลือกวัน"}
+                          </strong>{" "}
+                          เวลา{" "}
+                          <strong>
+                            {sameOpenTime || "—"} – {sameCloseTime || "—"} น.
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MODE 2: CUSTOM PER DAY (กำหนดแยกรายวัน) */}
+                  {scheduleMode === "custom" && (
                     <div className="provider-dashboard-hours">
                       <div className="provider-dashboard-hours__header">
                         <span>วัน</span>
@@ -2120,7 +2376,10 @@ export default function ProviderDashboard() {
                         );
                       })}
                     </div>
-                  ) : (
+                  )}
+
+                  {/* MODE 3: 24 HOURS (เปิดตลอด 24 ชั่วโมง) */}
+                  {scheduleMode === "24hours" && (
                     <div className="provider-dashboard-24hours-badge">
                       <span>
                         ✓ เปิดให้บริการตลอด 24 ชั่วโมงทุกวัน (จันทร์ - อาทิตย์)

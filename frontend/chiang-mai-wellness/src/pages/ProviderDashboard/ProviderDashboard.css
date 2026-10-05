@@ -1333,6 +1333,256 @@
   transform: translateX(22px);
 }
 
+/* Schedule Mode Selector Bar */
+.provider-dashboard-schedule-mode-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.provider-dashboard-schedule-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: var(--provider-radius-lg, 12px);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.provider-dashboard-schedule-mode-btn svg {
+  color: #64748b;
+  margin-bottom: 6px;
+  transition: color 0.2s ease;
+}
+
+.provider-dashboard-schedule-mode-btn span {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--provider-ink-900, #0f172a);
+  margin-bottom: 2px;
+}
+
+.provider-dashboard-schedule-mode-btn small {
+  font-size: 11.5px;
+  color: var(--provider-text-muted, #64748b);
+  line-height: 1.35;
+}
+
+.provider-dashboard-schedule-mode-btn:hover {
+  border-color: #86efac;
+  background: #f8fafc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.provider-dashboard-schedule-mode-btn.active {
+  border-color: #16a34a;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 1px #16a34a, 0 4px 14px rgba(22, 163, 74, 0.12);
+}
+
+.provider-dashboard-schedule-mode-btn.active svg {
+  color: #16a34a;
+}
+
+.provider-dashboard-schedule-mode-btn.active span {
+  color: #14532d;
+}
+
+@media (max-width: 768px) {
+  .provider-dashboard-schedule-mode-bar {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* Same Hours Panel (Mode 1) */
+.provider-dashboard-same-hours-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  background: #fbfdfc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--provider-radius-xl, 16px);
+}
+
+.provider-dashboard-same-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.provider-dashboard-same-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.provider-dashboard-same-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--provider-ink-900, #0f172a);
+}
+
+.provider-dashboard-same-quick-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.provider-dashboard-quick-link-btn {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #16a34a;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.provider-dashboard-quick-link-btn:hover {
+  background: #dcfce7;
+  text-decoration: underline;
+}
+
+.provider-dashboard-link-sep {
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+/* Day Pills */
+.provider-dashboard-day-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+  gap: 8px;
+}
+
+.provider-dashboard-day-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--provider-radius-md, 8px);
+  color: #475569;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.provider-dashboard-day-pill:hover {
+  border-color: #86efac;
+  background: #f8fafc;
+  color: #166534;
+}
+
+.provider-dashboard-day-pill--active {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+}
+
+.provider-dashboard-day-pill-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.provider-dashboard-day-pill-text {
+  font-size: 13px;
+}
+
+/* Same Time Box */
+.provider-dashboard-same-time-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--provider-radius-lg, 12px);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.provider-dashboard-same-time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.provider-dashboard-same-time-field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.provider-dashboard-same-time-field input[type="time"] {
+  padding: 8px 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 750;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.provider-dashboard-same-time-field input[type="time"]:focus {
+  border-color: #16a34a;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+}
+
+.provider-dashboard-same-time-arrow {
+  font-size: 14px;
+  font-weight: 800;
+  color: #94a3b8;
+  margin-top: 18px;
+}
+
+/* Live Summary */
+.provider-dashboard-same-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--provider-radius-md, 8px);
+  color: #166534;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.provider-dashboard-same-summary svg {
+  color: #16a34a;
+  flex-shrink: 0;
+}
+
+.provider-dashboard-same-summary strong {
+  color: #14532d;
+}
+
 /* Hours Table */
 .provider-dashboard-hours {
   display: flex;
@@ -2019,45 +2269,53 @@
   font-weight: 700;
 }
 
-/* Hours Table (7-day grid in View Mode) */
+/* Hours Table (Vertical Layout in View Mode) */
 .provider-dashboard-hours-table {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }
 
 .provider-dashboard-hours-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 180px 120px 1fr;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  background: #fbfdfc;
+  padding: 12px 20px;
+  background: #ffffff;
   border: 1px solid #edf3ef;
+  border-left: 4px solid #cbd5e1;
   border-radius: var(--provider-radius-md);
   transition: all 0.2s ease;
 }
 
 .provider-dashboard-hours-item--open {
   border-color: #d1fae5;
-  background: #f8fdfa;
+  border-left: 4px solid #16a34a;
+  background: #fbfdfc;
 }
 
 .provider-dashboard-hours-item--closed {
   opacity: 0.75;
   background: #f9fafb;
+  border-color: #e2e8f0;
+  border-left: 4px solid #94a3b8;
 }
 
 .provider-dashboard-hours-day {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 750;
   color: var(--provider-ink-900);
 }
 
 .provider-dashboard-status-tag {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 750;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
 }
 
 .provider-dashboard-status-tag--open {
@@ -2073,13 +2331,30 @@
 }
 
 .provider-dashboard-hours-time {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 13.5px;
+  font-weight: 750;
   color: var(--provider-green-700);
+  text-align: right;
+  font-feature-settings: "tnum";
 }
 
 .provider-dashboard-hours-item--closed .provider-dashboard-hours-time {
   color: #94a3b8;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .provider-dashboard-hours-item {
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .provider-dashboard-hours-time {
+    grid-column: 1 / -1;
+    text-align: left;
+    margin-top: 2px;
+  }
 }
 
 /* Image Zoom & Hover Effects */

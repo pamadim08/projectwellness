@@ -39,6 +39,15 @@ const MAX_GALLERY_IMAGES = 4;
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png"];
 const ACCEPTED_DOCUMENT_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 
+const DOCUMENT_TYPE_OPTIONS = [
+  "ใบอนุญาตประกอบกิจการ / ใบอนุญาตสปาเพื่อสุขภาพ",
+  "สำเนาบัตรประชาชนผู้มีอำนาจลงนาม",
+  "หนังสือรับรองนิติบุคคล / ทะเบียนพาณิชย์",
+  "หนังสือมอบอำนาจ (ถ้ามี)",
+  "เอกสารรับรองมาตรฐานสถานประกอบการ",
+  "เอกสารอื่นๆ (ระบุเอง)",
+];
+
 const DAYS = [
   { key: "monday", label: "วันจันทร์" },
   { key: "tuesday", label: "วันอังคาร" },
@@ -82,7 +91,6 @@ export default function RequestWellnessHubAccount() {
 
   const coverInputRef = useRef(null);
   const galleryInputRef = useRef(null);
-  const documentInputRef = useRef(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -99,7 +107,16 @@ export default function RequestWellnessHubAccount() {
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState("");
   const [galleryImages, setGalleryImages] = useState([]);
-  const [verificationDocument, setVerificationDocument] = useState(null);
+  const [documentRows, setDocumentRows] = useState([
+    {
+      id: 1,
+      type: DOCUMENT_TYPE_OPTIONS[0],
+      customType: "",
+      file: null,
+      name: "",
+      error: "",
+    },
+  ]);
 
   const [is24Hours, setIs24Hours] = useState(false);
   const [operatingHours, setOperatingHours] = useState(
@@ -280,30 +297,126 @@ export default function RequestWellnessHubAccount() {
     setGalleryImages((prev) => prev.filter((image) => image.id !== imageId));
   };
 
-  const handleDocumentChange = (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  const handleAddDocumentRow = () => {
+    setDocumentRows((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        type: DOCUMENT_TYPE_OPTIONS[0],
+        customType: "",
+        file: null,
+        name: "",
+        error: "",
+      },
+    ]);
+  };
 
+  const handleRemoveDocumentRow = (id) => {
+    setDocumentRows((prev) => {
+      if (prev.length <= 1) {
+        return [
+          {
+            id: Date.now(),
+            type: DOCUMENT_TYPE_OPTIONS[0],
+            customType: "",
+            file: null,
+            name: "",
+            error: "",
+          },
+        ];
+      }
+      return prev.filter((row) => row.id !== id);
+    });
+  };
+
+  const handleDocumentTypeChange = (id, newType) => {
+    setDocumentRows((prev) =>
+      prev.map((row) =>
+        row.id === id ? { ...row, type: newType, error: "" } : row
+      )
+    );
+  };
+
+  const handleDocumentCustomTypeChange = (id, newCustomType) => {
+    setDocumentRows((prev) =>
+      prev.map((row) =>
+        row.id === id ? { ...row, customType: newCustomType, error: "" } : row
+      )
+    );
+  };
+
+  const handleDocumentFileChange = (id, file) => {
     if (!file) return;
 
     if (!ACCEPTED_DOCUMENT_TYPES.includes(file.type)) {
-      setFormErrors((prev) => ({
-        ...prev,
-        verificationDocument: "เอกสารต้องเป็นไฟล์ PDF, JPG หรือ PNG",
-      }));
+      setDocumentRows((prev) =>
+        prev.map((row) =>
+          row.id === id
+            ? { ...row, error: "เอกสารต้องเป็นไฟล์ PDF, JPG หรือ PNG" }
+            : row
+        )
+      );
       return;
     }
 
     if (file.size > MAX_DOCUMENT_SIZE) {
-      setFormErrors((prev) => ({
-        ...prev,
-        verificationDocument: "ไฟล์เอกสารต้องมีขนาดไม่เกิน 10 MB",
-      }));
+      setDocumentRows((prev) =>
+        prev.map((row) =>
+          row.id === id
+            ? { ...row, error: "ไฟล์เอกสารต้องมีขนาดไม่เกิน 10 MB" }
+            : row
+        )
+      );
       return;
     }
 
-    setVerificationDocument(file);
+    // 🔒 ดักตรวจสอบชื่อไฟล์เอกสารห้ามซ้ำกัน
+    const isDuplicateName = documentRows.some(
+      (row) =>
+        row.id !== id &&
+        row.name &&
+        row.name.trim().toLowerCase() === file.name.trim().toLowerCase()
+    );
+
+    if (isDuplicateName) {
+      setDocumentRows((prev) =>
+        prev.map((row) =>
+          row.id === id
+            ? { ...row, error: `ชื่อไฟล์ "${file.name}" ถูกเลือกไปแล้ว กรุณาเลือกไฟล์ที่ไม่ซ้ำกัน` }
+            : row
+        )
+      );
+      return;
+    }
+
+    setDocumentRows((prev) =>
+      prev.map((row) =>
+        row.id === id
+          ? {
+              ...row,
+              file: file,
+              name: file.name,
+              error: "",
+            }
+          : row
+      )
+    );
     setFormErrors((prev) => ({ ...prev, verificationDocument: "" }));
+  };
+
+  const handleRemoveDocumentFile = (id) => {
+    setDocumentRows((prev) =>
+      prev.map((row) =>
+        row.id === id
+          ? {
+              ...row,
+              file: null,
+              name: "",
+              error: "",
+            }
+          : row
+      )
+    );
   };
 
   const handle24HoursToggle = (enabled) => {
@@ -361,9 +474,9 @@ export default function RequestWellnessHubAccount() {
     // ผู้สมัคร
     const requesterName = formData.requesterName.trim();
     if (!requesterName) {
-      errors.requesterName = "กรุณาระบุชื่อผู้ยื่นคำขอ";
+      errors.requesterName = "กรุณาระบุชื่อ–นามสกุลผู้ยื่นคำขอ";
     } else if (requesterName.length < 4 || requesterName.length > 255) {
-      errors.requesterName = "ชื่อผู้ยื่นคำขอต้องมีความยาว 4–255 ตัวอักษร";
+      errors.requesterName = "ชื่อ–นามสกุลผู้ยื่นคำขอต้องมีความยาว 4–255 ตัวอักษร";
     }
 
     const userEmail = formData.userEmail.trim();
@@ -385,7 +498,7 @@ export default function RequestWellnessHubAccount() {
     // ข้อมูลบัญชีผู้ใช้
     const username = formData.username.trim();
     if (!username) {
-      errors.username = "กรุณาระบุชื่อผู้ใช้ (Username)";
+      errors.username = "กรุณาระบุชื่อผู้ใช้";
     } else if (/\s/.test(formData.username)) {
       errors.username = "ชื่อผู้ใช้ต้องไม่มีช่องว่าง";
     } else if (username.length < 4 || username.length > 20) {
@@ -394,7 +507,7 @@ export default function RequestWellnessHubAccount() {
 
     const password = formData.password;
     if (!password) {
-      errors.password = "กรุณาระบุรหัสผ่าน (Password)";
+      errors.password = "กรุณาระบุรหัสผ่าน";
     } else if (/\s/.test(password)) {
       errors.password = "รหัสผ่านต้องไม่มีช่องว่าง";
     } else if (password.length !== 8) {
@@ -405,8 +518,8 @@ export default function RequestWellnessHubAccount() {
     const hubName = formData.wellnessHubName.trim();
     if (!hubName) {
       errors.wellnessHubName = "กรุณาระบุชื่อสถานประกอบการ";
-    } else if (hubName.length < 5 || hubName.length > 100) {
-      errors.wellnessHubName = "ชื่อสถานประกอบการต้องมีความยาว 5–100 ตัวอักษร";
+    } else if (hubName.length < 3 || hubName.length > 100) {
+      errors.wellnessHubName = "ชื่อสถานประกอบการต้องมีความยาว 3–100 ตัวอักษร";
     }
 
     const licenseId = formData.licenseId.trim();
@@ -451,8 +564,28 @@ export default function RequestWellnessHubAccount() {
       errors.wellnessHubDescription = "รายละเอียดสถานประกอบการต้องมีความยาวไม่เกิน 255 ตัวอักษร";
     }
 
-    if (!verificationDocument) {
-      errors.verificationDocument = "กรุณาแนบเอกสารยืนยันสิทธิ์";
+    const uploadedDocs = documentRows.filter((docRow) => docRow.file);
+    if (uploadedDocs.length === 0) {
+      errors.verificationDocument = "กรุณาแนบเอกสารยืนยันสิทธิ์อย่างน้อย 1 ไฟล์";
+    } else {
+      const invalidCustom = uploadedDocs.some(
+        (docItem) => docItem.type === "เอกสารอื่นๆ (ระบุเอง)" && !docItem.customType.trim(),
+      );
+      if (invalidCustom) {
+        errors.verificationDocument =
+          "กรุณาระบุชื่อประเภทเอกสารสำหรับรายการ 'เอกสารอื่นๆ'";
+      }
+
+      // ตรวจสอบชื่อไฟล์เอกสารซ้ำกัน
+      const fileNames = uploadedDocs
+        .map((docItem) => (docItem.name || docItem.file?.name || "").trim().toLowerCase())
+        .filter(Boolean);
+      const duplicateNames = fileNames.filter(
+        (fileName, fileIndex) => fileNames.indexOf(fileName) !== fileIndex
+      );
+      if (duplicateNames.length > 0) {
+        errors.verificationDocument = "ชื่อไฟล์เอกสารยืนยันสิทธิ์ต้องไม่ซ้ำกัน กรุณาตรวจสอบไฟล์แนบ";
+      }
     }
 
     if (!is24Hours) {
@@ -504,31 +637,31 @@ export default function RequestWellnessHubAccount() {
     }
 
     // 2. Query พิกัดระบุตรงๆ เช่น ?q=lat,lng หรือ ?query=lat,lng หรือ ?ll=lat,lng
-    const qMatches = [...trimmed.matchAll(/[?&](?:q|query|ll|destination|daddr)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)];
-    if (qMatches.length > 0) {
-      const lastQ = qMatches[qMatches.length - 1];
-      const lat = parseFloat(lastQ[1]);
-      const lng = parseFloat(lastQ[2]);
+    const queryMatches = [...trimmed.matchAll(/[?&](?:q|query|ll|destination|daddr)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)];
+    if (queryMatches.length > 0) {
+      const lastQueryMatch = queryMatches[queryMatches.length - 1];
+      const lat = parseFloat(lastQueryMatch[1]);
+      const lng = parseFloat(lastQueryMatch[2]);
       if (isValidLatLng(lat, lng)) {
         return { lat, lng };
       }
     }
 
     // 3. Fallback: พิกัดกึ่งกลางกล้อง/หน้าจอ (@lat,lng)
-    const atMatch = trimmed.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-    if (atMatch) {
-      const lat = parseFloat(atMatch[1]);
-      const lng = parseFloat(atMatch[2]);
+    const viewportMatch = trimmed.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (viewportMatch) {
+      const lat = parseFloat(viewportMatch[1]);
+      const lng = parseFloat(viewportMatch[2]);
       if (isValidLatLng(lat, lng)) {
         return { lat, lng };
       }
     }
 
     // 4. Direction/Search path พิกัดปลายทาง
-    const dirMatch = trimmed.match(/\/(?:dir|search)\/[^/]*\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) || trimmed.match(/\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-    if (dirMatch) {
-      const lat = parseFloat(dirMatch[1]);
-      const lng = parseFloat(dirMatch[2]);
+    const directionMatch = trimmed.match(/\/(?:dir|search)\/[^/]*\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/) || trimmed.match(/\/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (directionMatch) {
+      const lat = parseFloat(directionMatch[1]);
+      const lng = parseFloat(directionMatch[2]);
       if (isValidLatLng(lat, lng)) {
         return { lat, lng };
       }
@@ -654,7 +787,18 @@ export default function RequestWellnessHubAccount() {
     try {
       const coverImage = coverFile ? await readFileAsDataUrl(coverFile) : "";
       const galleryImageValues = galleryImages.map((image) => image.preview);
-      const documentValue = await readFileAsDataUrl(verificationDocument);
+
+      const validDocs = documentRows.filter((row) => row.file);
+      const docsPayload = await Promise.all(
+        validDocs.map(async (row) => ({
+          type:
+            row.type === "เอกสารอื่นๆ (ระบุเอง)"
+              ? row.customType.trim() || "เอกสารอื่นๆ"
+              : row.type,
+          name: row.file.name,
+          data: await readFileAsDataUrl(row.file),
+        })),
+      );
 
       const payload = {
         licenseId: formData.licenseId.trim(),
@@ -685,8 +829,7 @@ export default function RequestWellnessHubAccount() {
           .filter(Boolean)
           .join(", "),
 
-        verificationDocuments: documentValue,
-        verificationDocumentName: verificationDocument.name,
+        verificationDocuments: JSON.stringify(docsPayload),
       };
 
       await axios.post(`${API_BASE_URL}/account-requests`, payload, {
@@ -876,7 +1019,7 @@ export default function RequestWellnessHubAccount() {
                     maxLength={100}
                     value={formData.wellnessHubName}
                     onChange={handleInputChange}
-                    placeholder="เช่น นวดแผนไทย เชียงใหม่ (5–100 ตัวอักษร)"
+                    placeholder="เช่น นวดแผนไทย เชียงใหม่ (3–100 ตัวอักษร)"
                     className={
                       formErrors.wellnessHubName
                         ? "request-account-input--error"
@@ -1013,7 +1156,7 @@ export default function RequestWellnessHubAccount() {
                           type="text"
                           value={cert}
                           onChange={(e) => handleCertChange(index, e.target.value)}
-                          placeholder={`เช่น ใบรับรองที่ ${index + 1} (เช่น มาตรฐาน SHA Plus, นวดเพื่อสุขภาพ สบส.)`}
+                          placeholder={`เช่น มาตรฐาน SHA Plus, นวดไทยเพื่อสุขภาพ สบส., Green Hotel (ระบุมาตรฐาน/รางวัล หรือเว้นว่างได้)`}
                         />
                         {certificateList.length > 1 && (
                           <button
@@ -1571,55 +1714,141 @@ export default function RequestWellnessHubAccount() {
                 </div>
 
                 <div className="request-account-field request-account-field--full">
-                  <label>
-                    ใบอนุญาตหรือเอกสารยืนยันสิทธิ์ <em>*</em>
-                  </label>
-                  <button
-                    type="button"
-                    className={
-                      verificationDocument
-                        ? "request-account-document request-account-document--selected"
-                        : "request-account-document"
-                    }
-                    onClick={() => documentInputRef.current?.click()}
-                  >
-                    <div className="request-account-document__icon">
-                      {verificationDocument ? <FileCheck2 /> : <FileText />}
+                  <div className="request-account-docs-header">
+                    <div>
+                      <label style={{ marginBottom: "2px" }}>
+                        เอกสารยืนยันสิทธิ์และใบอนุญาต <em>*</em>
+                      </label>
+                      <p className="request-account-docs-desc">
+                        แนบเอกสารเพื่อยืนยันตัวตนและการเปิดสถานประกอบการ (PDF, JPG, PNG ขนาดไม่เกิน 10 MB ต่อไฟล์)
+                      </p>
                     </div>
-
-                    <div className="request-account-document__content">
-                      <strong>
-                        {verificationDocument
-                          ? verificationDocument.name
-                          : "เลือกไฟล์หลักฐานยืนยันสิทธิ์"}
-                      </strong>
-                      <span>PDF, JPG หรือ PNG ขนาดไม่เกิน 10 MB</span>
-                    </div>
-
-                    <Upload />
-                  </button>
-
-                  <input
-                    ref={documentInputRef}
-                    type="file"
-                    accept=".pdf,image/jpeg,image/png"
-                    hidden
-                    onChange={handleDocumentChange}
-                  />
-
-                  {verificationDocument && (
                     <button
                       type="button"
-                      className="request-account-document-remove"
-                      onClick={() => setVerificationDocument(null)}
+                      className="request-account-btn-add-doc"
+                      onClick={handleAddDocumentRow}
                     >
-                      <X />
-                      นำไฟล์ออก
+                      <Plus size={15} />
+                      <span>เพิ่มเอกสาร</span>
                     </button>
-                  )}
+                  </div>
+
+                  <div className="request-account-docs-list">
+                    {documentRows.map((doc, index) => (
+                      <div key={doc.id} className="request-account-doc-card">
+                        <div className="request-account-doc-card__top">
+                          <span className="request-account-doc-card__num">
+                            เอกสารที่ {index + 1}
+                          </span>
+                          {documentRows.length > 1 && (
+                            <button
+                              type="button"
+                              className="request-account-doc-card__del"
+                              onClick={() => handleRemoveDocumentRow(doc.id)}
+                              title="ลบรายการเอกสารนี้"
+                            >
+                              <Trash2 size={14} />
+                              <span>ลบเอกสารนี้</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="request-account-doc-card__body">
+                          <div className="request-account-doc-type-group">
+                            <label className="request-account-doc-label">
+                              ประเภทเอกสาร <em>*</em>
+                            </label>
+                            <select
+                              value={doc.type}
+                              onChange={(e) =>
+                                handleDocumentTypeChange(doc.id, e.target.value)
+                              }
+                              className="request-account-doc-select"
+                            >
+                              {DOCUMENT_TYPE_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+
+                            {doc.type === "เอกสารอื่นๆ (ระบุเอง)" && (
+                              <input
+                                type="text"
+                                placeholder="ระบุชื่อประเภทเอกสาร เช่น สัญญาเช่าสถานที่, หนังสือยินยอม..."
+                                value={doc.customType}
+                                onChange={(e) =>
+                                  handleDocumentCustomTypeChange(
+                                    doc.id,
+                                    e.target.value,
+                                  )
+                                }
+                                className="request-account-doc-custom-input"
+                              />
+                            )}
+                          </div>
+
+                          <div className="request-account-doc-upload-group">
+                            <label className="request-account-doc-label">
+                              ไฟล์เอกสาร <em>*</em>
+                            </label>
+                            {doc.file ? (
+                              <div className="request-account-doc-attached">
+                                <div className="request-account-doc-attached__icon">
+                                  <FileCheck2 size={20} />
+                                </div>
+                                <div className="request-account-doc-attached__info">
+                                  <strong>{doc.file.name}</strong>
+                                  <span>
+                                    {(doc.file.size / (1024 * 1024)).toFixed(2)}{" "}
+                                    MB
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="request-account-doc-attached__remove"
+                                  onClick={() => handleRemoveDocumentFile(doc.id)}
+                                  title="เปลี่ยนไฟล์"
+                                >
+                                  <X size={16} />
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="request-account-doc-dropzone">
+                                <input
+                                  type="file"
+                                  accept=".pdf,image/jpeg,image/png"
+                                  hidden
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    e.target.value = "";
+                                    handleDocumentFileChange(doc.id, f);
+                                  }}
+                                />
+                                <Upload size={18} />
+                                <span>คลิกเพื่อเลือกไฟล์ (PDF, JPG, PNG)</span>
+                              </label>
+                            )}
+                          </div>
+                        </div>
+
+                        {doc.error && (
+                          <p
+                            className="request-account-field-error"
+                            style={{ marginTop: "8px" }}
+                          >
+                            {doc.error}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
 
                   {formErrors.verificationDocument && (
-                    <p className="request-account-field-error">
+                    <p
+                      className="request-account-field-error"
+                      style={{ marginTop: "10px" }}
+                    >
                       {formErrors.verificationDocument}
                     </p>
                   )}

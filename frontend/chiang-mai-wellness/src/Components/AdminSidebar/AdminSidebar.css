@@ -10,6 +10,7 @@
   --admin-sidebar-green: #28a745;
   --admin-sidebar-border: #0b1727;
   --admin-sidebar-width: 275px;
+  --admin-sidebar-collapsed-width: 68px;
 }
 
 .admin-sidebar {
@@ -32,6 +33,16 @@
   top: 0;
   left: 0;
   z-index: 100;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    min-width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 🌟 โหมดพับย่อเพื่อดูเต็มจอ (Collapsed Mode) */
+.admin-sidebar.admin-sidebar--collapsed {
+  width: var(--admin-sidebar-collapsed-width);
+  min-width: var(--admin-sidebar-collapsed-width);
+  max-width: var(--admin-sidebar-collapsed-width);
 }
 
 .admin-sidebar-top {
@@ -45,29 +56,80 @@
   width: 0;
 }
 
+/* Header & Logo */
 .admin-sidebar-logo {
-  min-height: 82px;
-  padding: 0 22px;
+  min-height: 76px;
+  padding: 0 16px 0 20px;
 
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 10px;
 
   color: var(--admin-sidebar-green);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   box-sizing: border-box;
+  transition: padding 0.2s ease;
 }
 
-.admin-sidebar-logo svg {
-  font-size: 24px;
+.admin-sidebar--collapsed .admin-sidebar-logo {
+  padding: 0 8px;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
 }
 
+.admin-sidebar-logo-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.admin-sidebar-logo-brand svg {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+/* ปุ่มกดพับ/ขยาย Sidebar */
+.admin-sidebar-toggle-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #d4dce6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.admin-sidebar-toggle-btn:hover {
+  background: var(--admin-sidebar-green);
+  color: #ffffff;
+  border-color: var(--admin-sidebar-green);
+  transform: scale(1.05);
+}
+
+.admin-sidebar--collapsed .admin-sidebar-toggle-btn {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+/* User Profile */
 .admin-sidebar-user-profile {
-  margin: 20px 15px;
-  padding: 15px;
+  margin: 16px 14px;
+  padding: 12px 14px;
 
   display: flex;
   align-items: center;
@@ -77,11 +139,18 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 4px;
   box-sizing: border-box;
+  transition: margin 0.2s ease, padding 0.2s ease;
 }
 
-.admin-sidebar-user-profile>svg {
+.admin-sidebar--collapsed .admin-sidebar-user-profile {
+  margin: 14px 8px;
+  padding: 12px 0;
+  justify-content: center;
+}
+
+.admin-sidebar-user-profile > svg {
   color: var(--admin-sidebar-green);
-  font-size: 26px;
+  font-size: 24px;
   flex-shrink: 0;
 }
 
@@ -99,31 +168,39 @@
 
 .admin-sidebar-user-name {
   color: #ffffff;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 800;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Menu Section Labels */
 .admin-sidebar-menu-label {
   margin: 0;
-  padding: 16px 24px 6px;
+  padding: 14px 22px 6px;
 
   color: var(--admin-sidebar-text-muted);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .admin-sidebar-menu-label--section {
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
+.admin-sidebar-menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 10px 12px;
+}
+
+/* Menu Items */
 .admin-sidebar-menu-item {
   min-height: 44px;
-  padding: 0 24px;
+  padding: 0 22px;
 
   display: flex;
   align-items: center;
@@ -137,6 +214,14 @@
   border-left: 4px solid transparent;
   transition: all 150ms ease;
   box-sizing: border-box;
+  position: relative;
+  white-space: nowrap;
+}
+
+.admin-sidebar--collapsed .admin-sidebar-menu-item {
+  padding: 0;
+  justify-content: center;
+  border-left-width: 3px;
 }
 
 .admin-sidebar-menu-item:hover {
@@ -154,11 +239,12 @@
 .admin-sidebar-menu-item i,
 .admin-sidebar-menu-item svg {
   width: 18px;
-  font-size: 15px;
+  font-size: 16px;
   text-align: center;
   flex-shrink: 0;
 }
 
+/* Badges */
 .admin-sidebar-badge {
   margin-left: auto;
   padding: 2px 7px;
@@ -172,9 +258,24 @@
   line-height: 1.2;
 }
 
+.admin-sidebar-badge--dot {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  padding: 0;
+  border-radius: 50%;
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: #dc3545;
+  border: 1.5px solid #12243b;
+  margin: 0;
+}
+
+/* Logout Button */
 .admin-sidebar-logout-button {
   width: 100%;
-  height: 55px;
+  height: 52px;
   flex-shrink: 0;
 
   display: flex;
@@ -192,6 +293,7 @@
   font-weight: 800;
   cursor: pointer;
   transition: background 150ms ease;
+  white-space: nowrap;
 }
 
 .admin-sidebar-logout-button:hover {

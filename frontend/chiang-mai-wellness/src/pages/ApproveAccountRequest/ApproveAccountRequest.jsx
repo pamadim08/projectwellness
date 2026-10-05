@@ -7,14 +7,13 @@ import {
   faCheck,
   faXmark,
   faFilePdf,
+  faFileImage,
+  faFileLines,
+  faEye,
   faMapMarkerAlt,
   faSpinner,
   faEnvelope,
-  faKey,
-  faUserCheck,
   faCircleExclamation,
-  faEye,
-  faEyeSlash,
   faChevronDown,
   faChevronUp,
   faCircleInfo,
@@ -24,29 +23,57 @@ import "./ApproveAccountRequest.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 import { clearAccountRequestsCache } from "../ListAccountRequest/ListAccountRequest";
+import { clearWellnessHubCache } from "../ListWellnesshub/ListWellnesshub";
+import { clearDashboardCache } from "../Dashboard/Dashboard";
 
 // Helper Functions จัดฟอร์แมตข้อมูล
 
-// 1. แปลงประเภทใบรับรอง แสดงผล 1 ใบต่อ 1 บรรทัด
+// 1. แปลงประเภทใบรับรอง แสดงผล 1 ใบต่อ 1 บรรทัด (รองรับ Array, JSON, Newline, Dash, Comma)
 const parseCertificateTypes = (certData) => {
-  if (!certData || certData === "-" || certData === "null") return [];
-  try {
-    const parsed =
-      typeof certData === "string" ? JSON.parse(certData) : certData;
-    if (Array.isArray(parsed)) {
-      return parsed.map((s) => String(s).trim()).filter(Boolean);
+  if (!certData || certData === "-" || certData === "null" || certData === "undefined") {
+    return [];
+  }
+  if (Array.isArray(certData)) {
+    return certData.map((s) => String(s).trim()).filter(Boolean);
+  }
+  if (typeof certData === "string") {
+    const trimmed = certData.trim();
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.map((s) => String(s).trim()).filter(Boolean);
+        }
+      } catch (e) {}
     }
-    return String(parsed)
-      .split(",")
-      .map((s) => s.trim())
+  }
+
+  let text = String(certData).trim();
+  if (!text || text === "-" || text === "null") return [];
+
+  if (text.includes("\n")) {
+    return text
+      .split("\n")
+      .map((s) => s.replace(/^[-•*]\s*/, "").trim())
       .filter(Boolean);
-  } catch (e) {
-    return String(certData)
-      .replace(/[[\]"']/g, "")
-      .split(",")
+  }
+
+  if (text.startsWith("- ") || text.startsWith("• ") || text.includes(" - ")) {
+    return text
+      .split(/(?:^|\s+)[-•*]\s+/)
       .map((s) => s.trim())
       .filter(Boolean);
   }
+
+  if (text.includes(",")) {
+    return text
+      .split(",")
+      .map((s) => s.replace(/^[-•*]\s*/, "").trim())
+      .filter(Boolean);
+  }
+
+  const cleaned = text.replace(/^[-•*]\s*/, "").trim();
+  return cleaned ? [cleaned] : [];
 };
 
 // 2. แปลงเวลาทำการเป็น Array รายวัน
@@ -116,6 +143,31 @@ const parseGalleryImages = (galleryData) => {
   }
 };
 
+// 5. แปลงเอกสารยืนยันสิทธิ์ (รองรับทั้ง JSON Array หลายไฟล์ และ Single Data URL เดิม)
+const parseVerificationDocuments = (docData, docName) => {
+  if (!docData) return [];
+  if (Array.isArray(docData)) return docData;
+  if (typeof docData === "string") {
+    const trimmed = docData.trim();
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        // fallback
+      }
+    }
+    return [
+      {
+        type: "เอกสารยืนยันสิทธิ์",
+        name: docName || "เอกสารยืนยันสิทธิ์ (PDF/รูปภาพ)",
+        data: trimmed,
+      },
+    ];
+  }
+  return [];
+};
+
 function ApproveAccountRequest() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -127,8 +179,6 @@ function ApproveAccountRequest() {
   const [reason, setReason] = useState("");
   const [rejectDetail, setRejectDetail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showDetailPassword, setShowDetailPassword] = useState(false);
   const [showApproveEmailPreview, setShowApproveEmailPreview] = useState(false);
   const [showRejectEmailPreview, setShowRejectEmailPreview] = useState(false);
 
@@ -232,6 +282,8 @@ function ApproveAccountRequest() {
         `http://localhost:8080/api/account-requests/${id}/approve`,
       );
       clearAccountRequestsCache();
+      clearWellnessHubCache();
+      clearDashboardCache();
 
       // Trigger Notify Request Result
       try {
@@ -299,22 +351,6 @@ function ApproveAccountRequest() {
             </div>
             <div>
               <strong>อีเมลปลายทาง:</strong> {request?.userEmail || "-"}
-            </div>
-            <div
-              style={{
-                marginTop: "8px",
-                padding: "8px 10px",
-                background: "#ffffff",
-                border: "1px solid #86efac",
-                fontFamily: "monospace",
-              }}
-            >
-              <div>
-                <strong>Username:</strong> {request?.username || "-"}
-              </div>
-              <div>
-                <strong>Password:</strong> {request?.password || "-"}
-              </div>
             </div>
           </div>
         ),
@@ -567,15 +603,16 @@ function ApproveAccountRequest() {
     navigate("/login");
   };
 
-  const handleOpenPdf = (pdfData) => {
-    if (!pdfData) {
+  const handleOpenDocument = (docItem) => {
+    const fileData = typeof docItem === "string" ? docItem : docItem?.data;
+    if (!fileData) {
       alert("ไม่พบไฟล์เอกสารแนบ");
       return;
     }
 
-    if (pdfData.startsWith("data:application/pdf")) {
+    if (fileData.startsWith("data:application/pdf")) {
       try {
-        const arr = pdfData.split(",");
+        const arr = fileData.split(",");
         const mime = arr[0].match(/:(.*?);/)[1];
         const bstr = atob(arr[1]);
         let n = bstr.length;
@@ -589,10 +626,29 @@ function ApproveAccountRequest() {
       } catch (e) {
         alert("ไม่สามารถเปิดไฟล์ PDF ได้ รูปแบบ Base64 ไม่ถูกต้อง");
       }
+    } else if (fileData.startsWith("data:image")) {
+      try {
+        const arr = fileData.split(",");
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const file = new Blob([u8arr], { type: mime });
+        const fileURL = URL.createObjectURL(file);
+        window.open(fileURL, "_blank");
+      } catch (e) {
+        const w = window.open("");
+        if (w) {
+          w.document.write(`<img src="${fileData}" style="max-width:100%; height:auto;" />`);
+        }
+      }
     } else {
-      const targetUrl = pdfData.startsWith("http")
-        ? pdfData
-        : `http://localhost:8080/uploads/${pdfData}`;
+      const targetUrl = fileData.startsWith("http")
+        ? fileData
+        : `http://localhost:8080/uploads/${fileData}`;
       window.open(targetUrl, "_blank");
     }
   };
@@ -603,6 +659,9 @@ function ApproveAccountRequest() {
   const galleryList = request
     ? parseGalleryImages(request.wellnessHubGallery)
     : [];
+  const documentsList = request
+    ? parseVerificationDocuments(request.verificationDocuments)
+    : [];
 
   return (
     <div className="admin-layout">
@@ -611,11 +670,6 @@ function ApproveAccountRequest() {
 
       {/* Main Content */}
       <div className="main-content">
-        <button
-          className="back-btn"
-          onClick={() => navigate("/listAccountRequest")}
-        ></button>
-
         <div className="gov-header">
           <h2>พิจารณาคำร้องขอสิทธิ์</h2>
           <p>ตรวจสอบข้อมูลสถานประกอบการอย่างละเอียดก่อนอนุมัติบัญชี</p>
@@ -632,8 +686,8 @@ function ApproveAccountRequest() {
               style={{
                 width: "100%",
                 height: "260px",
-                border: "1px solid #e2e8f0",
-                borderRadius: "6px",
+                border: "1px solid #999",
+                borderRadius: "0px",
                 overflow: "hidden",
                 marginBottom: "20px",
                 backgroundColor: "#f8fafc",
@@ -675,12 +729,13 @@ function ApproveAccountRequest() {
               {(() => {
                 const certs = parseCertificateTypes(request.certificateType);
                 if (certs.length === 0) return <p>-</p>;
+                if (certs.length === 1) return <p>{certs[0]}</p>;
                 return (
                   <div className="approve-cert-display-list">
                     {certs.map((cert, i) => (
-                      <div key={i} className="approve-cert-display-item">
+                      <p key={i} className="approve-cert-display-item">
                         {cert}
-                      </div>
+                      </p>
                     ))}
                   </div>
                 );
@@ -711,10 +766,10 @@ function ApproveAccountRequest() {
                   <div
                     key={idx}
                     style={{
-                      padding: "8px 12px",
+                      padding: "10px",
                       backgroundColor: "#fafafa",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "4px",
+                      border: "1px solid #999",
+                      borderRadius: "0px",
                       color: "#334155",
                       fontSize: "14px",
                     }}
@@ -770,9 +825,9 @@ function ApproveAccountRequest() {
                     style={{
                       width: "100%",
                       height: "140px",
-                      borderRadius: "4px",
+                      borderRadius: "0px",
                       overflow: "hidden",
-                      border: "1px solid #e2e8f0",
+                      border: "1px solid #999",
                       backgroundColor: "#f8fafc",
                     }}
                   >
@@ -824,7 +879,7 @@ function ApproveAccountRequest() {
                       padding: "8px 16px",
                       backgroundColor: "#2563eb",
                       color: "#ffffff",
-                      borderRadius: "4px",
+                      borderRadius: "0px",
                       textDecoration: "none",
                       fontWeight: "bold",
                       fontSize: "13px",
@@ -878,40 +933,6 @@ function ApproveAccountRequest() {
             </div>
 
             <div>
-              <label>Username</label>
-              <p>{request.username || "-"}</p>
-            </div>
-
-            <div>
-              <label>รหัสผ่านที่ขอตั้ง</label>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", minHeight: "24px" }}>
-                <span style={{ fontFamily: "monospace", fontSize: "15px", fontWeight: "600", color: "#1e293b" }}>
-                  {showDetailPassword
-                    ? (request.password || "-")
-                    : (request.password ? "•".repeat(Math.max(6, Math.min(request.password.length, 12))) : "••••••••")}
-                </span>
-                {request.password && (
-                  <button
-                    type="button"
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      cursor: "pointer",
-                      padding: "2px 6px",
-                      color: "#64748b",
-                      fontSize: "14px",
-                    }}
-                    onClick={() => setShowDetailPassword(!showDetailPassword)}
-                    title={showDetailPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
-                    aria-label={showDetailPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
-                  >
-                    <FontAwesomeIcon icon={showDetailPassword ? faEyeSlash : faEye} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div>
               <label>เบอร์โทรศัพท์</label>
               <p>{request.tellInformation || "-"}</p>
             </div>
@@ -931,59 +952,167 @@ function ApproveAccountRequest() {
           />
 
           {/* SECTION 6: เอกสารประกอบ */}
-          <h3>เอกสารประกอบ</h3>
           <div
-            className="pdf-box"
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "12px 16px",
-              background: "#fafafa",
-              border: "1px solid #999",
-              borderRadius: "0px",
+              marginBottom: "12px",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <FontAwesomeIcon
-                icon={faFilePdf}
-                style={{ color: "#dc2626", fontSize: "20px" }}
-              />
+            <h3 style={{ margin: 0 }}>
+              เอกสารประกอบ{" "}
               <span
                 style={{
-                  fontWeight: "500",
-                  color: "#333",
+                  fontSize: "14px",
+                  fontWeight: "normal",
+                  color: "#64748b",
                 }}
               >
-                {request.verificationDocuments
-                  ? "เอกสารยืนยันตัวตน (PDF)"
-                  : "ไม่มีไฟล์เอกสารแนบ"}
+                ({documentsList.length} ไฟล์)
               </span>
-            </div>
-
-            <button
-              type="button"
-              style={{
-                padding: "6px 16px",
-                background: "#ffffff",
-                color: "#333",
-                border: "1px solid #333",
-                borderRadius: "0px",
-                cursor: "pointer",
-                fontWeight: "bold",
-              }}
-              onClick={() => handleOpenPdf(request.verificationDocuments)}
-            >
-              เปิดเอกสาร
-            </button>
+            </h3>
           </div>
+
+          {documentsList.length === 0 ? (
+            <div
+              className="pdf-box"
+              style={{
+                padding: "16px",
+                background: "#f8fafc",
+                border: "1px dashed #cbd5e1",
+                borderRadius: "0px",
+                color: "#94a3b8",
+                textAlign: "center",
+              }}
+            >
+              ไม่มีไฟล์เอกสารแนบ
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              {documentsList.map((docItem, idx) => {
+                const isPdf =
+                  typeof docItem.data === "string" &&
+                  (docItem.data.startsWith("data:application/pdf") ||
+                    (docItem.name && docItem.name.toLowerCase().endsWith(".pdf")));
+                const isImg =
+                  typeof docItem.data === "string" &&
+                  (docItem.data.startsWith("data:image") ||
+                    (docItem.name &&
+                      (docItem.name.toLowerCase().endsWith(".jpg") ||
+                        docItem.name.toLowerCase().endsWith(".jpeg") ||
+                        docItem.name.toLowerCase().endsWith(".png"))));
+
+                return (
+                  <div
+                    key={idx}
+                    className="pdf-box"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 18px",
+                      background: "#fafafa",
+                      border: "1px solid #999",
+                      borderRadius: "0px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "14px",
+                        minWidth: 0,
+                      }}
+                    >
+                      <FontAwesomeIcon
+                        icon={
+                          isPdf
+                            ? faFilePdf
+                            : isImg
+                              ? faFileImage
+                              : faFileLines
+                        }
+                        style={{
+                          color: isPdf
+                            ? "#dc2626"
+                            : isImg
+                              ? "#2563eb"
+                              : "#059669",
+                          fontSize: "24px",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "3px",
+                          minWidth: 0,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: "750",
+                            color: "#1e293b",
+                            fontSize: "14.5px",
+                          }}
+                        >
+                          {docItem.type || "เอกสารยืนยันสิทธิ์"}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color: "#64748b",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {docItem.name || "ไฟล์เอกสารแนบ"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      style={{
+                        padding: "7px 18px",
+                        background: "#ffffff",
+                        color: "#076653",
+                        border: "1.5px solid #076653",
+                        borderRadius: "0px",
+                        cursor: "pointer",
+                        fontWeight: "750",
+                        fontSize: "13px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        flexShrink: 0,
+                        transition: "all 0.2s ease",
+                      }}
+                      onClick={() => handleOpenDocument(docItem)}
+                    >
+                      <FontAwesomeIcon icon={faEye} />
+                      เปิดดูเอกสาร
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="action-area" style={{ marginTop: "30px" }}>
             <button
               className="approve-btn"
               onClick={() => {
-                setShowPassword(false);
                 setShowApproveEmailPreview(false);
                 setShowApprove(true);
               }}
@@ -1020,7 +1149,7 @@ function ApproveAccountRequest() {
               </p>
             </div>
 
-            {/* ข้อมูลสถานประกอบการและบัญชีผู้ใช้งาน */}
+            {/* ข้อมูลสถานประกอบการและผู้ยื่นคำขอ */}
             <div className="approve-info-card">
               <div className="approve-info-row">
                 <span className="approve-info-label">สถานประกอบการ:</span>
@@ -1031,29 +1160,8 @@ function ApproveAccountRequest() {
                 <span className="approve-info-value">{request?.licenseId || "-"}</span>
               </div>
               <div className="approve-info-row">
-                <span className="approve-info-label">ชื่อผู้ใช้งาน:</span>
-                <span className="approve-info-value credential-badge">{request?.username || "-"}</span>
-              </div>
-              <div className="approve-info-row">
-                <span className="approve-info-label">รหัสผ่าน:</span>
-                <span className="approve-info-value credential-badge credential-password-box">
-                  <span className="password-masked-text">
-                    {showPassword
-                      ? (request?.password || "-")
-                      : (request?.password ? "•".repeat(Math.max(6, Math.min(request.password.length, 12))) : "••••••••")}
-                  </span>
-                  {request?.password && (
-                    <button
-                      type="button"
-                      className="password-toggle-icon-btn"
-                      onClick={() => setShowPassword(!showPassword)}
-                      title={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
-                      aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
-                    >
-                      <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
-                    </button>
-                  )}
-                </span>
+                <span className="approve-info-label">ผู้ยื่นคำขอ:</span>
+                <span className="approve-info-value">{request?.requesterName || "-"}</span>
               </div>
               <div className="approve-info-row">
                 <span className="approve-info-label">อีเมลแจ้งเตือน:</span>
@@ -1103,7 +1211,6 @@ function ApproveAccountRequest() {
                 className="cancel-btn"
                 onClick={() => {
                   setShowApprove(false);
-                  setShowPassword(false);
                   setShowApproveEmailPreview(false);
                 }}
                 disabled={isSubmitting}
@@ -1231,7 +1338,7 @@ function ApproveAccountRequest() {
                       <p style={{ margin: "6px 0", color: "#b91c1c", fontWeight: "600" }}>
                         • {getEffectiveRejectReason() || "(ยังไม่ได้ระบุเหตุผล)"}
                       </p>
-                      <div style={{ marginTop: "10px", padding: "8px 10px", background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: "4px", fontSize: "12.5px", color: "#475569", lineHeight: "1.5" }}>
+                      <div style={{ marginTop: "10px", padding: "8px 10px", background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: "0px", fontSize: "12.5px", color: "#475569", lineHeight: "1.5" }}>
                         <strong>คำแนะนำ:</strong> ท่านสามารถตรวจสอบและแก้ไขข้อมูลหรือเอกสารให้ถูกต้อง จากนั้นสามารถดำเนินการยื่นคำร้องขอสิทธิ์เข้ามาใหม่อีกครั้งผ่านทางเว็บไซต์ได้ เมื่อส่งข้อมูลใหม่ระบบจะนำเข้าสู่สถานะ <strong>"รอพิจารณา"</strong> อีกครั้ง
                       </div>
                     </div>

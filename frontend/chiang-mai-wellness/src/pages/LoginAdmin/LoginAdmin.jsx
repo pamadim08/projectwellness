@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import "./LoginAdmin.css";
 import { prefetchAdminData } from "../../utils/adminPrefetcher";
@@ -7,6 +8,7 @@ import { prefetchAdminData } from "../../utils/adminPrefetcher";
 function LoginAdmin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
@@ -22,8 +24,16 @@ function LoginAdmin() {
     setError("");
 
     // 1. ตรวจสอบเงื่อนไข Script Validation ก่อนส่งไปหลังบ้าน
+    if (!username.trim()) {
+      setError("กรุณาระบุรหัสผู้ใช้งาน (Admin ID)");
+      return;
+    }
+    if (!password) {
+      setError("กรุณาระบุรหัสผ่าน (Password)");
+      return;
+    }
     if (!usernameRegex.test(username) || !passwordRegex.test(password)) {
-      setError("กรุณากรอกข้อมูลให้ถูกต้อง");
+      setError("รหัสผู้ใช้งานหรือรหัสผ่านไม่ถูกต้องตามรูปแบบ (Admin ID 6–10 ตัวอักษร, Password 1–8 ตัวอักษร)");
       return;
     }
 
@@ -97,14 +107,23 @@ function LoginAdmin() {
             </div>
             <div className="input-group">
               <label>Password</label>
-              <div className="input-wrapper">
+              <div className="input-wrapper input-wrapper--password">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="ระบุรหัสผ่าน (ไม่เกิน 8 ตัวอักษร)"
                   value={password}
                   maxLength={8}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  className="btn-toggle-password"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                  title={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
             <button type="submit" className="btn-admin-login">

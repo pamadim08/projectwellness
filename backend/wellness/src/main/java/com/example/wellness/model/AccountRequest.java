@@ -80,8 +80,6 @@ public class AccountRequest {
     // ============================
     // เอกสารประกอบ
     // ============================
-    @Column(name = "verification_document_name", columnDefinition = "TEXT")
-    private String verificationDocumentName;
     @Column(name = "verification_documents", columnDefinition = "LONGTEXT")
     private String verificationDocuments;
 

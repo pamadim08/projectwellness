@@ -24,6 +24,25 @@ public interface WellnessHubRepository
 
     boolean existsByGoogleMapsLink(String googleMapsLink);
 
+    boolean existsByGoogleMapsLinkIgnoreCase(String googleMapsLink);
+
+    @Query("SELECT CASE WHEN COUNT(w) > 0 THEN true ELSE false END FROM WellnessHub w " +
+            "WHERE w.wellnessHubLatitude IS NOT NULL AND w.wellnessHubLongitude IS NOT NULL " +
+            "AND ABS(w.wellnessHubLatitude - :lat) < 0.0001 AND ABS(w.wellnessHubLongitude - :lng) < 0.0001")
+    boolean existsNearCoordinates(@Param("lat") double lat, @Param("lng") double lng);
+
+    @Query("SELECT w.licenseId FROM WellnessHub w")
+    List<String> findAllLicenseIds();
+
+    @Query("SELECT w FROM WellnessHub w " +
+            "LEFT JOIN FETCH w.category " +
+            "LEFT JOIN FETCH w.district " +
+            "WHERE (w.status IS NULL OR TRIM(w.status) = '' OR UPPER(TRIM(w.status)) = 'ACTIVE') " +
+            "AND ((w.wellnessHubLatitude IS NOT NULL AND w.wellnessHubLongitude IS NOT NULL " +
+            "      AND w.wellnessHubLatitude <> 0 AND w.wellnessHubLongitude <> 0) " +
+            "     OR (w.district.districtId IN (:originId, :destId)))")
+    List<WellnessHub> findHubsForRouteCalculation(@Param("originId") Integer originId, @Param("destId") Integer destId);
+
     WellnessHub findByUsername(String username);
 
     @Query("""
@@ -122,6 +141,63 @@ public interface WellnessHubRepository
 
     @Query("SELECT DISTINCT w FROM WellnessHub w LEFT JOIN FETCH w.category LEFT JOIN FETCH w.district")
     List<WellnessHub> findAllWithCategoryAndDistrict();
+
+    @Query("""
+            SELECT new com.example.wellness.dto.WellnessHubSummaryDTO(
+                w.licenseId,
+                w.wellnessHubName,
+                w.address,
+                w.contactInformation,
+                w.telInformation,
+                w.googleMapsLink,
+                w.wellnessHubImg,
+                w.wellnessHubLatitude,
+                w.wellnessHubLongitude,
+                w.status,
+                w.certificateType,
+                w.operatingHours,
+                w.category,
+                w.district,
+                w.createdAt,
+                w.updatedAt
+            )
+            FROM WellnessHub w
+            LEFT JOIN w.category c
+            LEFT JOIN w.district d
+            """)
+    List<com.example.wellness.dto.WellnessHubSummaryDTO> findAllWellnessHubSummaries();
+
+    @Query("""
+            SELECT new com.example.wellness.dto.WellnessHubSummaryDTO(
+                w.licenseId,
+                w.wellnessHubName,
+                w.address,
+                w.contactInformation,
+                w.telInformation,
+                w.googleMapsLink,
+                w.wellnessHubImg,
+                w.wellnessHubLatitude,
+                w.wellnessHubLongitude,
+                w.status,
+                w.certificateType,
+                w.operatingHours,
+                w.category,
+                w.district,
+                w.createdAt,
+                w.updatedAt
+            )
+            FROM WellnessHub w
+            LEFT JOIN w.category c
+            LEFT JOIN w.district d
+            WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(w.wellnessHubName) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:categoryId IS NULL OR :categoryId = '' OR UPPER(c.categoryId) = UPPER(:categoryId))
+              AND (:districtId IS NULL OR d.districtId = :districtId)
+            """)
+    List<com.example.wellness.dto.WellnessHubSummaryDTO> searchWellnessHubSummaries(
+            @Param("keyword") String keyword,
+            @Param("categoryId") String categoryId,
+            @Param("districtId") Integer districtId
+    );
 
     @Query("SELECT w FROM WellnessHub w LEFT JOIN FETCH w.category LEFT JOIN FETCH w.district WHERE w.licenseId = :licenseId")
     java.util.Optional<WellnessHub> findByIdWithCategoryAndDistrict(@Param("licenseId") String licenseId);

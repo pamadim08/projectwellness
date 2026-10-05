@@ -101,8 +101,8 @@ function ListAccountRequest() {
       return;
     }
 
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       setErrorMessage("");
 
       const params = {};
@@ -130,8 +130,8 @@ function ListAccountRequest() {
       } else {
         setErrorMessage(
           error.response?.data?.message ||
-            error.message ||
-            "เกิดข้อผิดพลาดในการโหลดข้อมูลคำร้อง",
+          error.message ||
+          "เกิดข้อผิดพลาดในการโหลดข้อมูลคำร้อง",
         );
       }
     } finally {

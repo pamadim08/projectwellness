@@ -93,10 +93,9 @@ function ListOfficialArticle() {
     if (Array.isArray(adminArticlesCache) && isDefaultFilter && !forceRefresh) {
       setArticles(adminArticlesCache);
       setIsLoading(false);
-      return;
+    } else {
+      setIsLoading(true);
     }
-
-    setIsLoading(true);
 
     try {
       const params = {};

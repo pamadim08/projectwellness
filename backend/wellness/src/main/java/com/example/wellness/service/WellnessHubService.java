@@ -2,6 +2,7 @@ package com.example.wellness.service;
 
 import com.example.wellness.dto.PagedResult;
 import com.example.wellness.dto.WellnessHubDTO;
+import com.example.wellness.dto.WellnessHubSummaryDTO;
 import com.example.wellness.model.*;
 import com.example.wellness.repository.*;
 
@@ -40,6 +41,7 @@ public class WellnessHubService {
     private final DistrictRepository districtRepository;
     private final MemberRepository memberRepository;
     private final AccountGeneratorService accountGeneratorService;
+    private final SupabaseStorageService supabaseStorageService;
 
     public WellnessHubService(
             WellnessHubRepository wellnessHubRepository,
@@ -48,7 +50,8 @@ public class WellnessHubService {
             CategoryRepository categoryRepository,
             DistrictRepository districtRepository,
             MemberRepository memberRepository,
-            AccountGeneratorService accountGeneratorService) {
+            AccountGeneratorService accountGeneratorService,
+            SupabaseStorageService supabaseStorageService) {
         this.wellnessHubRepository = wellnessHubRepository;
         this.emergencyServiceRepository = emergencyServiceRepository;
         this.accountRequestRepository = accountRequestRepository;
@@ -56,17 +59,18 @@ public class WellnessHubService {
         this.districtRepository = districtRepository;
         this.memberRepository = memberRepository;
         this.accountGeneratorService = accountGeneratorService;
+        this.supabaseStorageService = supabaseStorageService;
     }
 
     public String generateNextLicenseId() {
-        List<WellnessHub> hubs = wellnessHubRepository.findAll();
-        List<EmergencyService> services = emergencyServiceRepository.findAll();
+        List<String> hubIds = wellnessHubRepository.findAllLicenseIds();
+        List<String> serviceIds = emergencyServiceRepository.findAllLicenseIds();
 
         int maxId = 10000;
-        for (WellnessHub h : hubs) {
-            if (h.getLicenseId() != null) {
+        for (String id : hubIds) {
+            if (id != null) {
                 try {
-                    int val = Integer.parseInt(h.getLicenseId().replaceAll("\\D+", ""));
+                    int val = Integer.parseInt(id.replaceAll("\\D+", ""));
                     if (val > maxId) {
                         maxId = val;
                     }
@@ -74,10 +78,10 @@ public class WellnessHubService {
                 }
             }
         }
-        for (EmergencyService s : services) {
-            if (s.getLicenseId() != null) {
+        for (String id : serviceIds) {
+            if (id != null) {
                 try {
-                    int val = Integer.parseInt(s.getLicenseId().replaceAll("\\D+", ""));
+                    int val = Integer.parseInt(id.replaceAll("\\D+", ""));
                     if (val > maxId) {
                         maxId = val;
                     }
@@ -97,7 +101,7 @@ public class WellnessHubService {
                         category.getCategoryId().toUpperCase());
     }
 
-    private List<WellnessHub> sortWellnessHubList(List<WellnessHub> list) {
+    private List<WellnessHubSummaryDTO> sortWellnessHubSummaryList(List<WellnessHubSummaryDTO> list) {
         if (list == null) {
             return new ArrayList<>();
         }
@@ -123,21 +127,15 @@ public class WellnessHubService {
         }).toList();
     }
 
-    public List<WellnessHub> listWellnessHub() {
-        List<WellnessHub> results = new ArrayList<>(wellnessHubRepository.findAllWithCategoryAndDistrict());
-
-        List<WellnessHub> emergencyResults = emergencyServiceRepository.findAllWithCategoryAndDistrict()
-                .stream()
-                .map(this::convertEmergencyToWellnessHub)
-                .toList();
+    public List<WellnessHubSummaryDTO> listWellnessHub() {
+        List<WellnessHubSummaryDTO> results = new ArrayList<>(wellnessHubRepository.findAllWellnessHubSummaries());
+        List<WellnessHubSummaryDTO> emergencyResults = emergencyServiceRepository.findAllEmergencySummaries();
 
         results.addAll(emergencyResults);
-        results.forEach(hub -> hub.setWellnessHubGallery(null));
-
-        return sortWellnessHubList(results);
+        return sortWellnessHubSummaryList(results);
     }
 
-    public List<WellnessHub> listWellnessHub(Map<String, Object> payload) {
+    public List<WellnessHubSummaryDTO> listWellnessHub(Map<String, Object> payload) {
         if (payload == null) {
             return listWellnessHub();
         }
@@ -168,25 +166,20 @@ public class WellnessHubService {
             }
         }
 
-        // 1. Query filtered WellnessHub directly from DB (with JOIN FETCH)
-        List<WellnessHub> results = new ArrayList<>(
-                wellnessHubRepository.searchWithFilter(keyword, categoryIdStr, districtId));
+        // 1. Query filtered WellnessHub directly from DB (DTO projection)
+        List<WellnessHubSummaryDTO> results = new ArrayList<>(
+                wellnessHubRepository.searchWellnessHubSummaries(keyword, categoryIdStr, districtId));
 
         // 2. Query filtered EmergencyService directly from DB (if category is null or emergency category)
         boolean checkEmergency = (categoryIdStr == null
                 || EMERGENCY_CATEGORY_IDS.contains(categoryIdStr.toUpperCase()));
         if (checkEmergency) {
-            List<WellnessHub> emergencyResults = emergencyServiceRepository
-                    .searchWithFilter(keyword, categoryIdStr, districtId)
-                    .stream()
-                    .map(this::convertEmergencyToWellnessHub)
-                    .toList();
+            List<WellnessHubSummaryDTO> emergencyResults = emergencyServiceRepository
+                    .searchEmergencySummaries(keyword, categoryIdStr, districtId);
             results.addAll(emergencyResults);
         }
 
-        results.forEach(hub -> hub.setWellnessHubGallery(null));
-
-        return sortWellnessHubList(results);
+        return sortWellnessHubSummaryList(results);
     }
 
     public WellnessHub viewWellnessHubDetail(String id) {
@@ -232,16 +225,13 @@ public class WellnessHubService {
             throw new IllegalArgumentException("เลขใบอนุญาตนี้มีอยู่ในระบบแล้ว");
         }
 
-        // 2. wellnessHubName: required, ไทย/อังกฤษ/ตัวเลข, 5–100 ตัว
+        // 2. wellnessHubName: required, 5–100 ตัว
         if (wellnessHub.getWellnessHubName() == null || wellnessHub.getWellnessHubName().trim().isEmpty()) {
             throw new IllegalArgumentException("กรุณาระบุชื่อสถานประกอบการ");
         }
         String wellnessHubName = wellnessHub.getWellnessHubName().trim();
         if (wellnessHubName.length() < 5 || wellnessHubName.length() > 100) {
             throw new IllegalArgumentException("ชื่อสถานประกอบการต้องมีความยาว 5-100 ตัวอักษร");
-        }
-        if (!wellnessHubName.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
-            throw new IllegalArgumentException("ชื่อสถานประกอบการต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
         }
         wellnessHub.setWellnessHubName(wellnessHubName);
 
@@ -363,6 +353,14 @@ public class WellnessHubService {
         }
         if (wellnessHub.getStatus() == null || wellnessHub.getStatus().trim().isEmpty()) {
             wellnessHub.setStatus("ACTIVE");
+        }
+
+        // Upload images to Supabase Storage if Base64
+        if (wellnessHub.getWellnessHubImg() != null && !wellnessHub.getWellnessHubImg().trim().isEmpty()) {
+            wellnessHub.setWellnessHubImg(supabaseStorageService.uploadBase64OrReturnUrl(wellnessHub.getWellnessHubImg(), "wellness_hubs"));
+        }
+        if (wellnessHub.getWellnessHubGallery() != null && !wellnessHub.getWellnessHubGallery().trim().isEmpty()) {
+            wellnessHub.setWellnessHubGallery(supabaseStorageService.uploadGalleryBase64OrReturnUrl(wellnessHub.getWellnessHubGallery(), "wellness_hubs"));
         }
 
         if (isEmergency) {
@@ -678,7 +676,7 @@ public class WellnessHubService {
             if (updatedData.getWellnessHubImg() != null) {
                 if (!updatedData.getWellnessHubImg().trim().isEmpty()) {
                     validateImage(updatedData.getWellnessHubImg().trim());
-                    img = updatedData.getWellnessHubImg().trim();
+                    img = supabaseStorageService.uploadBase64OrReturnUrl(updatedData.getWellnessHubImg().trim(), "wellness_hubs");
                 } else {
                     img = "";
                 }
@@ -687,7 +685,7 @@ public class WellnessHubService {
             // 7.1 wellnessHubGallery: optional
             String gallery = null;
             if (updatedData.getWellnessHubGallery() != null) {
-                gallery = updatedData.getWellnessHubGallery().trim();
+                gallery = supabaseStorageService.uploadGalleryBase64OrReturnUrl(updatedData.getWellnessHubGallery().trim(), "wellness_hubs");
             }
 
             // 8. operatingHours: validate Mon-Sun
@@ -703,10 +701,6 @@ public class WellnessHubService {
             if (name != null && !name.isEmpty()) {
                 if (name.length() < 5 || name.length() > 100) {
                     throw new IllegalArgumentException("ชื่อสถานประกอบการต้องมีความยาว 5-100 ตัวอักษร");
-                }
-                if (!name.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
-                    throw new IllegalArgumentException(
-                            "ชื่อสถานประกอบการต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
                 }
                 // ตรวจชื่อซ้ำเฉพาะเมื่อเปลี่ยนชื่อใหม่
                 if (oldName == null || !name.equalsIgnoreCase(oldName.trim())) {
@@ -782,7 +776,7 @@ public class WellnessHubService {
         String oldName = oldHub != null ? oldHub.getWellnessHubName()
                 : (oldEmergency != null ? oldEmergency.getWellnessHubName() : null);
 
-        // 2. wellnessHubName: required, ไทย/อังกฤษ/ตัวเลข, 5–100 ตัว
+        // 2. wellnessHubName: required, 5–100 ตัว
         String name = updatedData.getWellnessHubName() != null && !updatedData.getWellnessHubName().trim().isEmpty()
                 ? updatedData.getWellnessHubName().trim()
                 : oldName;
@@ -793,9 +787,6 @@ public class WellnessHubService {
         name = name.trim();
         if (name.length() < 5 || name.length() > 100) {
             throw new IllegalArgumentException("ชื่อสถานประกอบการต้องมีความยาว 5-100 ตัวอักษร");
-        }
-        if (!name.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
-            throw new IllegalArgumentException("ชื่อสถานประกอบการต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
         }
         // ตรวจชื่อซ้ำเฉพาะเมื่อเปลี่ยนชื่อใหม่ต่างจากชื่อเดิมของตัวเอง
         if (oldName == null || !name.equalsIgnoreCase(oldName.trim())) {
@@ -1437,7 +1428,7 @@ public class WellnessHubService {
         District dest = districtRepository.findById(destId)
                 .orElseThrow(() -> new NoSuchElementException("ไม่พบอำเภอปลายทาง"));
 
-        List<WellnessHub> allHubs = wellnessHubRepository.findAll();
+        List<WellnessHub> allHubs = wellnessHubRepository.findHubsForRouteCalculation(originId, destId);
 
         RestTemplate restTemplate = new RestTemplate();
         String url = String.format(

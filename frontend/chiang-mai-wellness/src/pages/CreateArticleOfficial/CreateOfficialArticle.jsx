@@ -273,20 +273,24 @@ function CreateOfficialArticle() {
     let err = {};
     const titleTrimmed = articleTitle.trim();
     // 1. ชื่อบทความ: ห้ามว่าง, 10–100 ตัวอักษร (สามารถมีอักขระพิเศษได้)
-    if (!titleTrimmed || titleTrimmed.length < 10 || titleTrimmed.length > 100) {
-      err.title = "กรุณากรอกข้อมูลให้ครบถ้วน";
+    if (!titleTrimmed) {
+      err.title = "กรุณาระบุชื่อบทความ";
+    } else if (titleTrimmed.length < 10 || titleTrimmed.length > 100) {
+      err.title = "ชื่อบทความต้องมีความยาว 10–100 ตัวอักษร";
     }
 
     // 2. รายละเอียดบทความ: ห้ามว่าง, Create: 50–2,500 ตัวอักษร, Edit: 20–2,500 ตัวอักษร
     const rawDetailText = articleDetail.replace(/<[^>]*>/g, "").trim();
     const minDetailLen = id ? 20 : 50;
-    if (!rawDetailText || rawDetailText.length < minDetailLen || rawDetailText.length > 2500) {
-      err.detail = "กรุณากรอกข้อมูลให้ครบถ้วน";
+    if (!rawDetailText) {
+      err.detail = "กรุณาระบุเนื้อหาบทความ";
+    } else if (rawDetailText.length < minDetailLen || rawDetailText.length > 2500) {
+      err.detail = `เนื้อหาบทความต้องมีความยาว ${minDetailLen}–2,500 ตัวอักษร`;
     }
 
     // 3. หมวดหมู่บทความ: Dropdown ห้ามว่าง
     if (!articleCategory) {
-      err.category = "กรุณากรอกข้อมูลให้ครบถ้วน";
+      err.category = "กรุณาเลือกหมวดหมู่บทความ";
     }
 
     if (Object.keys(err).length > 0) {

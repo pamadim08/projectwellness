@@ -6,6 +6,7 @@ import "./EditWellnesshub.css";
 import AdminSidebar from "../../Components/AdminSidebar/AdminSidebar";
 import AdminStatusModal from "../../Components/AdminStatusModal/AdminStatusModal";
 import { clearWellnessHubCache } from "../ListWellnesshub/ListWellnesshub";
+import { clearDashboardCache } from "../Dashboard/Dashboard";
 
 function normalizeImageSource(value) {
   if (!value) return "";
@@ -66,6 +67,13 @@ const EditWellnessHub = () => {
 
   // State สำหรับจัดการรายการใบรับรอง 1 ใบต่อ 1 ช่อง
   const [certificateList, setCertificateList] = useState([""]);
+
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
 
   const handleCertChange = (index, value) => {
     setCertificateList((prev) => {
@@ -185,13 +193,6 @@ const EditWellnessHub = () => {
     const storedName = localStorage.getItem("adminName");
     if (storedName) setAdminName(storedName);
   }, [id, navigate]);
-
-  const [statusModal, setStatusModal] = useState({
-    isOpen: false,
-    type: "success",
-    title: "",
-    message: "",
-  });
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
@@ -327,13 +328,13 @@ const EditWellnessHub = () => {
     const districtId = String(formData.districtId || "").trim();
     const googleMapsLink = String(formData.googleMapsLink || "").trim();
 
-    // 1. ชื่อสถานประกอบการ: 5-100 ตัวอักษร ไทย/อังกฤษ/ตัวเลข (ฟิลด์เดียวที่บังคับ)
-    if (!name || name.length < 5 || name.length > 100 || !/^[a-zA-Z0-9\u0E00-\u0E7F\s]+$/.test(name)) {
+    // 1. ชื่อสถานประกอบการ: 3-100 ตัวอักษร (ฟิลด์เดียวที่บังคับ)
+    if (!name || name.length < 3 || name.length > 100) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "กรุณากรอกข้อมูลให้ถูกต้อง",
-        message: "กรุณาระบุชื่อสถานประกอบการเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลข ความยาว 5-100 ตัวอักษร",
+        message: "กรุณาระบุชื่อสถานประกอบการ ความยาว 3-100 ตัวอักษร",
       });
       return;
     }
@@ -438,6 +439,7 @@ const EditWellnessHub = () => {
         payload,
       );
       clearWellnessHubCache();
+      clearDashboardCache();
       setIsLoading(false);
 
       setStatusModal({

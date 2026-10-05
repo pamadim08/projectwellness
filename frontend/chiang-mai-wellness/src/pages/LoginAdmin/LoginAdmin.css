@@ -67,21 +67,58 @@
     padding-left: 8px;
 }
 
+.input-wrapper {
+    width: 100%;
+    position: relative;
+    box-sizing: border-box;
+}
+
 .input-wrapper input {
     width: 100%;
+    box-sizing: border-box;
     padding: 12px;
     background: #ffffff;
     /* กรอบเหลี่ยมเส้นคม */
-    border: 1px solid var(--border-gov);
+    border: 1.5px solid var(--border-gov);
     border-radius: 0px; 
     color: var(--text-main);
     font-size: 16px;
     outline: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .input-wrapper input:focus {
-    border: 2px solid var(--input-focus);
+    border-color: var(--input-focus);
     background-color: #f0fdf4; /* เปลี่ยนสีพื้นหลังนิดหน่อยเวลา focus */
+}
+
+.input-wrapper--password {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.input-wrapper--password input {
+    padding-right: 44px;
+}
+
+.btn-toggle-password {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-sub);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    transition: color 0.15s ease;
+}
+
+.btn-toggle-password:hover {
+    color: var(--text-main);
 }
 
 .btn-admin-login {

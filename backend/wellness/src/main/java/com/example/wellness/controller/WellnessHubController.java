@@ -3,6 +3,7 @@ package com.example.wellness.controller;
 import com.example.wellness.dto.PagedResult;
 import com.example.wellness.dto.ResponseObject;
 import com.example.wellness.dto.WellnessHubDTO;
+import com.example.wellness.dto.WellnessHubSummaryDTO;
 import com.example.wellness.model.WellnessHub;
 import com.example.wellness.service.WellnessHubService;
 
@@ -41,8 +42,8 @@ public class WellnessHubController {
      * - emergency_services
      */
     @GetMapping
-    public ResponseEntity<List<WellnessHub>> listWellnessHub() {
-        List<WellnessHub> results = wellnessHubService.listWellnessHub();
+    public ResponseEntity<List<WellnessHubSummaryDTO>> listWellnessHub() {
+        List<WellnessHubSummaryDTO> results = wellnessHubService.listWellnessHub();
 
         return ResponseEntity.ok(results);
     }
@@ -55,9 +56,9 @@ public class WellnessHubController {
      * รองรับทั้ง Wellness Hub และ Emergency Service
      */
     @PostMapping("/search")
-    public ResponseEntity<List<WellnessHub>> listWellnessHub(
+    public ResponseEntity<List<WellnessHubSummaryDTO>> listWellnessHub(
             @RequestBody(required = false) Map<String, Object> payload) {
-        List<WellnessHub> results = wellnessHubService
+        List<WellnessHubSummaryDTO> results = wellnessHubService
                 .listWellnessHub(payload);
 
         return ResponseEntity.ok(results);

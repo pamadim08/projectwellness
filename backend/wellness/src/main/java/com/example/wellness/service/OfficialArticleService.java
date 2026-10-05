@@ -1,5 +1,6 @@
 package com.example.wellness.service;
 
+import com.example.wellness.dto.OfficialArticleSummaryDTO;
 import com.example.wellness.model.OfficialArticle;
 import com.example.wellness.repository.OfficialArticleRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -22,37 +23,28 @@ public class OfficialArticleService {
     );
 
     private final OfficialArticleRepository repository;
+    private final SupabaseStorageService supabaseStorageService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public OfficialArticleService(OfficialArticleRepository repository) {
+    public OfficialArticleService(OfficialArticleRepository repository, SupabaseStorageService supabaseStorageService) {
         this.repository = repository;
+        this.supabaseStorageService = supabaseStorageService;
     }
 
-    public List<OfficialArticle> listOfficialArticle() {
+    public List<OfficialArticleSummaryDTO> listOfficialArticle() {
         return listOfficialArticle(null, null);
     }
 
-    // ดึงบทความทั้งหมด หรือค้นหาตามเงื่อนไขที่ DB
-    public List<OfficialArticle> listOfficialArticle(String keyword, String category) {
+    // ดึงบทความทั้งหมด หรือค้นหาตามเงื่อนไขที่ DB ด้วย DTO projection
+    public List<OfficialArticleSummaryDTO> listOfficialArticle(String keyword, String category) {
         String trimmedKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
         String trimmedCategory = (category != null && !category.trim().isEmpty()) ? category.trim() : null;
 
-        List<OfficialArticle> list;
         if (trimmedKeyword == null && trimmedCategory == null) {
-            list = repository.findAllByOrderByArticleIdDesc();
+            return repository.findAllSummaries();
         } else {
-            list = repository.searchArticles(trimmedKeyword, trimmedCategory);
+            return repository.searchArticleSummaries(trimmedKeyword, trimmedCategory);
         }
-
-        // ล้างข้อมูล articleImages (ภาพแกลเลอรี) ออกจากรายการ เพื่อลดขนาด Payload ไม่ให้ช้า
-        if (list != null) {
-            list.forEach(article -> {
-                if (article != null) {
-                    article.setArticleImages(null);
-                }
-            });
-        }
-        return list;
     }
 
     // ดึงตาม id
@@ -99,6 +91,14 @@ public class OfficialArticleService {
 
         // 4. Validate images (optional, png/jpg/jpeg, <=20MB, total <= 5)
         validateImages(article.getImg(), article.getArticleImages());
+
+        // 4.1 Upload images to Supabase Storage
+        if (article.getImg() != null && !article.getImg().trim().isEmpty()) {
+            article.setImg(supabaseStorageService.uploadBase64OrReturnUrl(article.getImg(), "articles"));
+        }
+        if (article.getArticleImages() != null && !article.getArticleImages().trim().isEmpty()) {
+            article.setArticleImages(supabaseStorageService.uploadGalleryBase64OrReturnUrl(article.getArticleImages(), "articles"));
+        }
 
         // 5. author: ใช้ adminUsername จาก Session
         if (currentAdminUsername != null && !currentAdminUsername.trim().isEmpty()) {
@@ -159,12 +159,12 @@ public class OfficialArticleService {
         // 4. Validate images (รูปรวมเก่า + ใหม่ <= 5 รูป)
         validateImages(data.getImg(), data.getArticleImages());
 
-        // 5. Images: ถ้าส่งรูปมา ให้อัปเดต หากไม่ส่งหรือว่าง ให้คงรูปเดิมไว้
+        // 5. Images: ถ้าส่งรูปมา ให้อัปเดตไปยัง Supabase Storage หากไม่ส่งหรือว่าง ให้คงรูปเดิมไว้
         if (data.getImg() != null && !data.getImg().trim().isEmpty()) {
-            oldArticle.setImg(data.getImg());
+            oldArticle.setImg(supabaseStorageService.uploadBase64OrReturnUrl(data.getImg(), "articles"));
         }
-        if (data.getArticleImages() != null) {
-            oldArticle.setArticleImages(data.getArticleImages());
+        if (data.getArticleImages() != null && !data.getArticleImages().trim().isEmpty()) {
+            oldArticle.setArticleImages(supabaseStorageService.uploadGalleryBase64OrReturnUrl(data.getArticleImages(), "articles"));
         }
 
         return repository.save(oldArticle);

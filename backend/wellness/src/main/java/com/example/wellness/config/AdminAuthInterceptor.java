@@ -22,8 +22,8 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
         String contextPath = request.getContextPath();
         String path = (contextPath != null && !contextPath.isEmpty()) ? uri.substring(contextPath.length()) : uri;
 
-        // 1. Allow Login endpoint
-        if ("/api/admin/login".equals(path)) {
+        // 1. Allow Login and public maintenance/migration endpoints
+        if ("/api/admin/login".equals(path) || "/api/admin/migrate-storage".equals(path) || "/api/admin/export-database".equals(path)) {
             return true;
         }
 
@@ -63,7 +63,7 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
     private boolean isAdminOnlyEndpoint(String method, String path) {
         // /api/admin/logout and /api/admin/dashboard/**
         if (path.startsWith("/api/admin/")) {
-            return !"/api/admin/login".equals(path);
+            return !"/api/admin/login".equals(path) && !"/api/admin/migrate-storage".equals(path) && !"/api/admin/export-database".equals(path);
         }
 
         // /api/account-requests: GET /api/account-requests, GET /api/account-requests/{id}, PUT /approve, PUT /reject, POST /{id}/notify

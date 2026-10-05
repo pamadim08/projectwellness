@@ -25,13 +25,20 @@ public class AdminController {
 
     private final AdminService adminService;
     private final AccountGeneratorService accountGeneratorService;
+    private final com.example.wellness.service.StorageMigrationService storageMigrationService;
+    private final com.example.wellness.service.DatabaseExportService databaseExportService;
 
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9]{6,10}$");
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^[a-zA-Z0-9]{1,8}$");
 
-    public AdminController(AdminService adminService, AccountGeneratorService accountGeneratorService) {
+    public AdminController(AdminService adminService, 
+                           AccountGeneratorService accountGeneratorService,
+                           com.example.wellness.service.StorageMigrationService storageMigrationService,
+                           com.example.wellness.service.DatabaseExportService databaseExportService) {
         this.adminService = adminService;
         this.accountGeneratorService = accountGeneratorService;
+        this.storageMigrationService = storageMigrationService;
+        this.databaseExportService = databaseExportService;
     }
 
     @PostMapping("/login")
@@ -92,5 +99,16 @@ public class AdminController {
     @PostMapping("/generate-account")
     public ResponseEntity<?> generateAccount() {
         return ResponseEntity.ok(accountGeneratorService.generateAccounts());
+    }
+
+    @PostMapping("/migrate-storage")
+    public ResponseEntity<?> migrateStorage() {
+        return ResponseEntity.ok(storageMigrationService.migrateAllBase64Images());
+    }
+
+    @PostMapping("/export-database")
+    public ResponseEntity<?> exportDatabase() {
+        String defaultPath = "migration_backup.sql";
+        return ResponseEntity.ok(databaseExportService.exportDatabaseToSql(defaultPath));
     }
 }

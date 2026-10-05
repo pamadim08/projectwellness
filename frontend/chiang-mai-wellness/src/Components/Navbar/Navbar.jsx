@@ -8,6 +8,13 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import "./Navbar.css";
 
+// 🌟 นำเข้ารูปภาพโลโก้จากโฟลเดอร์ logo
+import cmuLogo from "../../assets/logo/cmulogo.jpg";
+import itLogo from "../../assets/logo/it.jpg";
+import mophLogo from "../../assets/logo/moph.jpg";
+import ctrdLogo from "../../assets/logo/ctrd.jpg";
+import cbtLogo from "../../assets/logo/cbt.jpg";
+
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -70,7 +77,7 @@ function Navbar() {
       <div className="navbar__top-accent" />
 
       <div className="navbar__container">
-        {/* 🌟 1. ส่วนแบรนด์ */}
+        {/* 🌟 1. ส่วนแบรนด์และโลโก้ */}
         <div className="navbar__identity">
           <Link
             to="/"
@@ -78,13 +85,16 @@ function Navbar() {
             onClick={closeMenu}
             aria-label="หน้าแรก Chiang Mai Wellness Route"
           >
-            {/* โลโก้แบบจำลองใช้ไอคอนเวลเนส */}
-            <div className="navbar__brand-logo-wrap">
-              <FontAwesomeIcon
-                icon={faHeartPulse}
-                className="navbar__brand-icon"
-              />
+            {/* โลโก้หน่วยงานและโครงการจากโฟลเดอร์ logo */}
+            <div className="navbar__logos-group">
+              <img src={cmuLogo} alt="CMU Logo" className="navbar__logo-item" />
+              <img src={itLogo} alt="IT Logo" className="navbar__logo-item" />
+              <img src={mophLogo} alt="MOPH Logo" className="navbar__logo-item" />
+              <img src={ctrdLogo} alt="CTRD Logo" className="navbar__logo-item" />
+              <img src={cbtLogo} alt="CBT Logo" className="navbar__logo-item" />
             </div>
+
+            <div className="navbar__brand-divider" />
 
             <div className="navbar__brand-info">
               <div className="navbar__brand-title">

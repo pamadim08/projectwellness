@@ -11,6 +11,8 @@ import {
   faRoute,
   faShop,
   faNewspaper,
+  faAnglesLeft,
+  faAnglesRight,
 } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
 import "./AdminSidebar.css";
@@ -28,6 +30,29 @@ export default function AdminSidebar({
   const [adminName, setAdminName] = useState("ผู้ดูแลระบบ");
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
   const [pendingCount, setPendingCount] = useState(propPendingCount ?? null);
+  
+  // สถานะย่อ/ขยาย Sidebar (บันทึกใน localStorage เพื่อให้คงสถานะข้ามหน้า)
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("adminSidebarCollapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    const nextState = !isCollapsed;
+    setIsCollapsed(nextState);
+    try {
+      localStorage.setItem("adminSidebarCollapsed", String(nextState));
+    } catch {
+      // ignore localStorage errors
+    }
+    // ส่ง Trigger Resize Event เพื่อให้แผนที่ Leaflet และ Charts ปรับขนาดเต็มจออัตโนมัติ
+    setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 260);
+  };
 
   // ดึงชื่อผู้ใช้งานจาก localStorage และเริ่มโหลดข้อมูลทุกเมนูล่วงหน้าใน Background
   useEffect(() => {
@@ -197,84 +222,138 @@ export default function AdminSidebar({
       )}
 
       {/* 🌟 Admin Sidebar Menu */}
-      <nav className="admin-sidebar" aria-label="Admin Navigation">
+      <nav
+        className={`admin-sidebar ${
+          isCollapsed ? "admin-sidebar--collapsed" : ""
+        }`}
+        aria-label="Admin Navigation"
+      >
         <div className="admin-sidebar-top">
-          {/* Logo */}
+          {/* Logo & Toggle Collapse Button */}
           <div className="admin-sidebar-logo">
-            <FontAwesomeIcon icon={faShieldHeart} />
-            <span>Admin Panel</span>
+            <div
+              className="admin-sidebar-logo-brand"
+              title="ระบบจัดการข้อมูล Chiang Mai Wellness"
+            >
+              <FontAwesomeIcon icon={faShieldHeart} />
+              {!isCollapsed && <span>Admin Panel</span>}
+            </div>
+
+            <button
+              type="button"
+              className="admin-sidebar-toggle-btn"
+              onClick={toggleSidebar}
+              title={
+                isCollapsed
+                  ? "ขยายเมนูด้านข้าง (Expand Sidebar)"
+                  : "ย่อเมนูเพื่อแสดงผลเต็มหน้าจอ (Collapse Sidebar)"
+              }
+              aria-label={isCollapsed ? "ขยายเมนู" : "ย่อเมนู"}
+            >
+              <FontAwesomeIcon
+                icon={isCollapsed ? faAnglesRight : faAnglesLeft}
+              />
+            </button>
           </div>
 
           {/* User Profile Box */}
-          <div className="admin-sidebar-user-profile">
+          <div
+            className="admin-sidebar-user-profile"
+            title={`ผู้ใช้งาน: ${adminName}`}
+          >
             <FontAwesomeIcon icon={faCircleUser} />
-            <div className="admin-sidebar-user-info">
-              <span className="admin-sidebar-user-label">ผู้ใช้งานปัจจุบัน:</span>
-              <span className="admin-sidebar-user-name" title={adminName}>
-                {adminName}
-              </span>
-            </div>
+            {!isCollapsed && (
+              <div className="admin-sidebar-user-info">
+                <span className="admin-sidebar-user-label">ผู้ใช้งานปัจจุบัน:</span>
+                <span className="admin-sidebar-user-name" title={adminName}>
+                  {adminName}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Menu Section 1: เมนูหลัก */}
-          <p className="admin-sidebar-menu-label">เมนูหลัก</p>
+          {!isCollapsed ? (
+            <p className="admin-sidebar-menu-label">เมนูหลัก</p>
+          ) : (
+            <div className="admin-sidebar-menu-divider" />
+          )}
 
           <Link
             to="/dashboard"
+            title="แผงควบคุมหลัก"
             className={`admin-sidebar-menu-item ${
               isDashboardActive ? "active" : ""
             }`}
           >
             <FontAwesomeIcon icon={faChartPie} />
-            <span>แผงควบคุมหลัก</span>
+            {!isCollapsed && <span>แผงควบคุมหลัก</span>}
           </Link>
 
           <Link
             to="/listAccountRequest"
+            title={
+              Number.isFinite(pendingCount) && pendingCount > 0
+                ? `ตรวจสอบคำขอสิทธิ์ (${pendingCount} รายการรอพิจารณา)`
+                : "ตรวจสอบคำขอสิทธิ์"
+            }
             className={`admin-sidebar-menu-item ${
               isAccountRequestActive ? "active" : ""
             }`}
           >
             <FontAwesomeIcon icon={faClipboardCheck} />
-            <span>ตรวจสอบคำขอสิทธิ์</span>
+            {!isCollapsed && <span>ตรวจสอบคำขอสิทธิ์</span>}
             {Number.isFinite(pendingCount) && pendingCount > 0 && (
-              <span className="admin-sidebar-badge">{pendingCount}</span>
+              <span
+                className={`admin-sidebar-badge ${
+                  isCollapsed ? "admin-sidebar-badge--dot" : ""
+                }`}
+              >
+                {isCollapsed ? "" : pendingCount}
+              </span>
             )}
           </Link>
 
           {/* Menu Section 2: การจัดการข้อมูล */}
-          <p className="admin-sidebar-menu-label admin-sidebar-menu-label--section">
-            การจัดการข้อมูล
-          </p>
+          {!isCollapsed ? (
+            <p className="admin-sidebar-menu-label admin-sidebar-menu-label--section">
+              การจัดการข้อมูล
+            </p>
+          ) : (
+            <div className="admin-sidebar-menu-divider" />
+          )}
 
           <Link
             to="/listWellnessHub"
+            title="จัดการสถานประกอบการ"
             className={`admin-sidebar-menu-item ${
               isWellnessHubActive ? "active" : ""
             }`}
           >
             <FontAwesomeIcon icon={faShop} />
-            <span>จัดการสถานประกอบการ</span>
+            {!isCollapsed && <span>จัดการสถานประกอบการ</span>}
           </Link>
 
           <Link
             to="/listMainRoute"
+            title="จัดการเส้นทางสุขภาพ"
             className={`admin-sidebar-menu-item ${
               isRouteActive ? "active" : ""
             }`}
           >
             <FontAwesomeIcon icon={faRoute} />
-            <span>จัดการเส้นทางสุขภาพ</span>
+            {!isCollapsed && <span>จัดการเส้นทางสุขภาพ</span>}
           </Link>
 
           <Link
             to="/listOfficialArticle"
+            title="จัดการบทความ"
             className={`admin-sidebar-menu-item ${
               isArticleActive ? "active" : ""
             }`}
           >
             <FontAwesomeIcon icon={faNewspaper} />
-            <span>จัดการบทความ</span>
+            {!isCollapsed && <span>จัดการบทความ</span>}
           </Link>
         </div>
 
@@ -283,10 +362,11 @@ export default function AdminSidebar({
           type="button"
           className="admin-sidebar-logout-button"
           onClick={handleLogoutClick}
+          title="ออกจากระบบ"
           aria-label="ออกจากระบบ"
         >
           <FontAwesomeIcon icon={faRightFromBracket} />
-          <span>ออกจากระบบ</span>
+          {!isCollapsed && <span>ออกจากระบบ</span>}
         </button>
       </nav>
     </>

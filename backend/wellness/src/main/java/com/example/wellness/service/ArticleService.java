@@ -1,6 +1,7 @@
 package com.example.wellness.service;
 
 import com.example.wellness.dto.ArticleDTO;
+import com.example.wellness.dto.OfficialArticleSummaryDTO;
 import com.example.wellness.model.Article;
 import com.example.wellness.model.Member;
 import com.example.wellness.model.MyTravelTrip;
@@ -270,7 +271,7 @@ public class ArticleService {
     // ตามด้วยภาพเพิ่มเติมจาก articleImages (ทั้งคู่เป็น Base64 อยู่แล้ว
     // ไม่ต้องแปลงอะไร
     // ฝั่ง Flutter จะเช็คเองว่าเป็น Base64 หรือ URL แล้ว render ให้ถูกแบบ)
-    private ArticleDTO convertOfficialToDTO(OfficialArticle official) {
+    private ArticleDTO convertOfficialToDTO(OfficialArticleSummaryDTO official) {
         ArticleDTO dto = new ArticleDTO();
         dto.setArticleId(official.getArticleId() != null ? official.getArticleId() : 0);
         dto.setArticleTitle(official.getArticleTitle());
@@ -289,9 +290,6 @@ public class ArticleService {
         List<String> images = new ArrayList<>();
         if (official.getImg() != null && !official.getImg().isBlank()) {
             images.add(official.getImg());
-        }
-        if (official.getArticleImages() != null && !official.getArticleImages().isBlank()) {
-            images.addAll(parseImages(official.getArticleImages()));
         }
         dto.setImages(images);
 

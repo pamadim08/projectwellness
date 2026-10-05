@@ -55,17 +55,16 @@ const ListMainRoute = () => {
     }
   }, []);
 
-  // 🌟 2. ปรับฟังก์ชันดึงข้อมูลให้รองรับ Cache และ forceRefresh
+  // 🌟 2. ปรับฟังก์ชันดึงข้อมูลให้รองรับ Cache (Stale-While-Revalidate) และ forceRefresh
   const fetchMainRouteList = async (forceRefresh = false) => {
-    // กรณีมี Cache อยู่แล้วและไม่ได้สั่งบังคับโหลดใหม่
     if (mainRouteCache && !forceRefresh) {
       setRoutes(mainRouteCache);
       setLoading(false);
       setHasError(false);
-      return;
+    } else {
+      setLoading(true);
     }
 
-    setLoading(true);
     setHasError(false);
     try {
       const res = await axiosInstance.get(
@@ -78,13 +77,15 @@ const ListMainRoute = () => {
       setHasError(false);
     } catch (err) {
       console.error("❌ ขัดข้องในการดึงข้อมูลตารางทะเบียนเส้นทางสุขภาพ", err);
-      setHasError(true);
-      setStatusModal({
-        isOpen: true,
-        type: "error",
-        title: "เกิดข้อผิดพลาด",
-        message: "เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง",
-      });
+      if (!mainRouteCache) {
+        setHasError(true);
+        setStatusModal({
+          isOpen: true,
+          type: "error",
+          title: "เกิดข้อผิดพลาด",
+          message: "เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง",
+        });
+      }
     } finally {
       setLoading(false);
     }

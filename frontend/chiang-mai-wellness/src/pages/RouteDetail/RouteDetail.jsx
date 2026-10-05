@@ -36,6 +36,8 @@ import {
   Phone,
   ShieldAlert,
   Navigation,
+  Info,
+  X,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import LoadingState from "../../Components/LoadingState/LoadingState";
@@ -504,6 +506,7 @@ export default function RouteDetail() {
   const [isControlCollapsed, setIsControlCollapsed] = useState(false);
   const [isEmergencyMode, setIsEmergencyMode] = useState(false);
   const [emergencyServicesList, setEmergencyServicesList] = useState([]);
+  const [showLegendModal, setShowLegendModal] = useState(false);
 
   // ดึงข้อมูล Emergency Services และ Sky Doctor สดจาก API / ฐานข้อมูลจริง
   useEffect(() => {
@@ -762,7 +765,7 @@ export default function RouteDetail() {
       left: 0,
       behavior: "instant",
     });
-  }, [routeId, loading]);
+  }, [routeId]);
 
   useEffect(() => {
     if (availableCategories.length > 0) {
@@ -1956,78 +1959,38 @@ export default function RouteDetail() {
           <div className="route-detail-explorer">
             <div className="route-detail-explorer__map">
               <div className="route-detail-map-workspace">
-                <div className="route-detail-map-card">
+                <div className="route-detail-map-card" style={{ position: "relative" }}>
+                  {/* 📍 ปุ่มลอยมุมขวาบนของแผนที่ */}
+                  <button
+                    type="button"
+                    onClick={() => setShowLegendModal(true)}
+                    style={{
+                      position: "absolute",
+                      top: "14px",
+                      right: "14px",
+                      zIndex: 500,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "7px 14px",
+                      backgroundColor: "#ffffff",
+                      color: "#076653",
+                      border: "1.5px solid #076653",
+                      borderRadius: "10px",
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                      transition: "all 0.2s ease"
+                    }}
+                    title="คำอธิบายสัญลักษณ์หมุด"
+                  >
+                    <Info size={15} />
+                    <span>คำอธิบายสัญลักษณ์หมุด</span>
+                  </button>
+
                   <div ref={mapContainerRef} className="route-detail-map" />
                 </div>
-
-                <aside className="route-detail-legend">
-                  <div className="route-detail-legend__header">
-                    <h3>คำอธิบายสัญลักษณ์</h3>
-                  </div>
-                  <div className="route-detail-legend__list">
-                    <div className="route-detail-legend__item">
-                      <span className="route-detail-legend__marker-district" />
-                      <p>อำเภอตามลำดับเส้นทาง</p>
-                    </div>
-
-                    {isEmergencyMode ? (
-                      <>
-                        <div className="route-detail-legend__item">
-                          <span
-                            style={{
-                              width: "14px",
-                              height: "14px",
-                              borderRadius: "50%",
-                              background: "#E11D48",
-                              display: "inline-block",
-                              boxShadow: "0 0 0 3px rgba(225,29,72,0.25)",
-                            }}
-                          />
-                          <p>🚁 Sky Doctor (แพทย์ฉุกเฉินทางอากาศ)</p>
-                        </div>
-                        <div className="route-detail-legend__item">
-                          <span
-                            style={{
-                              width: "12px",
-                              height: "12px",
-                              borderRadius: "50%",
-                              background: "#BD0915",
-                              display: "inline-block",
-                            }}
-                          />
-                          <p>🏥 โรงพยาบาล</p>
-                        </div>
-                        <div className="route-detail-legend__item">
-                          <span
-                            style={{
-                              width: "12px",
-                              height: "12px",
-                              borderRadius: "50%",
-                              background: "#C98600",
-                              display: "inline-block",
-                            }}
-                          />
-                          <p>🚑 หน่วยกู้ภัย</p>
-                        </div>
-                      </>
-                    ) : (
-                      availableCategories.map((cat) => (
-                        <div key={cat.id} className="route-detail-legend__item">
-                          <span
-                            style={{
-                              width: "12px",
-                              height: "12px",
-                              borderRadius: "50%",
-                              background: cat.color,
-                              display: "inline-block",
-                            }}
-                          />
-                          <p>{cat.name}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </aside>
               </div>
             </div>
 
@@ -2191,6 +2154,141 @@ export default function RouteDetail() {
           </div>
         </section>
       </div>
+
+      {/* 📌 Pop-up Modal แสดงคำอธิบายสัญลักษณ์หมุด */}
+      {showLegendModal && (
+        <div
+          className="route-detail-modal-backdrop"
+          onClick={() => setShowLegendModal(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            boxSizing: "border-box",
+            animation: "fadeIn 0.2s ease-out"
+          }}
+        >
+          <div
+            className="route-detail-legend-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              maxHeight: "85vh",
+              backgroundColor: "#ffffff",
+              borderRadius: "16px",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              border: "1px solid #e2e8f0",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden"
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid #f1f5f9",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                backgroundColor: "#f8fafc"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Info size={18} style={{ color: "#076653" }} />
+                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#0f172a" }}>
+                  คำอธิบายสัญลักษณ์หมุดบนแผนที่
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLegendModal(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#64748b",
+                  cursor: "pointer",
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "6px"
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div
+              style={{
+                padding: "20px",
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px"
+              }}
+            >
+              {/* กลุ่มที่ 1: หมุดลำดับอำเภอ */}
+              <div>
+                <div style={{ fontSize: "12px", fontWeight: "700", color: "#64748b", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  จุดแวะและเส้นทาง (Route Stops)
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
+                  <span style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#1a2332", border: "2px solid #ffffff", boxShadow: "0 0 3px rgba(0,0,0,0.3)", display: "inline-block" }} />
+                  <span style={{ fontSize: "13.5px", color: "#334155", fontWeight: "500" }}>อำเภอตามลำดับเส้นทาง (ลำดับตัวเลข 1, 2, 3...)</span>
+                </div>
+              </div>
+
+              {/* กลุ่มที่ 2: สถานประกอบการเพื่อสุขภาพ */}
+              <div>
+                <div style={{ fontSize: "12px", fontWeight: "700", color: "#64748b", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  สถานประกอบการเพื่อสุขภาพ (Wellness Hubs)
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {availableCategories.map((cat) => (
+                    <div key={cat.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
+                      <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: cat.color, display: "inline-block", flexShrink: 0 }} />
+                      <span style={{ fontSize: "13.5px", color: "#334155" }}>{cat.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* กลุ่มที่ 3: บริการฉุกเฉินและ Sky Doctor */}
+              <div>
+                <div style={{ fontSize: "12px", fontWeight: "700", color: "#64748b", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  บริการฉุกเฉิน & การแพทย์ฉุกเฉินทางอากาศ (Emergency & Sky Doctor)
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fef2f2", borderRadius: "8px", border: "1px solid #fee2e2" }}>
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#E11D48", display: "inline-block", flexShrink: 0, boxShadow: "0 0 0 3px rgba(225,29,72,0.25)" }} />
+                    <span style={{ fontSize: "13.5px", color: "#991b1b", fontWeight: "600" }}>🚁 Sky Doctor (แพทย์ฉุกเฉินทางอากาศ)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#BD0915", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13.5px", color: "#334155" }}>โรงพยาบาลระดับสูง (ALS - Advanced Life Support)</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
+                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#C98600", display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13.5px", color: "#334155" }}>หน่วยกู้ชีพ / กู้ภัย (BLS - Basic Life Support)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

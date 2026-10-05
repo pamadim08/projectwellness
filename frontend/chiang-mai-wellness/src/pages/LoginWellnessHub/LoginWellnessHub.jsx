@@ -253,8 +253,8 @@ export default function LoginWellnessHub() {
                 <span>01</span>
 
                 <div>
-                  <strong>บัญชีได้รับการอนุมัติ</strong>
-                  <p>ระบบออกบัญชีหลังผู้ดูแลตรวจสอบคำขอเรียบร้อย</p>
+                  <strong>คำขอได้รับการอนุมัติ</strong>
+                  <p>ผู้ดูแลระบบตรวจสอบและอนุมัติคำขอเปิดสิทธิ์ใช้งาน</p>
                 </div>
               </div>
 
@@ -264,8 +264,8 @@ export default function LoginWellnessHub() {
                 <span>02</span>
 
                 <div>
-                  <strong>เข้าสู่ระบบด้วยบัญชีที่ได้รับ</strong>
-                  <p>ใช้ชื่อผู้ใช้และรหัสผ่านที่ระบบส่งให้ทางอีเมล</p>
+                  <strong>เข้าสู่ระบบด้วยบัญชีของคุณ</strong>
+                  <p>ใช้ชื่อผู้ใช้และรหัสผ่านที่ตั้งไว้ขณะยื่นคำขอ</p>
                 </div>
               </div>
 
@@ -276,7 +276,7 @@ export default function LoginWellnessHub() {
 
                 <div>
                   <strong>จัดการข้อมูลสถานประกอบการ</strong>
-                  <p>ปรับปรุงข้อมูลเฉพาะสถานประกอบการที่คุณได้รับสิทธิ์</p>
+                  <p>แก้ไขข้อมูล รายละเอียด และเวลาทำการได้ทันที</p>
                 </div>
               </div>
             </div>
@@ -312,7 +312,7 @@ export default function LoginWellnessHub() {
             </div>
 
             <p className="provider-login-form__description">
-              ใช้บัญชีผู้ประกอบการที่ได้รับหลังคำขอได้รับการอนุมัติ
+              ใช้ชื่อผู้ใช้และรหัสผ่านที่ท่านได้ลงทะเบียนไว้ตอนยื่นคำขอ
             </p>
 
             <div className="provider-login-divider">

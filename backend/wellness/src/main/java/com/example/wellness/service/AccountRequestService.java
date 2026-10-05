@@ -36,6 +36,7 @@ public class AccountRequestService {
         private final CategoryRepository categoryRepository;
         private final DistrictRepository districtRepository;
         private final com.example.wellness.repository.NotificationRepository notificationRepository;
+        private final SupabaseStorageService supabaseStorageService;
 
         public AccountRequestService(
                         AccountRequestRepository repository,
@@ -44,7 +45,8 @@ public class AccountRequestService {
                         EmailService emailService,
                         CategoryRepository categoryRepository,
                         DistrictRepository districtRepository,
-                        com.example.wellness.repository.NotificationRepository notificationRepository) {
+                        com.example.wellness.repository.NotificationRepository notificationRepository,
+                        SupabaseStorageService supabaseStorageService) {
                 this.repository = repository;
                 this.wellnessHubRepository = wellnessHubRepository;
                 this.emergencyServiceRepository = emergencyServiceRepository;
@@ -52,6 +54,7 @@ public class AccountRequestService {
                 this.categoryRepository = categoryRepository;
                 this.districtRepository = districtRepository;
                 this.notificationRepository = notificationRepository;
+                this.supabaseStorageService = supabaseStorageService;
         }
 
         // =====================================================
@@ -141,9 +144,9 @@ public class AccountRequestService {
                 // ตรวจข้อมูลบังคับ
                 // =================================================
 
-                String requesterName = getRequiredString(payload, "requesterName", "กรุณาระบุชื่อผู้ยื่นคำขอ");
+                String requesterName = getRequiredString(payload, "requesterName", "กรุณาระบุชื่อ–นามสกุลผู้ยื่นคำขอ");
                 if (requesterName.length() < 4 || requesterName.length() > 255) {
-                        throw new RuntimeException("ชื่อผู้ยื่นคำขอต้องมีความยาว 4–255 ตัวอักษร");
+                        throw new RuntimeException("ชื่อ–นามสกุลผู้ยื่นคำขอต้องมีความยาว 4–255 ตัวอักษร");
                 }
 
                 String userEmail = getRequiredString(payload, "userEmail", "กรุณาระบุอีเมล");
@@ -175,8 +178,8 @@ public class AccountRequestService {
                 }
 
                 String wellnessHubName = getRequiredString(payload, "wellnessHubName", "กรุณาระบุชื่อสถานประกอบการ");
-                if (wellnessHubName.length() < 5 || wellnessHubName.length() > 100) {
-                        throw new RuntimeException("ชื่อสถานประกอบการต้องมีความยาว 5–100 ตัวอักษร");
+                if (wellnessHubName.length() < 3 || wellnessHubName.length() > 100) {
+                        throw new RuntimeException("ชื่อสถานประกอบการต้องมีความยาว 3–100 ตัวอักษร");
                 }
 
                 String address = getRequiredString(payload, "address", "กรุณาระบุที่อยู่");
@@ -201,7 +204,7 @@ public class AccountRequestService {
 
                 String verificationDocuments = getRequiredString(payload, "verificationDocuments",
                                 "กรุณาแนบเอกสารยืนยันสิทธิ์");
-                validateBase64File(verificationDocuments, new String[] { "application/pdf", "image/jpeg", "image/png" }, 10 * 1024 * 1024L, "เอกสารยืนยันสิทธิ์");
+                validateVerificationDocuments(verificationDocuments);
 
                 String wellnessHubImg = getOptionalString(payload, "wellnessHubImg");
                 if (wellnessHubImg != null) {
@@ -221,12 +224,8 @@ public class AccountRequestService {
                         throw new RuntimeException("รูปแบบลิงก์ Google Maps ไม่ถูกต้อง");
                 }
                 String cleanGmaps = gmapsLink.trim();
-                boolean dupHubLink = wellnessHubRepository.findAll().stream()
-                                .anyMatch(h -> h.getGoogleMapsLink() != null
-                                                && cleanGmaps.equalsIgnoreCase(h.getGoogleMapsLink().trim()));
-                boolean dupEmerLink = emergencyServiceRepository.findAll().stream()
-                                .anyMatch(e -> e.getGoogleMapsLink() != null
-                                                && cleanGmaps.equalsIgnoreCase(e.getGoogleMapsLink().trim()));
+                boolean dupHubLink = wellnessHubRepository.existsByGoogleMapsLinkIgnoreCase(cleanGmaps);
+                boolean dupEmerLink = emergencyServiceRepository.existsByGoogleMapsLinkIgnoreCase(cleanGmaps);
                 if (dupHubLink || dupEmerLink) {
                         throw new RuntimeException("ลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง");
                 }
@@ -261,8 +260,15 @@ public class AccountRequestService {
                 request.setAddress(address);
                 request.setGoogleMapsLink(cleanGmaps);
                 request.setWellnessHubDescription(wellnessHubDescription);
-                request.setWellnessHubImg(wellnessHubImg);
-                request.setWellnessHubGallery(wellnessHubGallery);
+
+                // Upload images and verification documents to Supabase Storage
+                String uploadedImg = supabaseStorageService.uploadBase64OrReturnUrl(wellnessHubImg, "wellness_hubs");
+                String uploadedGallery = supabaseStorageService.uploadGalleryBase64OrReturnUrl(wellnessHubGallery, "wellness_hubs");
+                String uploadedVerification = supabaseStorageService.uploadVerificationDocumentsJsonOrReturnUrl(verificationDocuments, "documents");
+
+                request.setWellnessHubImg(uploadedImg);
+                request.setWellnessHubGallery(uploadedGallery);
+                request.setVerificationDocuments(uploadedVerification);
                 request.setWellnessHubLatitude(getOptionalDouble(payload, "wellnessHubLatitude"));
                 request.setWellnessHubLongitude(getOptionalDouble(payload, "wellnessHubLongitude"));
 
@@ -279,18 +285,8 @@ public class AccountRequestService {
                 if (request.getWellnessHubLatitude() != null && request.getWellnessHubLongitude() != null) {
                         double lat = request.getWellnessHubLatitude();
                         double lng = request.getWellnessHubLongitude();
-                        boolean dupHubCoords = wellnessHubRepository.findAll().stream().anyMatch(h -> {
-                                if (h.getWellnessHubLatitude() == null || h.getWellnessHubLongitude() == null)
-                                        return false;
-                                return Math.abs(h.getWellnessHubLatitude() - lat) < 0.0001
-                                                && Math.abs(h.getWellnessHubLongitude() - lng) < 0.0001;
-                        });
-                        boolean dupEmerCoords = emergencyServiceRepository.findAll().stream().anyMatch(e -> {
-                                if (e.getWellnessHubLatitude() == null || e.getWellnessHubLongitude() == null)
-                                        return false;
-                                return Math.abs(e.getWellnessHubLatitude() - lat) < 0.0001
-                                                && Math.abs(e.getWellnessHubLongitude() - lng) < 0.0001;
-                        });
+                        boolean dupHubCoords = wellnessHubRepository.existsNearCoordinates(lat, lng);
+                        boolean dupEmerCoords = emergencyServiceRepository.existsNearCoordinates(lat, lng);
                         if (dupHubCoords || dupEmerCoords) {
                                 throw new RuntimeException("พิกัดแผนที่จาก Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง");
                         }
@@ -298,8 +294,6 @@ public class AccountRequestService {
 
                 request.setCertificateType(getOptionalString(payload, "certificateType"));
                 request.setOperatingHours(getOptionalString(payload, "operatingHours"));
-                request.setVerificationDocuments(verificationDocuments);
-                request.setVerificationDocumentName(getOptionalString(payload, "verificationDocumentName"));
 
                 request.setCategory(getCategory(payload));
                 request.setDistrict(getDistrict(payload));
@@ -833,6 +827,53 @@ public class AccountRequestService {
                                 throw re;
                         }
                         throw new RuntimeException("รูปแบบข้อมูลรูปภาพบรรยากาศไม่ถูกต้อง");
+                }
+        }
+
+        private void validateVerificationDocuments(String docsPayload) {
+                if (docsPayload == null || docsPayload.trim().isEmpty()) {
+                        throw new RuntimeException("กรุณาแนบเอกสารยืนยันสิทธิ์");
+                }
+                String trimmed = docsPayload.trim();
+                if (trimmed.startsWith("[")) {
+                        try {
+                                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                                List<?> list = mapper.readValue(trimmed, List.class);
+                                if (list == null || list.isEmpty()) {
+                                        throw new RuntimeException("กรุณาแนบเอกสารยืนยันสิทธิ์อย่างน้อย 1 รายการ");
+                                }
+                                java.util.Set<String> seenFileNames = new java.util.HashSet<>();
+                                for (Object item : list) {
+                                        if (item instanceof Map<?, ?> docMap) {
+                                                Object dataObj = docMap.get("data");
+                                                Object typeObj = docMap.get("type");
+                                                Object nameObj = docMap.get("name");
+                                                String label = typeObj != null && !typeObj.toString().trim().isEmpty()
+                                                                ? typeObj.toString().trim()
+                                                                : "เอกสารยืนยันสิทธิ์";
+                                                if (nameObj != null && !nameObj.toString().trim().isEmpty()) {
+                                                        String fileName = nameObj.toString().trim().toLowerCase();
+                                                        if (!seenFileNames.add(fileName)) {
+                                                                throw new RuntimeException("ชื่อไฟล์เอกสารยืนยันสิทธิ์ต้องไม่ซ้ำกัน (พบไฟล์ซ้ำ: " + nameObj.toString().trim() + ")");
+                                                        }
+                                                }
+                                                if (dataObj == null || dataObj.toString().trim().isEmpty()) {
+                                                        throw new RuntimeException("กรุณาแนบไฟล์เอกสารสำหรับ: " + label);
+                                                }
+                                                validateBase64File(dataObj.toString(),
+                                                                new String[] { "application/pdf", "image/jpeg", "image/png" },
+                                                                10 * 1024 * 1024L, "เอกสารยืนยันสิทธิ์ (" + label + ")");
+                                        }
+                                }
+                        } catch (Exception e) {
+                                if (e instanceof RuntimeException re) {
+                                        throw re;
+                                }
+                                throw new RuntimeException("รูปแบบข้อมูลเอกสารยืนยันสิทธิ์ไม่ถูกต้อง");
+                        }
+                } else {
+                        validateBase64File(trimmed, new String[] { "application/pdf", "image/jpeg", "image/png" },
+                                        10 * 1024 * 1024L, "เอกสารยืนยันสิทธิ์");
                 }
         }
 }

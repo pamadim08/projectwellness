@@ -239,7 +239,7 @@ public class MainRouteService {
             throw new IllegalArgumentException("กรุณาระบุข้อมูลเส้นทาง");
         }
 
-        // 1. routeName: required, ไทย/อังกฤษ/ตัวเลขเท่านั้น, 5–50 ตัว
+        // 1. routeName: required, 5–50 ตัว
         Object nameObj = payload.get("routeName");
         if (nameObj == null || nameObj.toString().trim().isEmpty()) {
             throw new IllegalArgumentException("กรุณาระบุชื่อเส้นทาง");
@@ -247,9 +247,6 @@ public class MainRouteService {
         String routeName = nameObj.toString().trim();
         if (routeName.length() < 5 || routeName.length() > 50) {
             throw new IllegalArgumentException("ชื่อเส้นทางต้องมีความยาว 5-50 ตัวอักษร");
-        }
-        if (!routeName.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
-            throw new IllegalArgumentException("ชื่อเส้นทางต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
         }
 
         // 2. routeDescription: optional, แต่ถ้ามีต้อง 10–255 ตัว
@@ -308,7 +305,7 @@ public class MainRouteService {
             return null;
         }
 
-        // 1. routeName: required, ไทย/อังกฤษ/ตัวเลข/ช่องว่าง, 5–50 ตัว
+        // 1. routeName: required, 5–50 ตัว
         Object nameObj = payload.get("routeName");
         if (nameObj == null || nameObj.toString().trim().isEmpty()) {
             throw new IllegalArgumentException("กรุณาระบุชื่อเส้นทาง");
@@ -316,9 +313,6 @@ public class MainRouteService {
         String routeName = nameObj.toString().trim();
         if (routeName.length() < 5 || routeName.length() > 50) {
             throw new IllegalArgumentException("ชื่อเส้นทางต้องมีความยาว 5-50 ตัวอักษร");
-        }
-        if (!routeName.matches("^[a-zA-Z0-9\\u0E00-\\u0E7F\\s]+$")) {
-            throw new IllegalArgumentException("ชื่อเส้นทางต้องเป็นภาษาไทย ภาษาอังกฤษ หรือตัวเลขเท่านั้น");
         }
 
         // 2. routeDescription: optional แต่ถ้ามีต้อง 10–255 ตัว
