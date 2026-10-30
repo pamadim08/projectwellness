@@ -184,7 +184,7 @@ const MASTER_CATEGORIES = [
   },
   {
     id: "HOSPITAL",
-    name: "โรงพยาบาล",
+    name: "โรงพยาบาล (ALS)",
     color: "#BD0915",
     icon: "fa-hospital",
     lucideIcon: Cross,
@@ -192,7 +192,7 @@ const MASTER_CATEGORIES = [
   },
   {
     id: "RESCUE",
-    name: "หน่วยกู้ภัย",
+    name: "หน่วยกู้ภัย (BLS)",
     color: "#C98600",
     icon: "fa-truck-medical",
     lucideIcon: Ambulance,
@@ -263,7 +263,7 @@ export function getCategoryStyle(categoryId = "") {
     normalizedId.includes("ALS") ||
     normalizedId.includes("ADVANCED")
   ) {
-    return { name: "โรงพยาบาล", color: "#BD0915" };
+    return { name: "โรงพยาบาล (ALS)", color: "#BD0915" };
   }
   if (
     normalizedId.includes("EM01") ||
@@ -272,7 +272,7 @@ export function getCategoryStyle(categoryId = "") {
     normalizedId.includes("BLS") ||
     normalizedId.includes("BASIC")
   ) {
-    return { name: "หน่วยกู้ภัย", color: "#C98600" };
+    return { name: "หน่วยกู้ภัย (BLS)", color: "#C98600" };
   }
 
   return { name: "อื่นๆ", color: "#64748B" };
@@ -348,14 +348,26 @@ function isValidHubForMap(hub) {
     return false;
   }
 
-  // 2. ต้องมีลิงก์ Google Maps
-  if (!hasValue(hub.googleMapsLink)) {
+  // 2. ต้องมีพิกัด ละติจูด และ ลองติจูด ที่ถูกต้อง
+  const coords = extractLatLng(hub);
+  if (!coords || (coords.lat === 0 && coords.lng === 0)) {
     return false;
   }
 
-  // 3. ต้องมีพิกัด ละติจูด และ ลองติจูด ที่ถูกต้อง
-  const coords = extractLatLng(hub);
-  if (!coords || (coords.lat === 0 && coords.lng === 0)) {
+  // จุดบริการฉุกเฉิน (ALS, BLS, Sky Doctor) สามารถแสดงได้ทันทีเมื่อมีพิกัดที่ถูกต้อง
+  const isEmergency =
+    isSkyDoctorHub(hub) ||
+    String(hub.categoryKey || hub.categoryId || "").toUpperCase().includes("EM01") ||
+    String(hub.categoryKey || hub.categoryId || "").toUpperCase().includes("EM02") ||
+    String(hub.categoryKey || hub.categoryId || "").toUpperCase().includes("HOSPITAL") ||
+    String(hub.categoryKey || hub.categoryId || "").toUpperCase().includes("RESCUE");
+
+  if (isEmergency) {
+    return true;
+  }
+
+  // 3. สถานประกอบการทั่วไป ต้องมีลิงก์ Google Maps
+  if (!hasValue(hub.googleMapsLink)) {
     return false;
   }
 
@@ -656,19 +668,50 @@ export default function RouteDetail() {
   }, []);
 
   const wellnessHubs = useMemo(() => {
-    const rawHubs = Array.isArray(routeData?.wellnessHubs) ? routeData.wellnessHubs : [];
+    const rawHubs = Array.isArray(routeData?.wellnessHubs)
+      ? [...routeData.wellnessHubs]
+      : [];
+
+    // รวมข้อมูล Emergency Services (โรงพยาบาล/หน่วยกู้ภัย) จาก emergencyServicesList เข้ามาในเส้นทางด้วย หากยังไม่มีใน rawHubs
+    if (
+      Array.isArray(emergencyServicesList) &&
+      emergencyServicesList.length > 0
+    ) {
+      emergencyServicesList.forEach((em) => {
+        if (isSkyDoctorHub(em)) return; // Sky Doctor จัดการแยกในโหมด SOS / Emergency
+        const key = String(em.licenseId || em.wellnessHubId || "");
+        const alreadyExists = rawHubs.some(
+          (h) => String(h.licenseId || h.wellnessHubId || "") === key,
+        );
+        if (!alreadyExists) {
+          rawHubs.push({
+            ...em,
+            wellnessHubId: em.licenseId,
+            wellnessHubName: em.wellnessHubName || em.name,
+            wellnessHubLatitude: em.wellnessHubLatitude ?? em.latitude,
+            wellnessHubLongitude: em.wellnessHubLongitude ?? em.longitude,
+            isSkyDoctor: false,
+            categoryKey:
+              em.categoryKey ||
+              (String(em.categoryId || "").toUpperCase() === "EM01"
+                ? "RESCUE"
+                : "HOSPITAL"),
+          });
+        }
+      });
+    }
+
     return rawHubs.filter(isValidHubForMap);
-  }, [routeData]);
+  }, [routeData, emergencyServicesList]);
 
   const availableCategories = useMemo(() => {
     const foundCategoryIds = new Set();
-    const EMERGENCY_CATEGORY_SET = new Set(["SKY_DOCTOR", "HOSPITAL", "RESCUE"]);
 
-    // 1. ดึงหมวดหมู่ที่ถูกบันทึกไว้กับเส้นทางในฐานข้อมูล (routeData.categories)
+    // 1. ดึงหมวดหมู่ที่ถูกบันทึกไว้กับเส้นทางในฐานข้อมูล (routeData.categories) รวมถึง ALS (HOSPITAL) และ BLS (RESCUE)
     if (Array.isArray(routeData?.categories)) {
       routeData.categories.forEach((cat) => {
         const info = getCategoryInfo(cat);
-        if (info?.id && info.id !== "OTHER" && !EMERGENCY_CATEGORY_SET.has(info.id)) {
+        if (info?.id && info.id !== "OTHER" && info.id !== "SKY_DOCTOR") {
           foundCategoryIds.add(info.id);
         }
       });
@@ -678,13 +721,13 @@ export default function RouteDetail() {
     wellnessHubs.forEach((hub) => {
       if (isSkyDoctorHub(hub)) return;
       const info = getCategoryInfo(hub);
-      if (info?.id && info.id !== "OTHER" && !EMERGENCY_CATEGORY_SET.has(info.id)) {
+      if (info?.id && info.id !== "OTHER" && info.id !== "SKY_DOCTOR") {
         foundCategoryIds.add(info.id);
       }
     });
 
     return MASTER_CATEGORIES.filter(
-      (cat) => foundCategoryIds.has(cat.id) && !EMERGENCY_CATEGORY_SET.has(cat.id)
+      (cat) => foundCategoryIds.has(cat.id) && cat.id !== "SKY_DOCTOR",
     );
   }, [routeData, wellnessHubs, getCategoryInfo]);
 
@@ -1029,11 +1072,12 @@ export default function RouteDetail() {
       });
     }
 
-    // 🌟 โหมดปกติ: แสดงเฉพาะสถานประกอบการท่องเที่ยว/เวลเนสทั่วไป (ซ่อน Sky Doctor และจุดฉุกเฉิน)
+    // 🌟 โหมดปกติ: แสดงสถานประกอบการท่องเที่ยว/เวลเนส และจุดบริการฉุกเฉิน ALS / BLS ที่ถูกเลือก (ซ่อนเฉพาะ Sky Doctor สำหรับโหมดฉุกเฉิน)
     return visibleWellnessHubs.filter((hub) => {
       if (isSkyDoctorHub(hub)) return false;
       const cat = getCategoryInfo(hub)?.id;
-      return cat !== "SKY_DOCTOR" && cat !== "HOSPITAL" && cat !== "RESCUE";
+      if (cat && activeFilters[cat] === false) return false;
+      return true;
     });
   }, [
     isEmergencyMode,
@@ -1043,6 +1087,7 @@ export default function RouteDetail() {
     visibleDistricts,
     districts,
     getCategoryInfo,
+    activeFilters,
   ]);
 
   useEffect(() => {
@@ -1097,8 +1142,9 @@ export default function RouteDetail() {
 
     const map = L.map(mapContainer, {
       zoomControl: true,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
+      scrollWheelZoom: true,
+      touchZoom: true,
+      doubleClickZoom: true,
       dragging: true,
       keyboard: true,
     });
@@ -1240,7 +1286,10 @@ export default function RouteDetail() {
             timeout: 15000,
           }),
           lineOptions: {
-            styles: [{ color: "#28a745", weight: 5, opacity: 0.85 }],
+            styles: [
+              { color: "#000000", weight: 7, opacity: 0.9 },
+              { color: "#147D72", weight: 4, opacity: 1 },
+            ],
           },
           createMarker: () => null,
           show: false,

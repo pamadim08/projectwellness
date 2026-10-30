@@ -159,10 +159,10 @@
 }
 
 .gov-header h2 {
-  font-family: "Pridi", serif !important;
+  font-family: "Anuphan", "Sarabun", sans-serif !important;
   color: var(--gov-green-dark);
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0 0 5px;
 }
 

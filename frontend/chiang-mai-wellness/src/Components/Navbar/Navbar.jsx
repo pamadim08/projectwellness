@@ -2,10 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faRightToBracket,
-  faHeartPulse,
-} from "@fortawesome/free-solid-svg-icons";
+import { faRightToBracket } from "@fortawesome/free-solid-svg-icons";
 import "./Navbar.css";
 
 // 🌟 นำเข้ารูปภาพโลโก้จากโฟลเดอร์ logo
@@ -14,6 +11,9 @@ import itLogo from "../../assets/logo/it.jpg";
 import mophLogo from "../../assets/logo/moph.jpg";
 import ctrdLogo from "../../assets/logo/ctrd.jpg";
 import cbtLogo from "../../assets/logo/cbt.jpg";
+
+// 🌟 โลโก้หลัก Chiang Mai Wellness Route จากโฟลเดอร์ uploads
+const MAIN_LOGO_URL = "http://localhost:8080/uploads/logo/เชียงใหม่ เส้นทางแห่งสุขภาพ.png";
 
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -73,11 +73,34 @@ function Navbar() {
 
   return (
     <header className={`navbar ${isScrolled ? "navbar--scrolled" : ""}`}>
-      {/* 🌿 เส้นไล่เฉดสีเวลเนส + สีทองล้านนา */}
+      {/* 🌿 1. แถบโลโก้หน่วยงานร่วมพัฒนาด้านบนสุด จัดกึ่งกลาง */}
+      <div className="navbar__topbar">
+        <div className="navbar__topbar-container">
+          <div className="navbar__topbar-logos">
+            <div className="navbar__partner-item" title="มหาวิทยาลัยเชียงใหม่ (CMU)">
+              <img src={cmuLogo} alt="CMU Logo" />
+            </div>
+            <div className="navbar__partner-item" title="สำนักบริการเทคโนโลยีสารสนเทศ (IT CMU)">
+              <img src={itLogo} alt="IT Logo" />
+            </div>
+            <div className="navbar__partner-item" title="กระทรวงสาธารณสุข (MOPH)">
+              <img src={mophLogo} alt="MOPH Logo" />
+            </div>
+            <div className="navbar__partner-item" title="ศูนย์วิจัยและพัฒนาการท่องเที่ยว (CTRD)">
+              <img src={ctrdLogo} alt="CTRD Logo" />
+            </div>
+            <div className="navbar__partner-item" title="การท่องเที่ยวโดยชุมชน (CBT Chiang Mai)">
+              <img src={cbtLogo} alt="CBT Logo" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 🌿 เส้น Accent สีเวลเนสไล่เฉด */}
       <div className="navbar__top-accent" />
 
       <div className="navbar__container">
-        {/* 🌟 1. ส่วนแบรนด์และโลโก้ */}
+        {/* 🌟 2. ส่วนแบรนด์ CHIANG MAI WELLNESS */}
         <div className="navbar__identity">
           <Link
             to="/"
@@ -85,16 +108,19 @@ function Navbar() {
             onClick={closeMenu}
             aria-label="หน้าแรก Chiang Mai Wellness Route"
           >
-            {/* โลโก้หน่วยงานและโครงการจากโฟลเดอร์ logo */}
-            <div className="navbar__logos-group">
-              <img src={cmuLogo} alt="CMU Logo" className="navbar__logo-item" />
-              <img src={itLogo} alt="IT Logo" className="navbar__logo-item" />
-              <img src={mophLogo} alt="MOPH Logo" className="navbar__logo-item" />
-              <img src={ctrdLogo} alt="CTRD Logo" className="navbar__logo-item" />
-              <img src={cbtLogo} alt="CBT Logo" className="navbar__logo-item" />
+            <div className="navbar__brand-logo-wrap">
+              <img
+                src={MAIN_LOGO_URL}
+                alt="Chiang Mai Wellness Route"
+                className="navbar__brand-logo-img"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  if (e.currentTarget.parentElement) {
+                    e.currentTarget.parentElement.innerHTML = '<span class="navbar__brand-icon">🌿</span>';
+                  }
+                }}
+              />
             </div>
-
-            <div className="navbar__brand-divider" />
 
             <div className="navbar__brand-info">
               <div className="navbar__brand-title">
@@ -108,7 +134,7 @@ function Navbar() {
           </Link>
         </div>
 
-        {/* 🌟 2. เมนูนำทาง (Desktop Nav แถวเดียว สวยงาม สะอาดตา) */}
+        {/* 🌟 3. เมนูนำทาง (Desktop Nav แถวเดียว สวยงาม สะอาดตา) */}
         <nav
           className={`navbar__nav ${isMenuOpen ? "navbar__nav--open" : ""}`}
           aria-label="เมนูหลัก"

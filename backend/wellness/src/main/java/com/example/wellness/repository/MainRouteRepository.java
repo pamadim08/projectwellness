@@ -14,9 +14,9 @@ import org.springframework.stereotype.Repository;
 public interface MainRouteRepository extends JpaRepository<MainRoute, Integer> {
     List<MainRoute> findTop6ByOrderByPinCountDesc();
 
-    @Query("SELECT DISTINCT r FROM MainRoute r LEFT JOIN FETCH r.details d LEFT JOIN FETCH d.district")
+    @Query("SELECT DISTINCT r FROM MainRoute r LEFT JOIN FETCH r.details d LEFT JOIN FETCH d.district LEFT JOIN FETCH r.categories c")
     List<MainRoute> findAllWithDetailsAndDistricts();
 
-    @Query("SELECT DISTINCT r FROM MainRoute r LEFT JOIN FETCH r.details d LEFT JOIN FETCH d.district WHERE r.routeId = :routeId")
+    @Query("SELECT DISTINCT r FROM MainRoute r LEFT JOIN FETCH r.details d LEFT JOIN FETCH d.district LEFT JOIN FETCH r.categories c WHERE r.routeId = :routeId")
     Optional<MainRoute> findByIdWithDetailsAndDistricts(@Param("routeId") Integer routeId);
 }

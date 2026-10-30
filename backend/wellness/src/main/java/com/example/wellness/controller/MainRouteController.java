@@ -31,9 +31,13 @@ import java.util.UUID;
 public class MainRouteController {
 
     private final MainRouteService mainRouteService;
+    private final com.example.wellness.service.SupabaseStorageService supabaseStorageService;
 
-    public MainRouteController(MainRouteService mainRouteService) {
+    public MainRouteController(
+            MainRouteService mainRouteService,
+            com.example.wellness.service.SupabaseStorageService supabaseStorageService) {
         this.mainRouteService = mainRouteService;
+        this.supabaseStorageService = supabaseStorageService;
     }
 
     // 🏛️ [GET] /api/main-routes
@@ -123,9 +127,7 @@ public class MainRouteController {
         }
     }
 
-    // 🖼️ อัปโหลดรูปภาพเส้นทาง
-    // บันทึกไฟล์จริงไปที่ uploads/routes/
-    // และคืน filename เพื่อเอาไปเก็บใน main_routes.route_image
+    // 🖼️ อัปโหลดรูปภาพเส้นทางตรงไปยัง Supabase Storage (โฟลเดอร์ routes)
     @PostMapping("/upload-image")
     public ResponseEntity<?> uploadRouteImage(@RequestParam("file") MultipartFile file) {
         try {
@@ -136,73 +138,32 @@ public class MainRouteController {
             }
 
             long maxBytes = 20L * 1024L * 1024L;
-
             if (file.getSize() > maxBytes) {
                 return ResponseEntity
                         .status(HttpStatus.PAYLOAD_TOO_LARGE)
-                        .body(Map.of("message", "File too large (Max 20MB)"));
+                        .body(Map.of("message", "ขนาดไฟล์รูปภาพต้องไม่เกิน 20 MB"));
             }
 
-            String contentType = file.getContentType();
+            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
+            String contentType = file.getContentType() != null ? file.getContentType().toLowerCase() : "";
 
-            if (contentType == null ||
-                    !(contentType.equals("image/jpeg") ||
-                            contentType.equals("image/png"))) {
+            boolean isAllowedExt = originalFilename.endsWith(".png") || originalFilename.endsWith(".jpg") || originalFilename.endsWith(".jpeg");
+            boolean isAllowedMime = contentType.equals("image/jpeg") || contentType.equals("image/jpg") || contentType.equals("image/png");
+
+            if (!isAllowedExt && !isAllowedMime) {
                 return ResponseEntity
                         .badRequest()
-                        .body(Map.of("message", "Invalid file type (Only JPG and PNG are supported)"));
+                        .body(Map.of("message", "ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น"));
             }
 
-            String uploadsDir = "uploads/routes";
-            File dir = new File(uploadsDir);
-
-            if (!dir.exists()) {
-                boolean created = dir.mkdirs();
-                if (!created && !dir.exists()) {
-                    return ResponseEntity
-                            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                            .body(Map.of("message", "Cannot create upload directory"));
-                }
-            }
-
-            String originalFilename = file.getOriginalFilename() == null
-                    ? "file"
-                    : file.getOriginalFilename();
-
-            String extension = "";
-            int dotIndex = originalFilename.lastIndexOf('.');
-
-            if (dotIndex >= 0) {
-                extension = originalFilename.substring(dotIndex);
-            }
-
-            String filename = System.currentTimeMillis()
-                    + "-"
-                    + UUID.randomUUID()
-                    + extension;
-
-            Path target = Paths.get(uploadsDir)
-                    .resolve(filename)
-                    .toAbsolutePath()
-                    .normalize();
-
-            file.transferTo(target.toFile());
-
-            return ResponseEntity.ok(Map.of("filename", filename));
-
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "Failed to save file"));
+            String publicUrl = supabaseStorageService.uploadMultipartFile(file, "routes");
+            return ResponseEntity.ok(Map.of("filename", publicUrl, "url", publicUrl));
 
         } catch (Exception exception) {
             exception.printStackTrace();
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", exception.getMessage() != null
-                            ? exception.getMessage()
-                            : "Upload failed"));
+                    .body(Map.of("message", "Failed to upload file to Supabase: " + exception.getMessage()));
         }
     }
 

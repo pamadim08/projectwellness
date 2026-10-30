@@ -31,7 +31,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class WellnessHubService {
 
     private final WellnessHubRepository wellnessHubRepository;
@@ -39,7 +42,6 @@ public class WellnessHubService {
     private final AccountRequestRepository accountRequestRepository;
     private final CategoryRepository categoryRepository;
     private final DistrictRepository districtRepository;
-    private final MemberRepository memberRepository;
     private final AccountGeneratorService accountGeneratorService;
     private final SupabaseStorageService supabaseStorageService;
 
@@ -49,7 +51,6 @@ public class WellnessHubService {
             AccountRequestRepository accountRequestRepository,
             CategoryRepository categoryRepository,
             DistrictRepository districtRepository,
-            MemberRepository memberRepository,
             AccountGeneratorService accountGeneratorService,
             SupabaseStorageService supabaseStorageService) {
         this.wellnessHubRepository = wellnessHubRepository;
@@ -57,35 +58,53 @@ public class WellnessHubService {
         this.accountRequestRepository = accountRequestRepository;
         this.categoryRepository = categoryRepository;
         this.districtRepository = districtRepository;
-        this.memberRepository = memberRepository;
         this.accountGeneratorService = accountGeneratorService;
         this.supabaseStorageService = supabaseStorageService;
     }
 
-    public String generateNextLicenseId() {
+    /**
+     * สร้างรหัสสถานประกอบการถัดไป (เช่น 10001, 10002)
+     * - synchronized: ป้องกันกรณีมีคนกดสร้างหรือขอรหัสพร้อมกัน แล้วได้เลขซ้ำกัน
+     * - ใช้คำสั่ง findMaxNumericLicenseId() เพื่อให้ฐานข้อมูลคำนวณหาค่าสูงสุด (MAX) โดยตรง ประหยัด RAM และทำงานรวดเร็ว
+     */
+    public synchronized String generateNextLicenseId() {
+        try {
+            Integer maxId = wellnessHubRepository.findMaxNumericLicenseId();
+            if (maxId != null && maxId >= 10000) {
+                return String.valueOf(maxId + 1);
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to execute atomic findMaxNumericLicenseId query, falling back: {}", e.getMessage());
+        }
+
+        // Fallback ในกรณีที่คำสั่ง Native SQL เกิดข้อผิดพลาด
         List<String> hubIds = wellnessHubRepository.findAllLicenseIds();
         List<String> serviceIds = emergencyServiceRepository.findAllLicenseIds();
 
         int maxId = 10000;
-        for (String id : hubIds) {
-            if (id != null) {
-                try {
-                    int val = Integer.parseInt(id.replaceAll("\\D+", ""));
-                    if (val > maxId) {
-                        maxId = val;
+        if (hubIds != null) {
+            for (String id : hubIds) {
+                if (id != null) {
+                    try {
+                        int val = Integer.parseInt(id.replaceAll("\\D+", ""));
+                        if (val > maxId) {
+                            maxId = val;
+                        }
+                    } catch (NumberFormatException ignored) {
                     }
-                } catch (NumberFormatException ignored) {
                 }
             }
         }
-        for (String id : serviceIds) {
-            if (id != null) {
-                try {
-                    int val = Integer.parseInt(id.replaceAll("\\D+", ""));
-                    if (val > maxId) {
-                        maxId = val;
+        if (serviceIds != null) {
+            for (String id : serviceIds) {
+                if (id != null) {
+                    try {
+                        int val = Integer.parseInt(id.replaceAll("\\D+", ""));
+                        if (val > maxId) {
+                            maxId = val;
+                        }
+                    } catch (NumberFormatException ignored) {
                     }
-                } catch (NumberFormatException ignored) {
                 }
             }
         }
@@ -357,9 +376,11 @@ public class WellnessHubService {
 
         // Upload images to Supabase Storage if Base64
         if (wellnessHub.getWellnessHubImg() != null && !wellnessHub.getWellnessHubImg().trim().isEmpty()) {
+            validateImage(wellnessHub.getWellnessHubImg().trim());
             wellnessHub.setWellnessHubImg(supabaseStorageService.uploadBase64OrReturnUrl(wellnessHub.getWellnessHubImg(), "wellness_hubs"));
         }
         if (wellnessHub.getWellnessHubGallery() != null && !wellnessHub.getWellnessHubGallery().trim().isEmpty()) {
+            validateGallery(wellnessHub.getWellnessHubGallery().trim());
             wellnessHub.setWellnessHubGallery(supabaseStorageService.uploadGalleryBase64OrReturnUrl(wellnessHub.getWellnessHubGallery(), "wellness_hubs"));
         }
 
@@ -685,7 +706,12 @@ public class WellnessHubService {
             // 7.1 wellnessHubGallery: optional
             String gallery = null;
             if (updatedData.getWellnessHubGallery() != null) {
-                gallery = supabaseStorageService.uploadGalleryBase64OrReturnUrl(updatedData.getWellnessHubGallery().trim(), "wellness_hubs");
+                if (!updatedData.getWellnessHubGallery().trim().isEmpty()) {
+                    validateGallery(updatedData.getWellnessHubGallery().trim());
+                    gallery = supabaseStorageService.uploadGalleryBase64OrReturnUrl(updatedData.getWellnessHubGallery().trim(), "wellness_hubs");
+                } else {
+                    gallery = "";
+                }
             }
 
             // 8. operatingHours: validate Mon-Sun
@@ -711,11 +737,50 @@ public class WellnessHubService {
                 }
             }
 
-            // Apply ONLY whitelist fields (preserve licenseId, username, password,
-            // category, district, status, certificateType)
+            // 9. Username validation and update (if provided)
+            String newUsername = null;
+            if (updatedData.getUsername() != null && !updatedData.getUsername().trim().isEmpty()) {
+                newUsername = updatedData.getUsername().trim();
+                if (newUsername.contains(" ")) {
+                    throw new IllegalArgumentException("Username ต้องไม่มีช่องว่าง");
+                }
+                if (newUsername.length() < 4 || newUsername.length() > 20) {
+                    throw new IllegalArgumentException("Username ต้องมีความยาว 4-20 ตัวอักษร");
+                }
+                String currentUsername = oldHub != null ? oldHub.getUsername()
+                        : (oldEmergency != null ? oldEmergency.getUsername() : null);
+                if (currentUsername == null || !newUsername.equalsIgnoreCase(currentUsername.trim())) {
+                    WellnessHub existingHub = wellnessHubRepository.findByUsername(newUsername);
+                    EmergencyService existingEmergency = emergencyServiceRepository.findByUsername(newUsername);
+                    if ((existingHub != null && !existingHub.getLicenseId().equals(id))
+                            || (existingEmergency != null && !existingEmergency.getLicenseId().equals(id))) {
+                        throw new IllegalArgumentException("Username นี้ถูกใช้งานแล้วในระบบ กรุณาใช้ชื่ออื่น");
+                    }
+                }
+            }
+
+            // 10. Password validation and update (if provided)
+            String newPassword = null;
+            if (updatedData.getPassword() != null && !updatedData.getPassword().trim().isEmpty()) {
+                newPassword = updatedData.getPassword().trim();
+                if (newPassword.contains(" ")) {
+                    throw new IllegalArgumentException("Password ต้องไม่มีช่องว่าง");
+                }
+                if (newPassword.length() != 8) {
+                    throw new IllegalArgumentException("Password ต้องมีความยาว 8 ตัวอักษรเท่านั้น");
+                }
+            }
+
+            // Apply fields to oldHub or oldEmergency
             if (oldHub != null) {
                 if (name != null && !name.isEmpty()) {
                     oldHub.setWellnessHubName(name);
+                }
+                if (newUsername != null) {
+                    oldHub.setUsername(newUsername);
+                }
+                if (newPassword != null) {
+                    oldHub.setPassword(newPassword);
                 }
                 oldHub.setAddress(address);
                 oldHub.setTelInformation(tel);
@@ -741,6 +806,12 @@ public class WellnessHubService {
             } else {
                 if (name != null && !name.isEmpty()) {
                     oldEmergency.setWellnessHubName(name);
+                }
+                if (newUsername != null) {
+                    oldEmergency.setUsername(newUsername);
+                }
+                if (newPassword != null) {
+                    oldEmergency.setPassword(newPassword);
                 }
                 oldEmergency.setAddress(address);
                 oldEmergency.setTelInformation(tel);
@@ -892,6 +963,41 @@ public class WellnessHubService {
         }
         updatedData.setWellnessHubDescription(adminDesc);
 
+        // Username validation and update (if provided)
+        String newAdminUsername = null;
+        if (updatedData.getUsername() != null && !updatedData.getUsername().trim().isEmpty()) {
+            newAdminUsername = updatedData.getUsername().trim();
+            if (newAdminUsername.contains(" ")) {
+                throw new IllegalArgumentException("Username ต้องไม่มีช่องว่าง");
+            }
+            if (newAdminUsername.length() < 4 || newAdminUsername.length() > 20) {
+                throw new IllegalArgumentException("Username ต้องมีความยาว 4-20 ตัวอักษร");
+            }
+            String currentUsername = oldHub != null ? oldHub.getUsername()
+                    : (oldEmergency != null ? oldEmergency.getUsername() : null);
+            if (currentUsername == null || !newAdminUsername.equalsIgnoreCase(currentUsername.trim())) {
+                WellnessHub existingHub = wellnessHubRepository.findByUsername(newAdminUsername);
+                EmergencyService existingEmergency = emergencyServiceRepository.findByUsername(newAdminUsername);
+                if ((existingHub != null && !existingHub.getLicenseId().equals(id))
+                        || (existingEmergency != null && !existingEmergency.getLicenseId().equals(id))) {
+                    throw new IllegalArgumentException("Username นี้ถูกใช้งานแล้วในระบบ กรุณาใช้ชื่ออื่น");
+                }
+            }
+            updatedData.setUsername(newAdminUsername);
+        }
+
+        // Password validation and update (if provided)
+        if (updatedData.getPassword() != null && !updatedData.getPassword().trim().isEmpty()) {
+            String newAdminPassword = updatedData.getPassword().trim();
+            if (newAdminPassword.contains(" ")) {
+                throw new IllegalArgumentException("Password ต้องไม่มีช่องว่าง");
+            }
+            if (newAdminPassword.length() != 8) {
+                throw new IllegalArgumentException("Password ต้องมีความยาว 8 ตัวอักษรเท่านั้น");
+            }
+            updatedData.setPassword(newAdminPassword);
+        }
+
         updatedData.setWellnessHubName(name);
         updatedData.setAddress(address);
         updatedData.setTelInformation(tel);
@@ -952,17 +1058,40 @@ public class WellnessHubService {
             return;
         }
         String raw = img.trim();
-        if (raw.startsWith("data:image/")) {
-            if (!raw.startsWith("data:image/jpeg") && !raw.startsWith("data:image/jpg")
-                    && !raw.startsWith("data:image/png")) {
-                throw new IllegalArgumentException("รองรับเฉพาะไฟล์รูปภาพ .png, .jpg หรือ .jpeg เท่านั้น");
+        if (raw.startsWith("data:")) {
+            String lower = raw.toLowerCase();
+            if (!lower.startsWith("data:image/jpeg") && !lower.startsWith("data:image/jpg") && !lower.startsWith("data:image/png")) {
+                throw new IllegalArgumentException("ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น");
             }
             if (raw.length() > 28_000_000) {
                 throw new IllegalArgumentException("ขนาดรูปภาพต้องไม่เกิน 20 MB");
             }
-        } else if (raw.toLowerCase().endsWith(".webp") || raw.contains("image/webp")) {
-            throw new IllegalArgumentException(
-                    "รองรับเฉพาะไฟล์รูปภาพ .png, .jpg หรือ .jpeg เท่านั้น (ไม่อนุญาตไฟล์ webp)");
+        }
+    }
+
+    private void validateGallery(String galleryJson) {
+        if (galleryJson == null || galleryJson.trim().isEmpty()) {
+            return;
+        }
+        String trimmed = galleryJson.trim();
+        if (!trimmed.startsWith("[")) {
+            validateImage(trimmed);
+            return;
+        }
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            List<?> list = mapper.readValue(trimmed, List.class);
+            if (list != null) {
+                for (Object item : list) {
+                    if (item instanceof String dataUrl) {
+                        validateImage(dataUrl);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            if (e instanceof IllegalArgumentException iae) {
+                throw iae;
+            }
         }
     }
 
@@ -1035,12 +1164,23 @@ public class WellnessHubService {
             target.setOperatingHours(updatedData.getOperatingHours());
         }
 
+        if (updatedData.getUsername() != null && !updatedData.getUsername().trim().isEmpty()) {
+            target.setUsername(updatedData.getUsername().trim());
+        }
+        if (updatedData.getPassword() != null && !updatedData.getPassword().trim().isEmpty()) {
+            target.setPassword(updatedData.getPassword().trim());
+        }
+
         target.setUpdatedAt(LocalDateTime.now());
     }
 
     private void updateEmergencyFields(EmergencyService target, WellnessHub source) {
         if (source.getWellnessHubName() != null)
             target.setWellnessHubName(source.getWellnessHubName());
+        if (source.getUsername() != null && !source.getUsername().trim().isEmpty())
+            target.setUsername(source.getUsername().trim());
+        if (source.getPassword() != null && !source.getPassword().trim().isEmpty())
+            target.setPassword(source.getPassword().trim());
         if (source.getAddress() != null)
             target.setAddress(source.getAddress());
         if (source.getContactInformation() != null)
@@ -1341,65 +1481,6 @@ public class WellnessHubService {
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
-    }
-
-    // ==================== FAVORITE METHODS ====================
-
-    @org.springframework.transaction.annotation.Transactional
-    public void addToFavorite(Integer memberId, String licenseId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NoSuchElementException("ไม่พบสมาชิก"));
-        WellnessHub hub = wellnessHubRepository.findById(licenseId)
-                .orElseThrow(() -> new NoSuchElementException("ไม่พบสถานประกอบการ"));
-
-        if (member.getFavoriteHubs() == null) {
-            member.setFavoriteHubs(new ArrayList<>());
-        }
-
-        boolean alreadyExists = member.getFavoriteHubs()
-                .stream()
-                .anyMatch(h -> h.getLicenseId().equals(licenseId));
-
-        if (!alreadyExists) {
-            member.getFavoriteHubs().add(hub);
-            memberRepository.save(member);
-        }
-    }
-
-    @org.springframework.transaction.annotation.Transactional
-    public void removeFromFavorite(Integer memberId, String licenseId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NoSuchElementException("ไม่พบสมาชิก"));
-
-        if (member.getFavoriteHubs() != null) {
-            member.getFavoriteHubs().removeIf(h -> h.getLicenseId().equals(licenseId));
-            memberRepository.save(member);
-        }
-    }
-
-    public List<WellnessHubDTO> getListFavorite(Integer memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NoSuchElementException("ไม่พบสมาชิก"));
-
-        if (member.getFavoriteHubs() == null)
-            return List.of();
-
-        return member.getFavoriteHubs()
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    public boolean isFavorite(Integer memberId, String licenseId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NoSuchElementException("ไม่พบสมาชิก"));
-
-        if (member.getFavoriteHubs() == null)
-            return false;
-
-        return member.getFavoriteHubs()
-                .stream()
-                .anyMatch(h -> h.getLicenseId().equals(licenseId));
     }
 
     // ==================== SEARCH WITH FILTER ====================

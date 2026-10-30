@@ -37,9 +37,25 @@ public class MainRoute {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "category_id", columnDefinition = "Text")
-    private String categoryId;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "main_route_categories",
+        joinColumns = @JoinColumn(name = "route_id"),
+        inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private java.util.Set<Category> categories = new java.util.HashSet<>();
 
     @OneToMany(mappedBy = "mainRoute", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MainRouteDetail> details = new ArrayList<>();
+
+    @Transient
+    public List<String> getCategoryIds() {
+        if (categories == null) {
+            return new ArrayList<>();
+        }
+        return categories.stream()
+                .map(Category::getCategoryId)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
 }

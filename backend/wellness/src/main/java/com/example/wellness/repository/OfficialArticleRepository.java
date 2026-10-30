@@ -14,7 +14,7 @@ public interface OfficialArticleRepository extends JpaRepository<OfficialArticle
 
     List<OfficialArticle> findTop6ByOrderByPublishDateDesc();
 
-    List<OfficialArticle> findAllByOrderByArticleIdDesc();
+    List<OfficialArticle> findAllByOrderByPublishDateDesc();
 
     @Query("""
             SELECT new com.example.wellness.dto.OfficialArticleSummaryDTO(
@@ -27,7 +27,7 @@ public interface OfficialArticleRepository extends JpaRepository<OfficialArticle
                 a.img
             )
             FROM OfficialArticle a
-            ORDER BY a.articleId DESC
+            ORDER BY a.publishDate DESC, a.articleId DESC
             """)
     List<OfficialArticleSummaryDTO> findAllSummaries();
 
@@ -44,13 +44,13 @@ public interface OfficialArticleRepository extends JpaRepository<OfficialArticle
             FROM OfficialArticle a
             WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(a.articleTitle) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(a.author) LIKE LOWER(CONCAT('%', :keyword, '%')))
               AND (:category IS NULL OR :category = '' OR a.articleCategory = :category)
-            ORDER BY a.articleId DESC
+            ORDER BY a.publishDate DESC, a.articleId DESC
             """)
     List<OfficialArticleSummaryDTO> searchArticleSummaries(@Param("keyword") String keyword, @Param("category") String category);
 
     @Query("SELECT a FROM OfficialArticle a WHERE " +
            "(:keyword IS NULL OR :keyword = '' OR LOWER(a.articleTitle) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(a.author) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
            "(:category IS NULL OR :category = '' OR a.articleCategory = :category) " +
-           "ORDER BY a.articleId DESC")
+           "ORDER BY a.publishDate DESC, a.articleId DESC")
     List<OfficialArticle> searchArticles(@Param("keyword") String keyword, @Param("category") String category);
 }

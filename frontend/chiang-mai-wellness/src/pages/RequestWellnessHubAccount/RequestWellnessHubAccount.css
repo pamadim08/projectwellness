@@ -5,47 +5,47 @@
    ========================================================================== */
 
 :root {
-  --request-ink-950: #041713;
-  --request-ink-900: #06231d;
-  --request-ink-800: #0c342c;
-  --request-ink-700: #14493e;
+  --request-ink-950: #0f3d26;
+  --request-ink-900: #0f3d26;
+  --request-ink-800: #1b5336;
+  --request-ink-700: #25704a;
 
-  --request-green-700: #054c3e;
-  --request-green-600: #076653;
-  --request-green-500: #159060;
-  --request-green-400: #2ebb7d;
-  --request-green-100: #e8f5f1;
+  --request-green-700: #1b5336;
+  --request-green-600: #25704a;
+  --request-green-500: #38a169;
+  --request-green-400: #48bb78;
+  --request-green-100: #dcfce7;
   --request-green-50: #f0fdf4;
 
-  --request-cream: #fffdee;
+  --request-cream: #ffffff;
   --request-white: #ffffff;
-  --request-soft-bg: #f8faf8;
+  --request-soft-bg: #f3f9f4;
   --request-card-bg: #ffffff;
 
-  --request-gold: #f2b635;
-  --request-gold-soft: #d4a340;
+  --request-gold: #fbbf24;
+  --request-gold-soft: #f59e0b;
   --request-gold-light: #fef8eb;
-  --request-mint: #e2fbce;
-  --request-lime: #e3ef26;
-  --request-orange: #ea580c;
+  --request-mint: #f0fdf4;
+  --request-lime: #a3e635;
+  --request-orange: #f97316;
 
-  --request-text-primary: #1e293b;
-  --request-text-secondary: #475569;
-  --request-text-muted: #64748b;
+  --request-text-primary: #153826;
+  --request-text-secondary: #3f5e4d;
+  --request-text-muted: #6b8074;
 
-  --request-border: rgba(6, 35, 29, 0.08);
-  --request-border-medium: rgba(6, 35, 29, 0.14);
-  --request-border-soft: #e2e8e4;
+  --request-border: rgba(15, 61, 38, 0.08);
+  --request-border-medium: rgba(15, 61, 38, 0.14);
+  --request-border-soft: #dbeef0;
 
   --request-danger: #dc2626;
   --request-danger-bg: #fef2f2;
   --request-danger-border: #fecaca;
 
-  --request-shadow-xs: 0 1px 3px rgba(6, 35, 29, 0.04);
-  --request-shadow-sm: 0 2px 8px rgba(6, 35, 29, 0.04);
-  --request-shadow-md: 0 8px 24px rgba(6, 35, 29, 0.06);
-  --request-shadow-lg: 0 16px 36px rgba(6, 35, 29, 0.1);
-  --request-shadow-card: 0 4px 20px rgba(6, 35, 29, 0.05);
+  --request-shadow-xs: 0 1px 3px rgba(15, 61, 38, 0.04);
+  --request-shadow-sm: 0 2px 8px rgba(15, 61, 38, 0.04);
+  --request-shadow-md: 0 8px 24px rgba(15, 61, 38, 0.06);
+  --request-shadow-lg: 0 16px 36px rgba(15, 61, 38, 0.1);
+  --request-shadow-card: 0 4px 20px rgba(15, 61, 38, 0.05);
 
   --request-radius-sm: 8px;
   --request-radius-md: 12px;
@@ -61,7 +61,7 @@
   min-height: 100vh;
   color: var(--request-text-primary);
   background: var(--request-soft-bg);
-  font-family: "Sarabun", "Inter", -apple-system, sans-serif;
+  font-family: "Anuphan", "Sarabun", "Inter", -apple-system, sans-serif;
   line-height: 1.6;
 }
 
@@ -87,9 +87,9 @@
   padding: 36px 0 48px;
   color: #ffffff;
   background:
-    radial-gradient(circle at 10% 20%, rgba(228, 92, 16, 0.18) 0%, transparent 35%),
-    radial-gradient(circle at 90% 80%, rgba(242, 182, 53, 0.16) 0%, transparent 35%),
-    linear-gradient(135deg, #05241e 0%, #075143 55%, #186854 100%);
+    radial-gradient(circle at 80% 10%, rgba(251, 191, 36, 0.3), transparent 30%),
+    radial-gradient(circle at 10% 90%, rgba(132, 204, 22, 0.25), transparent 35%),
+    linear-gradient(135deg, #1b5336 0%, #25704a 48%, #38a169 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -100,7 +100,7 @@
   width: 260px;
   height: 260px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(242, 182, 53, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(163, 230, 53, 0.35) 0%, transparent 70%);
   content: "";
   pointer-events: none;
 }
@@ -900,36 +900,258 @@
    SECTION 04: 24 HOURS TOGGLE & OPERATING HOURS
    ========================================================================== */
 
-.request-account-24hours-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #f0fdf4 0%, #e8f5f1 100%);
-  border: 1.5px solid #bbf7d0;
-  border-radius: var(--request-radius-lg);
+/* Schedule Mode Selector Bar */
+.request-account-schedule-mode-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
   margin-bottom: 20px;
 }
 
-.request-account-24hours-info {
+.request-account-schedule-mode-btn {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: var(--request-radius-md, 12px);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  font-family: inherit;
 }
 
-.request-account-24hours-title {
+.request-account-schedule-mode-btn svg {
+  color: #64748b;
+  margin-bottom: 6px;
+  transition: color 0.2s ease;
+}
+
+.request-account-schedule-mode-btn span {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--request-ink-900, #0f172a);
+  margin-bottom: 2px;
+}
+
+.request-account-schedule-mode-btn small {
+  font-size: 11.5px;
+  color: var(--request-text-muted, #64748b);
+  line-height: 1.35;
+}
+
+.request-account-schedule-mode-btn:hover {
+  border-color: #86efac;
+  background: #f8fafc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.request-account-schedule-mode-btn.active {
+  border-color: #076653;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 1px #076653, 0 4px 14px rgba(7, 102, 83, 0.12);
+}
+
+.request-account-schedule-mode-btn.active svg {
+  color: #076653;
+}
+
+.request-account-schedule-mode-btn.active span {
+  color: #043f33;
+}
+
+@media (max-width: 768px) {
+  .request-account-schedule-mode-bar {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* Same Hours Panel (Mode 1) */
+.request-account-same-hours-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  background: #fbfdfc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--request-radius-lg, 16px);
+}
+
+.request-account-same-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.request-account-same-section-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
-  font-size: 14.5px;
-  font-weight: 800;
-  color: #166534;
 }
 
-.request-account-24hours-desc {
-  margin: 0;
+.request-account-same-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--request-ink-900, #0f172a);
+}
+
+.request-account-same-quick-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.request-account-quick-link-btn {
+  background: none;
+  border: none;
+  padding: 2px 6px;
   font-size: 12.5px;
-  color: #15803d;
+  font-weight: 700;
+  color: #076653;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.request-account-quick-link-btn:hover {
+  background: #dcfce7;
+  text-decoration: underline;
+}
+
+.request-account-link-sep {
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+/* Day Pills */
+.request-account-day-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+  gap: 8px;
+}
+
+.request-account-day-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--request-radius-md, 8px);
+  color: #475569;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  font-family: inherit;
+}
+
+.request-account-day-pill:hover {
+  border-color: #86efac;
+  background: #f8fafc;
+  color: #076653;
+}
+
+.request-account-day-pill--active {
+  border-color: #076653;
+  background: #076653;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(7, 102, 83, 0.25);
+}
+
+.request-account-day-pill-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.request-account-day-pill-text {
+  font-size: 13px;
+}
+
+/* Same Time Box */
+.request-account-same-time-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--request-radius-md, 12px);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.request-account-same-time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.request-account-same-time-field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.request-account-same-time-field input[type="time"] {
+  padding: 8px 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 750;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.request-account-same-time-field input[type="time"]:focus {
+  border-color: #076653;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(7, 102, 83, 0.15);
+}
+
+.request-account-same-time-arrow {
+  font-size: 14px;
+  font-weight: 800;
+  color: #94a3b8;
+  margin-top: 18px;
+}
+
+/* Live Summary */
+.request-account-same-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--request-radius-md, 8px);
+  color: #166534;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.request-account-same-summary svg {
+  color: #076653;
+  flex-shrink: 0;
+}
+
+.request-account-same-summary strong {
+  color: #043f33;
 }
 
 .request-account-24hours-badge {

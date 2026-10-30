@@ -27,6 +27,7 @@ public class MainRouteService {
     private final WellnessHubRepository wellnessHubRepository;
     private final EmergencyServiceRepository emergencyServiceRepository;
     private final MainRouteDetailRepository mainRouteDetailRepository; // 🆕 เพิ่มบรรทัดนี้
+    private final SupabaseStorageService supabaseStorageService;
     private final ObjectMapper objectMapper;
 
     public MainRouteService(
@@ -35,13 +36,15 @@ public class MainRouteService {
             CategoryRepository categoryRepository,
             WellnessHubRepository wellnessHubRepository,
             EmergencyServiceRepository emergencyServiceRepository,
-            MainRouteDetailRepository mainRouteDetailRepository) { // 🆕 เพิ่ม parameter นี้
+            MainRouteDetailRepository mainRouteDetailRepository,
+            SupabaseStorageService supabaseStorageService) {
         this.mainRouteRepository = mainRouteRepository;
         this.districtRepository = districtRepository;
         this.categoryRepository = categoryRepository;
         this.wellnessHubRepository = wellnessHubRepository;
         this.emergencyServiceRepository = emergencyServiceRepository;
-        this.mainRouteDetailRepository = mainRouteDetailRepository; // 🆕 เพิ่มบรรทัดนี้
+        this.mainRouteDetailRepository = mainRouteDetailRepository;
+        this.supabaseStorageService = supabaseStorageService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -72,17 +75,40 @@ public class MainRouteService {
         return mainRouteRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public MainRoute getMainRouteById(Integer id) {
-        return mainRouteRepository.findById(id).orElse(null);
+        MainRoute route = mainRouteRepository.findByIdWithDetailsAndDistricts(id)
+                .orElseGet(() -> mainRouteRepository.findById(id).orElse(null));
+        if (route != null && route.getDetails() != null) {
+            List<MainRouteDetail> deduplicated = new ArrayList<>(route.getDetails().stream()
+                    .filter(d -> d != null && d.getOrderNumber() != null)
+                    .collect(Collectors.toMap(
+                            MainRouteDetail::getOrderNumber,
+                            d -> d,
+                            (existing, replacement) -> existing,
+                            TreeMap::new
+                    )).values());
+            route.setDetails(deduplicated);
+        }
+        return route;
     }
 
-    // 🏛️ เมธอดสำหรับดึงข้อมูลสรุปไปแสดงที่หน้าตาราง ListMainRoute
     // 🏛️ เมธอดสำหรับดึงข้อมูลสรุปไปแสดงที่หน้าตาราง ListMainRoute
     public List<Map<String, Object>> listMainRoute() {
 
         List<MainRoute> routes = mainRouteRepository.findAllWithDetailsAndDistricts();
+        routes.sort((a, b) -> {
+            LocalDateTime timeA = a.getUpdatedAt() != null ? a.getUpdatedAt() : a.getCreatedAt();
+            LocalDateTime timeB = b.getUpdatedAt() != null ? b.getUpdatedAt() : b.getCreatedAt();
+            if (timeA != null && timeB != null) {
+                return timeB.compareTo(timeA);
+            }
+            if (timeA == null && timeB != null) return 1;
+            if (timeA != null && timeB == null) return -1;
+            return Integer.compare(b.getRouteId() != null ? b.getRouteId() : 0, a.getRouteId() != null ? a.getRouteId() : 0);
+        });
+
         List<Map<String, Object>> resultList = new ArrayList<>();
-        List<Category> allCategories = categoryRepository.findAll();
 
         for (MainRoute route : routes) {
 
@@ -95,33 +121,29 @@ public class MainRouteService {
 
             String districtsPassed = route.getDetails() != null
                     ? route.getDetails().stream()
-                            .filter(d -> d.getDistrict() != null)
-                            .sorted(Comparator.comparing(MainRouteDetail::getOrderNumber))
+                            .filter(d -> d != null && d.getDistrict() != null && d.getOrderNumber() != null)
+                            .collect(Collectors.toMap(
+                                    MainRouteDetail::getOrderNumber,
+                                    d -> d,
+                                    (existing, replacement) -> existing,
+                                    TreeMap::new
+                            ))
+                            .values().stream()
                             .map(d -> "อ." + d.getDistrict().getDistrictName())
                             .collect(Collectors.joining(" -> "))
                     : "";
 
             map.put("districtsPassed", districtsPassed.isEmpty() ? "ยังไม่ได้กำหนดอำเภอ" : districtsPassed);
 
-            List<String> catIds = new ArrayList<>();
-            if (route.getCategoryId() != null && !route.getCategoryId().isEmpty()) {
-                try {
-                    catIds.addAll(
-                            objectMapper.readValue(
-                                    route.getCategoryId(),
-                                    new TypeReference<List<String>>() {
-                                    }));
-                } catch (Exception e) {
-                    catIds.add(route.getCategoryId());
-                }
-            }
+            String categoriesPassed = route.getCategories() != null && !route.getCategories().isEmpty()
+                    ? route.getCategories().stream()
+                            .map(Category::getCategoryName)
+                            .filter(Objects::nonNull)
+                            .filter(name -> !name.trim().isEmpty())
+                            .collect(Collectors.joining(", "))
+                    : "ยังไม่ได้กำหนดหมวดหมู่";
 
-            String categoriesPassed = allCategories.stream()
-                    .filter(c -> catIds.contains(String.valueOf(c.getCategoryId())))
-                    .map(Category::getCategoryName)
-                    .collect(Collectors.joining(", "));
-
-            map.put("categoriesPassed", categoriesPassed.isEmpty() ? "ยังไม่ได้กำหนดหมวดหมู่" : categoriesPassed);
+            map.put("categoriesPassed", categoriesPassed);
             map.put("createdBy", route.getCreatedBy());
             map.put("createdAt", route.getCreatedAt());
             map.put("updatedAt", route.getUpdatedAt());
@@ -138,23 +160,13 @@ public class MainRouteService {
 
         final List<String> categoryIds = new ArrayList<>();
 
-        try {
-            if (route.getCategoryId() != null
-                    && !route.getCategoryId().trim().isEmpty()) {
-
-                List<String> parsed = objectMapper.readValue(
-                        route.getCategoryId(),
-                        new TypeReference<List<String>>() {
-                        });
-
-                if (parsed != null) {
-                    categoryIds.addAll(parsed);
-                }
-            }
-        } catch (Exception e) {
-            if (route.getCategoryId() != null) {
-                categoryIds.add(route.getCategoryId());
-            }
+        if (route.getCategories() != null) {
+            categoryIds.addAll(
+                    route.getCategories().stream()
+                            .map(Category::getCategoryId)
+                            .filter(Objects::nonNull)
+                            .toList()
+            );
         }
 
         // รวม EM01 และ EM02 เสมอ
@@ -265,14 +277,6 @@ public class MainRouteService {
             throw new IllegalArgumentException("กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ");
         }
 
-        // 4. Category validation
-        List<String> categoryIds = normalizeCategoryIds(payload.get("categoryIds"));
-        for (String catId : categoryIds) {
-            if (!categoryRepository.existsById(catId.trim().toUpperCase())) {
-                throw new IllegalArgumentException("ไม่พบหมวดหมู่รหัส " + catId);
-            }
-        }
-
         MainRoute route = convertPayloadToEntity(payload);
         route.setRouteName(routeName);
         route.setRouteDescription(routeDescription);
@@ -331,19 +335,11 @@ public class MainRouteService {
             throw new IllegalArgumentException("กรุณาเลือกอำเภออย่างน้อย 2 อำเภอ");
         }
 
-        // 4. Category validation
-        List<String> categoryIds = normalizeCategoryIds(payload.get("categoryIds"));
-        for (String catId : categoryIds) {
-            if (!categoryRepository.existsById(catId.trim().toUpperCase())) {
-                throw new IllegalArgumentException("ไม่พบหมวดหมู่รหัส " + catId);
-            }
-        }
-
         MainRoute incomingRoute = convertPayloadToEntity(payload);
 
         oldRoute.setRouteName(routeName);
         oldRoute.setRouteDescription(routeDescription);
-        oldRoute.setCategoryId(incomingRoute.getCategoryId());
+        oldRoute.setCategories(incomingRoute.getCategories());
         if (payload.containsKey("routeImage")) {
             oldRoute.setRouteImage(incomingRoute.getRouteImage());
         }
@@ -374,27 +370,34 @@ public class MainRouteService {
                         ? payload.get("routeDescription").toString().trim()
                         : "");
 
-        // Set route image if provided in payload
+        // Set route image if provided in payload (รองรับทั้ง Base64 และ Supabase Storage Public URL)
         if (payload.get("routeImage") != null) {
-            route.setRouteImage(payload.get("routeImage").toString().trim());
+            String rawImage = payload.get("routeImage").toString().trim();
+            if (!rawImage.isEmpty()) {
+                if (rawImage.startsWith("data:")) {
+                    if (!rawImage.startsWith("data:image/png") && !rawImage.startsWith("data:image/jpeg") && !rawImage.startsWith("data:image/jpg")) {
+                        throw new IllegalArgumentException("ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น");
+                    }
+                    if (rawImage.length() > 28_000_000) {
+                        throw new IllegalArgumentException("ขนาดไฟล์รูปภาพต้องไม่เกิน 20 MB");
+                    }
+                }
+                route.setRouteImage(supabaseStorageService.uploadBase64OrReturnUrl(rawImage, "routes"));
+            }
         }
 
-        try {
-            List<String> categoryIds = normalizeCategoryIds(payload.get("categoryIds"));
-            for (String catId : categoryIds) {
-                if (!categoryRepository.existsById(catId.trim().toUpperCase())) {
-                    throw new IllegalArgumentException("ไม่พบหมวดหมู่รหัส " + catId);
-                }
+        List<String> categoryIds = normalizeCategoryIds(payload.get("categoryIds"));
+        List<Category> foundCategories = categoryRepository.findAllById(categoryIds);
+        Set<String> foundIds = foundCategories.stream()
+                .map(c -> c.getCategoryId().toUpperCase())
+                .collect(Collectors.toSet());
+
+        for (String catId : categoryIds) {
+            if (!foundIds.contains(catId.trim().toUpperCase())) {
+                throw new IllegalArgumentException("ไม่พบหมวดหมู่รหัส " + catId);
             }
-            String jsonString = objectMapper.writeValueAsString(categoryIds);
-            route.setCategoryId(jsonString);
-        } catch (IllegalArgumentException ex) {
-            throw ex;
-        } catch (Exception exception) {
-            throw new IllegalArgumentException(
-                    "ไม่สามารถบันทึกหมวดหมู่ของเส้นทางได้",
-                    exception);
         }
+        route.setCategories(new HashSet<>(foundCategories));
 
         List<MainRouteDetail> detailList = new ArrayList<>();
         List<Map<String, Object>> detailsRaw = (List<Map<String, Object>>) payload.get("details");
@@ -468,18 +471,12 @@ public class MainRouteService {
         dto.setRouteImage(route.getRouteImage());
         dto.setPinCount(route.getPinCount());
 
-        // parse categoryId JSON array
-        if (route.getCategoryId() != null && !route.getCategoryId().isEmpty()) {
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                List<String> categoryIds = mapper.readValue(
-                        route.getCategoryId(),
-                        new TypeReference<List<String>>() {
-                        });
-                dto.setCategoryId(categoryIds);
-            } catch (Exception e) {
-                dto.setCategoryId(List.of());
-            }
+        if (route.getCategories() != null) {
+            List<String> categoryIds = route.getCategories().stream()
+                    .map(Category::getCategoryId)
+                    .filter(Objects::nonNull)
+                    .toList();
+            dto.setCategoryId(categoryIds);
         } else {
             dto.setCategoryId(List.of());
         }

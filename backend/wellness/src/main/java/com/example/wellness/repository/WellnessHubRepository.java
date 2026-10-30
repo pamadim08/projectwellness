@@ -34,6 +34,14 @@ public interface WellnessHubRepository
     @Query("SELECT w.licenseId FROM WellnessHub w")
     List<String> findAllLicenseIds();
 
+    @Query(value = """
+            SELECT GREATEST(
+                COALESCE((SELECT MAX(CAST(NULLIF(regexp_replace(license_id, '\\D', '', 'g'), '') AS INTEGER)) FROM wellness_hubs WHERE license_id ~ '\\d'), 10000),
+                COALESCE((SELECT MAX(CAST(NULLIF(regexp_replace(license_id, '\\D', '', 'g'), '') AS INTEGER)) FROM emergency_services WHERE license_id ~ '\\d'), 10000)
+            )
+            """, nativeQuery = true)
+    Integer findMaxNumericLicenseId();
+
     @Query("SELECT w FROM WellnessHub w " +
             "LEFT JOIN FETCH w.category " +
             "LEFT JOIN FETCH w.district " +

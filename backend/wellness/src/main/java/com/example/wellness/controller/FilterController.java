@@ -16,11 +16,16 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/filters")
-@RequiredArgsConstructor
-    public class FilterController {
+// @RequiredArgsConstructor
+public class FilterController {
 
-        private final CategoryRepository categoryRepository;
-        private final DistrictRepository districtRepository;
+    private final CategoryRepository categoryRepository;
+    private final DistrictRepository districtRepository;
+
+    public FilterController(CategoryRepository categoryRepository, DistrictRepository districtRepository) {
+        this.categoryRepository = categoryRepository;
+        this.districtRepository = districtRepository;
+    }
 
         // ดึงรายการ Category ทั้งหมด
         @GetMapping("/categories")

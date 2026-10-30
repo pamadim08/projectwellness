@@ -26,7 +26,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -92,30 +94,12 @@ public class HomeService {
                         return new ArrayList<>();
                 }
 
-                // รวบรวม categoryId ของ routes ทั้งหมดก่อน เพื่อ Query categories เพียง 1 ครั้ง (แก้ N+1)
-                Set<String> allCategoryIds = new LinkedHashSet<>();
-                for (MainRoute route : routes) {
-                        if (route != null) {
-                                allCategoryIds.addAll(parseCategoryIds(route.getCategoryId()));
-                        }
-                }
-
-                Map<String, Category> categoryMap = new HashMap<>();
-                if (!allCategoryIds.isEmpty()) {
-                        List<Category> categories = categoryRepository.findAllById(allCategoryIds);
-                        for (Category category : categories) {
-                                if (category != null && category.getCategoryId() != null) {
-                                        categoryMap.put(category.getCategoryId(), category);
-                                }
-                        }
-                }
-
                 return routes.stream()
-                                .map(route -> convertRouteHomeResult(route, categoryMap))
+                                .map(this::convertRouteHomeResult)
                                 .toList();
         }
 
-        private Map<String, Object> convertRouteHomeResult(MainRoute route, Map<String, Category> categoryMap) {
+        private Map<String, Object> convertRouteHomeResult(MainRoute route) {
                 Map<String, Object> map = new LinkedHashMap<>();
 
                 if (route == null) {
@@ -135,12 +119,14 @@ public class HomeService {
                 // districts: ordered by orderNumber (nulls last)
                 List<MainRouteDetail> sortedDetails = route.getDetails() == null
                                 ? new ArrayList<>()
-                                : route.getDetails().stream()
-                                                .filter(detail -> detail != null && detail.getDistrict() != null)
-                                                .sorted(Comparator.comparing(
+                                : new ArrayList<>(route.getDetails().stream()
+                                                .filter(detail -> detail != null && detail.getDistrict() != null && detail.getOrderNumber() != null)
+                                                .collect(Collectors.toMap(
                                                                 MainRouteDetail::getOrderNumber,
-                                                                Comparator.nullsLast(Comparator.naturalOrder())))
-                                                .toList();
+                                                                d -> d,
+                                                                (existing, replacement) -> existing,
+                                                                TreeMap::new
+                                                )).values());
 
                 List<Map<String, Object>> districtMaps = new ArrayList<>();
 
@@ -172,17 +158,9 @@ public class HomeService {
                  * Categories
                  * =====================================================
                  */
-                List<String> categoryIds = parseCategoryIds(route.getCategoryId());
-
-                List<Category> categories = new ArrayList<>();
-                if (categoryMap != null && !categoryIds.isEmpty()) {
-                        for (String catId : categoryIds) {
-                                Category cat = categoryMap.get(catId);
-                                if (cat != null) {
-                                        categories.add(cat);
-                                }
-                        }
-                }
+                List<Category> categories = route.getCategories() != null
+                                ? new ArrayList<>(route.getCategories())
+                                : new ArrayList<>();
 
                 List<Map<String, Object>> categoryMaps = categories.stream()
                                 .map(category -> {
@@ -250,17 +228,22 @@ public class HomeService {
 
                 List<MainRouteDetail> sortedDetails = route.getDetails() == null
                                 ? new ArrayList<>()
-                                : route.getDetails()
+                                : new ArrayList<>(route.getDetails()
                                                 .stream()
-                                                .filter(detail -> detail != null && detail.getDistrict() != null)
-                                                .sorted(
-                                                                Comparator.comparing(
-                                                                                MainRouteDetail::getOrderNumber,
-                                                                                Comparator.nullsLast(Comparator
-                                                                                                .naturalOrder())))
-                                                .toList();
+                                                .filter(detail -> detail != null && detail.getDistrict() != null && detail.getOrderNumber() != null)
+                                                .collect(Collectors.toMap(
+                                                                MainRouteDetail::getOrderNumber,
+                                                                d -> d,
+                                                                (existing, replacement) -> existing,
+                                                                TreeMap::new
+                                                )).values());
 
-                List<String> categoryIds = parseCategoryIds(route.getCategoryId());
+                List<String> categoryIds = route.getCategories() != null
+                                ? route.getCategories().stream()
+                                                .map(Category::getCategoryId)
+                                                .filter(Objects::nonNull)
+                                                .toList()
+                                : new ArrayList<>();
 
                 List<Integer> districtIds = sortedDetails.stream()
                                 .map(MainRouteDetail::getDistrict)
@@ -269,9 +252,9 @@ public class HomeService {
                                 .distinct()
                                 .toList();
 
-                List<Category> categories = categoryIds.isEmpty()
-                                ? new ArrayList<>()
-                                : categoryRepository.findAllById(categoryIds);
+                List<Category> categories = route.getCategories() != null
+                                ? new ArrayList<>(route.getCategories())
+                                : new ArrayList<>();
 
                 List<WellnessHub> wellnessHubs = new ArrayList<>();
 
@@ -601,32 +584,7 @@ public class HomeService {
                 return map;
         }
 
-        private List<String> parseCategoryIds(String categoryIdValue) {
-                List<String> categoryIds = new ArrayList<>();
 
-                if (categoryIdValue == null || categoryIdValue.trim().isEmpty()) {
-                        return categoryIds;
-                }
-
-                try {
-                        List<String> parsedCategoryIds = objectMapper.readValue(
-                                        categoryIdValue,
-                                        new TypeReference<List<String>>() {
-                                        });
-
-                        if (parsedCategoryIds != null) {
-                                parsedCategoryIds.stream()
-                                                .filter(id -> id != null && !id.trim().isEmpty())
-                                                .map(String::trim)
-                                                .distinct()
-                                                .forEach(categoryIds::add);
-                        }
-                } catch (Exception exception) {
-                        categoryIds.add(categoryIdValue.trim());
-                }
-
-                return categoryIds;
-        }
 
         private Map<String, Object> convertWellnessHubToSearchResult(WellnessHub wellnessHub) {
                 Map<String, Object> map = new LinkedHashMap<>();

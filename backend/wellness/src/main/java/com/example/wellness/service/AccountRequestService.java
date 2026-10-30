@@ -11,23 +11,37 @@ import com.example.wellness.repository.DistrictRepository;
 import com.example.wellness.repository.EmergencyServiceRepository;
 import com.example.wellness.repository.WellnessHubRepository;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
+@Slf4j
 public class AccountRequestService {
 
         private static final String STATUS_PENDING = "PENDING";
         private static final String STATUS_APPROVED = "APPROVED";
         private static final String STATUS_REJECTED = "REJECTED";
+
+        private static final String[] ALLOWED_IMAGE_MIMES = {
+                        "image/jpeg", "image/jpg", "image/png"
+        };
+
+        private static final String[] ALLOWED_DOCUMENT_MIMES = {
+                        "application/pdf", "image/jpeg", "image/jpg", "image/png"
+        };
 
         private final AccountRequestRepository repository;
         private final WellnessHubRepository wellnessHubRepository;
@@ -37,6 +51,7 @@ public class AccountRequestService {
         private final DistrictRepository districtRepository;
         private final com.example.wellness.repository.NotificationRepository notificationRepository;
         private final SupabaseStorageService supabaseStorageService;
+        private final TransactionTemplate transactionTemplate;
 
         public AccountRequestService(
                         AccountRequestRepository repository,
@@ -46,7 +61,8 @@ public class AccountRequestService {
                         CategoryRepository categoryRepository,
                         DistrictRepository districtRepository,
                         com.example.wellness.repository.NotificationRepository notificationRepository,
-                        SupabaseStorageService supabaseStorageService) {
+                        SupabaseStorageService supabaseStorageService,
+                        PlatformTransactionManager transactionManager) {
                 this.repository = repository;
                 this.wellnessHubRepository = wellnessHubRepository;
                 this.emergencyServiceRepository = emergencyServiceRepository;
@@ -55,6 +71,7 @@ public class AccountRequestService {
                 this.districtRepository = districtRepository;
                 this.notificationRepository = notificationRepository;
                 this.supabaseStorageService = supabaseStorageService;
+                this.transactionTemplate = new TransactionTemplate(transactionManager);
         }
 
         // =====================================================
@@ -106,11 +123,10 @@ public class AccountRequestService {
                 return repository.findById(id).orElse(null);
         }
 
-        // =====================================================
-        // สร้าง / ยื่นคำขอใหม่ (หากเคยถูกปฏิเสธ จะอัปเดตข้อมูลและเปลี่ยนเป็น PENDING)
-        // =====================================================
+        // =========================================================================
+        // สร้าง / ยื่นคำขอใหม่ (แยกการอัปโหลดไฟล์และเน็ตเวิร์ก I/O อยู่นอก Transaction)
+        // =========================================================================
 
-        @Transactional
         public AccountRequest requestWellnessHubAccount(Map<String, Object> payload) {
                 if (payload == null) {
                         throw new RuntimeException("ไม่พบข้อมูลคำขอ");
@@ -122,7 +138,8 @@ public class AccountRequestService {
                                 "กรุณาระบุเลขที่ใบอนุญาต");
 
                 if (licenseId.contains(" ") || !licenseId.matches("^[A-Za-z0-9]{10,13}$")) {
-                        throw new RuntimeException("เลขที่ใบอนุญาตต้องเป็นภาษาอังกฤษหรือตัวเลข 10–13 ตัวอักษรและไม่มีช่องว่าง");
+                        throw new RuntimeException(
+                                        "เลขที่ใบอนุญาตต้องเป็นภาษาอังกฤษหรือตัวเลข 10–13 ตัวอักษรและไม่มีช่องว่าง");
                 }
 
                 /*
@@ -130,7 +147,8 @@ public class AccountRequestService {
                  */
                 boolean hasPendingRequest = repository.existsByLicenseIdAndRequestStatus(licenseId, STATUS_PENDING);
                 if (hasPendingRequest) {
-                        throw new RuntimeException("เลขที่ใบอนุญาตสถานประกอบการนี้มีคำขอที่กำลังรอตรวจสอบในระบบอยู่แล้ว");
+                        throw new RuntimeException(
+                                        "เลขที่ใบอนุญาตสถานประกอบการนี้มีคำขอที่กำลังรอตรวจสอบในระบบอยู่แล้ว");
                 }
 
                 boolean hasApprovedRequest = repository.existsByLicenseIdAndRequestStatus(licenseId, STATUS_APPROVED);
@@ -150,7 +168,8 @@ public class AccountRequestService {
                 }
 
                 String userEmail = getRequiredString(payload, "userEmail", "กรุณาระบุอีเมล");
-                if (userEmail.contains(" ") || userEmail.length() < 5 || userEmail.length() > 255 || !userEmail.matches("^[\\w!#$%&'*+/=?`{|}~^-]+(?:\\.[\\w!#$%&'*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}$")) {
+                if (userEmail.contains(" ") || userEmail.length() < 5 || userEmail.length() > 255 || !userEmail.matches(
+                                "^[\\w!#$%&'*+/=?`{|}~^-]+(?:\\.[\\w!#$%&'*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}$")) {
                         throw new RuntimeException("รูปแบบอีเมลไม่ถูกต้องหรือความยาวไม่อยู่ในช่วง 5–255 ตัวอักษร");
                 }
 
@@ -163,7 +182,8 @@ public class AccountRequestService {
                 }
 
                 if (repository.existsByUsernameIgnoreCaseAndRequestStatus(username, STATUS_PENDING)) {
-                        throw new RuntimeException("ชื่อผู้ใช้ (Username) นี้มีคำขอที่กำลังรอตรวจสอบในระบบอยู่แล้ว กรุณาใช้ชื่ออื่น");
+                        throw new RuntimeException(
+                                        "ชื่อผู้ใช้ (Username) นี้มีคำขอที่กำลังรอตรวจสอบในระบบอยู่แล้ว กรุณาใช้ชื่ออื่น");
                 }
 
                 if (repository.existsByUsernameIgnoreCaseAndRequestStatus(username, STATUS_APPROVED)
@@ -174,7 +194,7 @@ public class AccountRequestService {
 
                 String password = getRequiredString(payload, "password", "กรุณาระบุ Password");
                 if (password.contains(" ") || password.length() != 8) {
-                        throw new RuntimeException("รหัสผ่านต้องมีความยาว 8 ตัวอักษรและไม่มีช่องว่าง");
+                        throw new RuntimeException("รหัสผ่านต้องมีความยาว 8 ตัวอักษรเท่านั้นและไม่มีช่องว่าง");
                 }
 
                 String wellnessHubName = getRequiredString(payload, "wellnessHubName", "กรุณาระบุชื่อสถานประกอบการ");
@@ -189,7 +209,8 @@ public class AccountRequestService {
 
                 String tellInformation = getRequiredString(payload, "tellInformation", "กรุณาระบุเบอร์โทรศัพท์");
                 if (!tellInformation.matches("^(1669|[0-9]{3,4}|[0-9]{9,10})$")) {
-                        throw new RuntimeException("เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก หรือเบอร์ฉุกเฉิน (เช่น 1669) และไม่มีช่องว่างหรือสัญลักษณ์พิเศษ");
+                        throw new RuntimeException(
+                                        "เบอร์โทรศัพท์ต้องเป็นตัวเลข 9–10 หลัก หรือเบอร์ฉุกเฉิน (เช่น 1669) และไม่มีช่องว่างหรือสัญลักษณ์พิเศษ");
                 }
 
                 String contactInfo = getOptionalString(payload, "contactInformation");
@@ -208,7 +229,7 @@ public class AccountRequestService {
 
                 String wellnessHubImg = getOptionalString(payload, "wellnessHubImg");
                 if (wellnessHubImg != null) {
-                        validateBase64File(wellnessHubImg, new String[] { "image/jpeg", "image/png" }, 20 * 1024 * 1024L, "รูปหน้าปก");
+                        validateBase64File(wellnessHubImg, ALLOWED_IMAGE_MIMES, 20 * 1024 * 1024L, "รูปหน้าปก");
                 }
 
                 String wellnessHubGallery = getOptionalString(payload, "wellnessHubGallery");
@@ -230,79 +251,239 @@ public class AccountRequestService {
                         throw new RuntimeException("ลิงก์ Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง");
                 }
 
-                // =================================================
-                // ตรวจสอบว่าเคยมีคำขอเดิมที่ถูกปฏิเสธ (REJECTED) หรือไม่
-                // หากมี ให้อัปเดตข้อมูลใหม่ลงในคำขอเดิมและเปลี่ยนสถานะกลับเป็น PENDING (รอพิจารณา)
-                // =================================================
-                List<AccountRequest> rejectedList = repository
-                                .findByLicenseIdAndRequestStatusOrderByRequestIdDesc(licenseId, STATUS_REJECTED);
-                AccountRequest request;
-                if (rejectedList != null && !rejectedList.isEmpty()) {
-                        request = rejectedList.get(0);
-                        // หากมีคำขอที่ถูกปฏิเสธซ้ำซ้อนมากกว่า 1 รายการ ให้ลบรายการเก่าที่เหลือ
-                        if (rejectedList.size() > 1) {
-                                for (int i = 1; i < rejectedList.size(); i++) {
-                                        repository.delete(rejectedList.get(i));
-                                }
+                // =========================================================================
+                // ขั้นตอนที่ 2: สกัดพิกัดแผนที่ (ยิง HTTP ขยาย Short URL อยู่นอก Transaction
+                // ไม่บล็อก DB Connection)
+                // =========================================================================
+                Double lat = getOptionalDouble(payload, "wellnessHubLatitude");
+                Double lng = getOptionalDouble(payload, "wellnessHubLongitude");
+
+                if ((lat == null || lng == null) && cleanGmaps != null) {
+                        AccountRequest tempCoords = new AccountRequest();
+                        tempCoords.setGoogleMapsLink(cleanGmaps);
+                        extractCoordinates(tempCoords);
+                        if (tempCoords.getWellnessHubLatitude() != null) {
+                                lat = tempCoords.getWellnessHubLatitude();
                         }
-                } else {
-                        request = new AccountRequest();
+                        if (tempCoords.getWellnessHubLongitude() != null) {
+                                lng = tempCoords.getWellnessHubLongitude();
+                        }
                 }
 
-                request.setLicenseId(licenseId);
-                request.setUsername(username);
-                request.setPassword(password);
-                request.setRequesterName(requesterName);
-                request.setUserEmail(userEmail);
-                request.setContactInformation(contactInfo);
-                request.setTellInformation(tellInformation);
-                request.setWellnessHubName(wellnessHubName);
-                request.setAddress(address);
-                request.setGoogleMapsLink(cleanGmaps);
-                request.setWellnessHubDescription(wellnessHubDescription);
+                validateCoordinates(lat, lng);
 
-                // Upload images and verification documents to Supabase Storage
-                String uploadedImg = supabaseStorageService.uploadBase64OrReturnUrl(wellnessHubImg, "wellness_hubs");
-                String uploadedGallery = supabaseStorageService.uploadGalleryBase64OrReturnUrl(wellnessHubGallery, "wellness_hubs");
-                String uploadedVerification = supabaseStorageService.uploadVerificationDocumentsJsonOrReturnUrl(verificationDocuments, "documents");
-
-                request.setWellnessHubImg(uploadedImg);
-                request.setWellnessHubGallery(uploadedGallery);
-                request.setVerificationDocuments(uploadedVerification);
-                request.setWellnessHubLatitude(getOptionalDouble(payload, "wellnessHubLatitude"));
-                request.setWellnessHubLongitude(getOptionalDouble(payload, "wellnessHubLongitude"));
-
-                // หากพิกัดยังเป็น null แต่มี Google Maps Link ให้ทำการสกัดพิกัดอัตโนมัติ
-                if ((request.getWellnessHubLatitude() == null || request.getWellnessHubLongitude() == null)
-                                && request.getGoogleMapsLink() != null) {
-                        extractCoordinates(request);
-                }
-
-                validateCoordinates(
-                                request.getWellnessHubLatitude(),
-                                request.getWellnessHubLongitude());
-
-                if (request.getWellnessHubLatitude() != null && request.getWellnessHubLongitude() != null) {
-                        double lat = request.getWellnessHubLatitude();
-                        double lng = request.getWellnessHubLongitude();
+                if (lat != null && lng != null) {
                         boolean dupHubCoords = wellnessHubRepository.existsNearCoordinates(lat, lng);
                         boolean dupEmerCoords = emergencyServiceRepository.existsNearCoordinates(lat, lng);
                         if (dupHubCoords || dupEmerCoords) {
-                                throw new RuntimeException("พิกัดแผนที่จาก Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง");
+                                throw new RuntimeException(
+                                                "พิกัดแผนที่จาก Google Maps นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง");
                         }
                 }
 
-                request.setCertificateType(getOptionalString(payload, "certificateType"));
-                request.setOperatingHours(getOptionalString(payload, "operatingHours"));
+                Category category = getCategory(payload);
+                District district = getDistrict(payload);
 
-                request.setCategory(getCategory(payload));
-                request.setDistrict(getDistrict(payload));
+                // =========================================================================
+                // ขั้นตอนที่ 3: อัปโหลดรูปภาพไปยัง Supabase Storage (นอก Transaction)
+                // พร้อมบันทึกรายการ URL ที่เพิ่งอัปโหลดใหม่
+                // เพื่อลบทิ้งหากเกิดข้อผิดพลาดในการบันทึก DB
+                // =========================================================================
+                List<String> newlyUploadedUrls = new ArrayList<>();
+                String uploadedImg;
+                String uploadedGallery;
+                String uploadedVerification;
 
-                request.setRequestStatus(STATUS_PENDING);
-                request.setRejectionReason(null);
-                request.setProcessedDate(null);
+                try {
+                        uploadedImg = supabaseStorageService.uploadBase64OrReturnUrl(wellnessHubImg, "wellness_hubs");
+                        if (uploadedImg != null && !uploadedImg.equals(wellnessHubImg)
+                                        && isSupabaseStorageUrl(uploadedImg)) {
+                                newlyUploadedUrls.add(uploadedImg);
+                        }
 
-                return repository.save(request);
+                        uploadedGallery = supabaseStorageService.uploadGalleryBase64OrReturnUrl(wellnessHubGallery,
+                                        "wellness_hubs");
+                        for (String url : supabaseStorageService.extractSupabaseUrls(uploadedGallery)) {
+                                if (wellnessHubGallery == null || !wellnessHubGallery.contains(url)) {
+                                        newlyUploadedUrls.add(url);
+                                }
+                        }
+
+                        uploadedVerification = supabaseStorageService
+                                        .uploadVerificationDocumentsJsonOrReturnUrl(verificationDocuments, "documents");
+                        for (String url : supabaseStorageService.extractSupabaseUrls(uploadedVerification)) {
+                                if (verificationDocuments == null || !verificationDocuments.contains(url)) {
+                                        newlyUploadedUrls.add(url);
+                                }
+                        }
+                } catch (Exception uploadEx) {
+                        cleanUpNewlyUploadedFiles(newlyUploadedUrls);
+                        throw uploadEx;
+                }
+
+                // =========================================================================
+                // ขั้นตอนที่ 4: บันทึกข้อมูลลงฐานข้อมูล (เปิด @Transactional สั้นๆ เฉพาะตรงนี้)
+                // หากบันทึก DB ล้มเหลว -> ลบไฟล์ขยะที่เพิ่งอัปโหลดบน Supabase ทิ้งทันที!
+                // =========================================================================
+                final Double finalLat = lat;
+                final Double finalLng = lng;
+                final String finalUploadedImg = uploadedImg;
+                final String finalUploadedGallery = uploadedGallery;
+                final String finalUploadedVerification = uploadedVerification;
+
+                try {
+                        return transactionTemplate.execute(status -> {
+                                List<AccountRequest> rejectedList = repository
+                                                .findByLicenseIdAndRequestStatusOrderByRequestIdDesc(licenseId,
+                                                                STATUS_REJECTED);
+                                AccountRequest request;
+                                if (rejectedList != null && !rejectedList.isEmpty()) {
+                                        request = rejectedList.get(0);
+                                        // หากมีคำขอที่ถูกปฏิเสธซ้ำซ้อนมากกว่า 1 รายการ ให้ลบรายการเก่าที่เหลือ
+                                        if (rejectedList.size() > 1) {
+                                                for (int i = 1; i < rejectedList.size(); i++) {
+                                                        repository.delete(rejectedList.get(i));
+                                                }
+                                        }
+                                } else {
+                                        request = new AccountRequest();
+                                }
+
+                                request.setLicenseId(licenseId);
+                                request.setUsername(username);
+                                request.setPassword(password);
+                                request.setRequesterName(requesterName);
+                                request.setUserEmail(userEmail);
+                                request.setContactInformation(contactInfo);
+                                request.setTellInformation(tellInformation);
+                                request.setWellnessHubName(wellnessHubName);
+                                request.setAddress(address);
+                                request.setGoogleMapsLink(cleanGmaps);
+                                request.setWellnessHubDescription(wellnessHubDescription);
+
+                                request.setWellnessHubImg(finalUploadedImg);
+                                request.setWellnessHubGallery(finalUploadedGallery);
+                                request.setVerificationDocuments(finalUploadedVerification);
+                                request.setWellnessHubLatitude(finalLat);
+                                request.setWellnessHubLongitude(finalLng);
+
+                                request.setCertificateType(getOptionalString(payload, "certificateType"));
+                                request.setOperatingHours(getOptionalString(payload, "operatingHours"));
+
+                                request.setCategory(category);
+                                request.setDistrict(district);
+
+                                request.setRequestStatus(STATUS_PENDING);
+                                request.setRejectionReason(null);
+                                request.setProcessedDate(null);
+
+                                AccountRequest saved = repository.save(request);
+
+                                // ปรับชื่อไฟล์ใน verificationDocuments ให้เป็น
+                                // <ชื่อในดรอปดาวน์ที่เลือก>_<รหัสคำขอ>.<นามสกุล>
+                                if (saved.getVerificationDocuments() != null
+                                                && saved.getVerificationDocuments().trim().startsWith("[")) {
+                                        try {
+                                                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                                                List<Map<String, Object>> docs = mapper.readValue(
+                                                                saved.getVerificationDocuments(),
+                                                                new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {
+                                                                });
+                                                if (docs != null && !docs.isEmpty()) {
+                                                        boolean changed = false;
+                                                        Map<String, Integer> typeCount = new java.util.HashMap<>();
+                                                        for (Map<String, Object> d : docs) {
+                                                                if (d == null)
+                                                                        continue;
+                                                                String docType = d.get("type") != null && !d.get("type")
+                                                                                .toString().trim().isEmpty()
+                                                                                                ? d.get("type").toString()
+                                                                                                                .trim()
+                                                                                                : "เอกสารยืนยันสิทธิ์";
+                                                                typeCount.put(docType,
+                                                                                typeCount.getOrDefault(docType, 0) + 1);
+                                                        }
+                                                        Map<String, Integer> currentTypeIndex = new java.util.HashMap<>();
+                                                        for (Map<String, Object> doc : docs) {
+                                                                if (doc == null)
+                                                                        continue;
+                                                                String docType = doc.get("type") != null && !doc
+                                                                                .get("type").toString().trim().isEmpty()
+                                                                                                ? doc.get("type")
+                                                                                                                .toString()
+                                                                                                                .trim()
+                                                                                                : "เอกสารยืนยันสิทธิ์";
+                                                                String currentName = doc.get("name") != null
+                                                                                ? doc.get("name").toString().trim()
+                                                                                : "";
+                                                                String ext = "";
+                                                                if (currentName.contains(".")) {
+                                                                        ext = currentName.substring(
+                                                                                        currentName.lastIndexOf('.'));
+                                                                } else if (doc.get("data") != null) {
+                                                                        String dataStr = doc.get("data").toString()
+                                                                                        .toLowerCase();
+                                                                        if (dataStr.contains(".pdf"))
+                                                                                ext = ".pdf";
+                                                                        else if (dataStr.contains(".png"))
+                                                                                ext = ".png";
+                                                                        else if (dataStr.contains(".jpg")
+                                                                                        || dataStr.contains(".jpeg"))
+                                                                                ext = ".jpg";
+                                                                }
+                                                                String suffix = "";
+                                                                if (typeCount.getOrDefault(docType, 0) > 1) {
+                                                                        int idx = currentTypeIndex.getOrDefault(docType,
+                                                                                        0) + 1;
+                                                                        currentTypeIndex.put(docType, idx);
+                                                                        suffix = "_" + idx;
+                                                                }
+                                                                String formattedName = docType + "_"
+                                                                                + saved.getRequestId() + suffix + ext;
+                                                                doc.put("name", formattedName);
+                                                                changed = true;
+                                                        }
+                                                        if (changed) {
+                                                                saved.setVerificationDocuments(
+                                                                                mapper.writeValueAsString(docs));
+                                                                saved = repository.save(saved);
+                                                        }
+                                                }
+                                        } catch (Exception ignored) {
+                                                // ละเว้นข้อผิดพลาด ไม่ขัดขวางการบันทึกคำขอ
+                                        }
+                                }
+
+                                return saved;
+                        });
+                } catch (Exception dbEx) {
+                        log.error("❌ เกิดข้อผิดพลาดในการบันทึกคำขอลงฐานข้อมูล: {}", dbEx.getMessage());
+                        cleanUpNewlyUploadedFiles(newlyUploadedUrls);
+                        throw dbEx;
+                }
+        }
+
+        private void cleanUpNewlyUploadedFiles(List<String> urls) {
+                if (urls == null || urls.isEmpty()) {
+                        return;
+                }
+                log.warn("🧹 กำลังทำความสะอาดไฟล์ขยะบน Supabase Storage จำนวน {} ไฟล์...", urls.size());
+                for (String url : urls) {
+                        try {
+                                boolean deleted = supabaseStorageService.deleteFile(url);
+                                if (deleted) {
+                                        log.info("🗑️ ลบไฟล์ขยะสำเร็จ: {}", url);
+                                } else {
+                                        log.warn("⚠️ ไม่สามารถลบไฟล์ขยะได้: {}", url);
+                                }
+                        } catch (Exception ex) {
+                                log.error("❌ เกิดข้อผิดพลาดขณะพยายามลบไฟล์ขยะ {}: {}", url, ex.getMessage());
+                        }
+                }
+        }
+
+        private boolean isSupabaseStorageUrl(String url) {
+                return url != null && url.contains("/storage/v1/object/public/");
         }
 
         // =====================================================
@@ -468,8 +649,10 @@ public class AccountRequestService {
                         throw new RuntimeException("สถานะคำขอไม่ถูกต้องสำหรับการแจ้งผล");
                 }
 
-                // ตรวจสอบว่าเคยส่ง Notification status = SENT สำหรับคำขอนี้สำเร็จแล้วหรือไม่ (ป้องกันการส่งซ้ำ)
-                boolean alreadySent = notificationRepository.existsByAccountRequestRequestIdAndNotificationStatus(id, "SENT");
+                // ตรวจสอบว่าเคยส่ง Notification status = SENT สำหรับคำขอนี้สำเร็จแล้วหรือไม่
+                // (ป้องกันการส่งซ้ำ)
+                boolean alreadySent = notificationRepository.existsByAccountRequestRequestIdAndNotificationStatus(id,
+                                "SENT");
                 if (alreadySent) {
                         throw new RuntimeException("ได้ส่งอีเมลแจ้งผลการพิจารณาไปแล้ว");
                 }
@@ -525,7 +708,8 @@ public class AccountRequestService {
                         sentNotification.setNotificationStatus("SENT");
                         String message = isApproved
                                         ? "ส่งอีเมลแจ้งผลการอนุมัติสำเร็จ: " + request.getWellnessHubName()
-                                        : "ส่งอีเมลแจ้งผลการไม่อนุมัติสำเร็จ: " + request.getWellnessHubName() + " (" + request.getRejectionReason() + ")";
+                                        : "ส่งอีเมลแจ้งผลการไม่อนุมัติสำเร็จ: " + request.getWellnessHubName() + " ("
+                                                        + request.getRejectionReason() + ")";
                         if (message.length() > 255) {
                                 message = message.substring(0, 252) + "...";
                         }
@@ -542,7 +726,8 @@ public class AccountRequestService {
 
         @Transactional(readOnly = true)
         public List<AccountRequest> trackRequestStatus(String username) {
-                if (username == null || username.trim().isEmpty() || username.contains(" ") || username.matches(".*\\s+.*")) {
+                if (username == null || username.trim().isEmpty() || username.contains(" ")
+                                || username.matches(".*\\s+.*")) {
                         throw new RuntimeException("กรุณากรอกชื่อผู้ใช้งาน (Username)");
                 }
 
@@ -565,18 +750,22 @@ public class AccountRequestService {
                 }
 
                 String finalUrl = originalUrl.trim();
-                if (finalUrl.contains("goo.gl") || finalUrl.contains("maps.app.goo.gl") || finalUrl.contains("maps.app")) {
+                if (finalUrl.contains("goo.gl") || finalUrl.contains("maps.app.goo.gl")
+                                || finalUrl.contains("maps.app")) {
                         finalUrl = expandShortUrl(finalUrl);
                 }
 
-                // 1. หมุดสถานที่จริง (!3d, !4d) - ความสำคัญสูงสุด (เอาหมุดตัวสุดท้ายซึ่งเป็นสถานที่เป้าหมาย)
+                // 1. หมุดสถานที่จริง (!3d, !4d) - ความสำคัญสูงสุด
+                // (เอาหมุดตัวสุดท้ายซึ่งเป็นสถานที่เป้าหมาย)
                 Pattern patternPlace = Pattern.compile("!3d(-?\\d+(?:\\.\\d+)?)[^!]*!4d(-?\\d+(?:\\.\\d+)?)");
                 // 2. Query พิกัดระบุตรงๆ
-                Pattern patternQuery = Pattern.compile("[?&](?:q|query|ll|destination|daddr)=(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+                Pattern patternQuery = Pattern.compile(
+                                "[?&](?:q|query|ll|destination|daddr)=(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
                 // 3. Fallback: พิกัดกึ่งกลางกล้อง/หน้าจอ (@lat,lng)
                 Pattern patternAt = Pattern.compile("@(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
                 // 4. Direction/Search/Place path หรือระบุพิกัดใน path โดยตรง
-                Pattern patternDir = Pattern.compile("/(?:dir|search|place)/[^/]*/(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
+                Pattern patternDir = Pattern
+                                .compile("/(?:dir|search|place)/[^/]*/(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
                 Pattern patternDirect = Pattern.compile("/(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)");
 
                 Matcher matcherPlace = patternPlace.matcher(finalUrl);
@@ -638,7 +827,8 @@ public class AccountRequestService {
         }
 
         private String expandShortUrl(String shortenedUrl) {
-                if (shortenedUrl == null || (!shortenedUrl.startsWith("http://") && !shortenedUrl.startsWith("https://"))) {
+                if (shortenedUrl == null
+                                || (!shortenedUrl.startsWith("http://") && !shortenedUrl.startsWith("https://"))) {
                         return shortenedUrl;
                 }
                 String currentUrl = shortenedUrl.trim();
@@ -654,7 +844,8 @@ public class AccountRequestService {
                                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                                 connection.setInstanceFollowRedirects(false);
                                 connection.setRequestMethod("GET");
-                                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                                connection.setRequestProperty("User-Agent",
+                                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
                                 connection.setConnectTimeout(5000);
                                 connection.setReadTimeout(5000);
                                 connection.connect();
@@ -766,7 +957,8 @@ public class AccountRequestService {
                         throw new RuntimeException("ละติจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 17.0 ถึง 20.5)");
                 }
                 if (longitude < 98.0 || longitude > 100.0) {
-                        throw new RuntimeException("ลองจิจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 98.0 ถึง 100.0)");
+                        throw new RuntimeException(
+                                        "ลองจิจูดต้องอยู่ในพื้นที่จังหวัดเชียงใหม่ (ระหว่าง 98.0 ถึง 100.0)");
                 }
         }
 
@@ -775,6 +967,11 @@ public class AccountRequestService {
                         return;
                 }
                 String trimmed = dataUrl.trim();
+                // ถ้าเป็น HTTP / HTTPS URL อยู่แล้ว (เช่น เคยอัปโหลดขึ้น Supabase Storage แล้ว)
+                // อนุญาตผ่าน
+                if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                        return;
+                }
                 if (!trimmed.startsWith("data:")) {
                         throw new RuntimeException("รูปแบบไฟล์" + fieldLabel + "ไม่ถูกต้อง");
                 }
@@ -793,7 +990,12 @@ public class AccountRequestService {
                         }
                 }
                 if (!mimeAllowed) {
-                        throw new RuntimeException("ชนิดไฟล์" + fieldLabel + "ไม่รองรับ (รองรับเฉพาะ " + String.join(", ", allowedMimes) + ")");
+                        if (java.util.Arrays.asList(allowedMimes).contains("application/pdf")) {
+                                throw new RuntimeException(
+                                                "เอกสารต้องเป็นไฟล์ PDF หรือรูปภาพ (.png, .jpg, .jpeg) เท่านั้น");
+                        } else {
+                                throw new RuntimeException("ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น");
+                        }
                 }
 
                 String base64Data = trimmed.substring(commaIndex + 1);
@@ -818,7 +1020,8 @@ public class AccountRequestService {
                         if (list != null) {
                                 for (Object item : list) {
                                         if (item instanceof String dataUrl) {
-                                                validateBase64File(dataUrl, new String[] { "image/jpeg", "image/png" }, maxSizeBytes, "รูปภาพบรรยากาศ");
+                                                validateBase64File(dataUrl, ALLOWED_IMAGE_MIMES, maxSizeBytes,
+                                                                "รูปภาพบรรยากาศ");
                                         }
                                 }
                         }
@@ -854,15 +1057,21 @@ public class AccountRequestService {
                                                 if (nameObj != null && !nameObj.toString().trim().isEmpty()) {
                                                         String fileName = nameObj.toString().trim().toLowerCase();
                                                         if (!seenFileNames.add(fileName)) {
-                                                                throw new RuntimeException("ชื่อไฟล์เอกสารยืนยันสิทธิ์ต้องไม่ซ้ำกัน (พบไฟล์ซ้ำ: " + nameObj.toString().trim() + ")");
+                                                                throw new RuntimeException(
+                                                                                "ชื่อไฟล์เอกสารยืนยันสิทธิ์ต้องไม่ซ้ำกัน (พบไฟล์ซ้ำ: "
+                                                                                                + nameObj.toString()
+                                                                                                                .trim()
+                                                                                                + ")");
                                                         }
                                                 }
                                                 if (dataObj == null || dataObj.toString().trim().isEmpty()) {
-                                                        throw new RuntimeException("กรุณาแนบไฟล์เอกสารสำหรับ: " + label);
+                                                        throw new RuntimeException(
+                                                                        "กรุณาแนบไฟล์เอกสารสำหรับ: " + label);
                                                 }
                                                 validateBase64File(dataObj.toString(),
-                                                                new String[] { "application/pdf", "image/jpeg", "image/png" },
-                                                                10 * 1024 * 1024L, "เอกสารยืนยันสิทธิ์ (" + label + ")");
+                                                                ALLOWED_DOCUMENT_MIMES,
+                                                                10 * 1024 * 1024L,
+                                                                "เอกสารยืนยันสิทธิ์ (" + label + ")");
                                         }
                                 }
                         } catch (Exception e) {
@@ -872,7 +1081,7 @@ public class AccountRequestService {
                                 throw new RuntimeException("รูปแบบข้อมูลเอกสารยืนยันสิทธิ์ไม่ถูกต้อง");
                         }
                 } else {
-                        validateBase64File(trimmed, new String[] { "application/pdf", "image/jpeg", "image/png" },
+                        validateBase64File(trimmed, ALLOWED_DOCUMENT_MIMES,
                                         10 * 1024 * 1024L, "เอกสารยืนยันสิทธิ์");
                 }
         }

@@ -145,10 +145,8 @@ public class OfficialArticleService {
         }
         oldArticle.setArticleDetail(data.getArticleDetail());
 
-        // 3. articleCategory: ต้องถูกต้อง
-        if (data.getArticleCategory() == null || data.getArticleCategory().trim().isEmpty()) {
-            oldArticle.setArticleCategory("ข่าวประชาสัมพันธ์");
-        } else {
+        // 3. articleCategory: ถ้าส่งมาใหม่ให้ตรวจสอบความถูกต้องแล้วอัปเดต ถ้าไม่ส่งมาให้คงหมวดหมู่เดิมไว้
+        if (data.getArticleCategory() != null && !data.getArticleCategory().trim().isEmpty()) {
             String category = data.getArticleCategory().trim();
             if (!ALLOWED_CATEGORIES.contains(category)) {
                 throw new IllegalArgumentException("หมวดหมู่บทความไม่ถูกต้อง");
@@ -166,6 +164,9 @@ public class OfficialArticleService {
         if (data.getArticleImages() != null && !data.getArticleImages().trim().isEmpty()) {
             oldArticle.setArticleImages(supabaseStorageService.uploadGalleryBase64OrReturnUrl(data.getArticleImages(), "articles"));
         }
+
+        // 6. publishDate: อัปเดตเป็นเวลาปัจจุบันเมื่อมีการแก้ไข เพื่อให้แสดงอยู่บนสุดของรายการ
+        oldArticle.setPublishDate(LocalDateTime.now());
 
         return repository.save(oldArticle);
     }
@@ -217,7 +218,7 @@ public class OfficialArticleService {
         }
         if (imgStr.startsWith("data:")) {
             if (!imgStr.startsWith("data:image/png") && !imgStr.startsWith("data:image/jpeg") && !imgStr.startsWith("data:image/jpg")) {
-                throw new IllegalArgumentException("รองรับเฉพาะไฟล์รูปภาพ .png, .jpg, .jpeg เท่านั้น");
+                throw new IllegalArgumentException("ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น");
             }
         }
     }

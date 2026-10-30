@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -14,8 +15,21 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * ตารางเก็บข้อมูลคำขอยื่นขอสร้างบัญชีสถานประกอบการ (account_requests)
+ * 
+ * คำอธิบายการใส่ Database Index (@Index):
+ * เปรียบ Index เหมือน "สารบัญ / ดัชนีท้ายเล่ม" ช่วยให้ฐานข้อมูลกระโดดไปหาแถวที่ต้องการได้ทันที โดยไม่ต้องกวาดอ่านข้อมูลทีละแถวทั้งตาราง (Full Table Scan)
+ * 1. idx_account_requests_status: เพิ่มความเร็วเวลาแอดมินกรองดูสถานะคำขอ (เช่น ดูเฉพาะที่ PENDING, APPROVED, REJECTED)
+ * 2. idx_account_requests_username: เพิ่มความเร็วเวลาตรวจเช็คว่า Username นี้มีคนใช้งานหรือกำลังยื่นคำขออยู่หรือไม่
+ * 3. idx_account_requests_license_status: คอมโพสิตอินเด็กซ์ (Composite Index) เพิ่มความเร็วเวลาตรวจว่าเลขใบอนุญาตนี้มีคำขอสถานะ PENDING อยู่หรือไม่
+ */
 @Entity
-@Table(name = "account_requests")
+@Table(name = "account_requests", indexes = {
+    @Index(name = "idx_account_requests_status", columnList = "request_status"),
+    @Index(name = "idx_account_requests_username", columnList = "username"),
+    @Index(name = "idx_account_requests_license_status", columnList = "license_id, request_status")
+})
 @Data
 public class AccountRequest {
 

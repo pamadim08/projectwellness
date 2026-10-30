@@ -14,11 +14,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
+// @RequiredArgsConstructor
 @Slf4j
 public class DatabaseExportService {
 
     private final DataSource dataSource;
+
+    public DatabaseExportService(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     /**
      * ส่งออกโครงสร้างตาราง (DDL) และข้อมูลทั้งหมด (Data) ออกมาเป็นไฟล์ SQL
@@ -38,7 +42,7 @@ public class DatabaseExportService {
         }
 
         try (Connection conn = dataSource.getConnection();
-             PrintWriter out = new PrintWriter(new FileWriter(targetFile))) {
+             PrintWriter out = new PrintWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(targetFile), java.nio.charset.StandardCharsets.UTF_8))) {
 
             DatabaseMetaData metaData = conn.getMetaData();
             String dbProduct = metaData.getDatabaseProductName() + " " + metaData.getDatabaseProductVersion();
@@ -136,6 +140,238 @@ public class DatabaseExportService {
             log.error("❌ Database export failed: {}", e.getMessage(), e);
             result.put("status", "ERROR");
             result.put("message", "การส่งออกฐานข้อมูลล้มเหลว: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * ส่งออกเฉพาะข้อมูล (Data-Only INSERTS) โดยสามารถยกเว้นตารางที่ไม่ต้องการได้ (เช่น member)
+     * พร้อมปิด Trigger/FK ชั่วคราว และรีเซ็ต Sequence ให้อัตโนมัติ
+     * 
+     * @param targetFilePath เส้นทางไฟล์ปลายทาง (เช่น all_data.sql)
+     * @param excludedTables ชุดชื่อตารางที่ต้องการยกเว้น (เช่น Set.of("member"))
+     * @return สรุปผลการส่งออกข้อมูล
+     */
+    public Map<String, Object> exportDataOnlyToSql(String targetFilePath, Set<String> excludedTables) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        int totalTables = 0;
+        long totalRows = 0;
+        Map<String, Long> tableRowCounts = new LinkedHashMap<>();
+
+        File targetFile = new File(targetFilePath);
+        File parentDir = targetFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+
+        Set<String> excludedLower = new HashSet<>();
+        if (excludedTables != null) {
+            for (String ex : excludedTables) {
+                if (ex != null) {
+                    excludedLower.add(ex.trim().toLowerCase());
+                }
+            }
+        }
+
+        try (Connection conn = dataSource.getConnection();
+             PrintWriter out = new PrintWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(targetFile), java.nio.charset.StandardCharsets.UTF_8))) {
+
+            DatabaseMetaData metaData = conn.getMetaData();
+            String dbProduct = metaData.getDatabaseProductName() + " " + metaData.getDatabaseProductVersion();
+
+            out.println("-- =============================================================================");
+            out.println("-- WELLNESS ROUTE - DATA-ONLY EXPORT (EXCLUDING: " + String.join(", ", excludedLower) + ")");
+            out.println("-- Generated on: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            out.println("-- Database: " + dbProduct);
+            out.println("-- =============================================================================");
+            out.println();
+            out.println("BEGIN;");
+            out.println();
+            out.println("SET statement_timeout = 0;");
+            out.println("SET lock_timeout = 0;");
+            out.println("SET client_encoding = 'UTF8';");
+            out.println("SET standard_conforming_strings = on;");
+            out.println("SET check_function_bodies = false;");
+            out.println("SET client_min_messages = warning;");
+            out.println("-- ปิด Trigger และ Foreign Key ตรวจสอบชั่วคราวระหว่าง Import");
+            out.println("SET session_replication_role = 'replica';");
+            out.println();
+
+            // 1. ดึงรายชื่อตารางทั้งหมดใน public schema
+            List<String> tables = new ArrayList<>();
+            try (ResultSet rs = metaData.getTables(null, "public", "%", new String[]{"TABLE"})) {
+                while (rs.next()) {
+                    String tableName = rs.getString("TABLE_NAME");
+                    if (!tableName.startsWith("spatial_ref_sys") && !tableName.startsWith("_")) {
+                        if (!excludedLower.contains(tableName.toLowerCase())) {
+                            tables.add(tableName);
+                        }
+                    }
+                }
+            }
+
+            Collections.sort(tables);
+            totalTables = tables.size();
+
+            // 2. สร้างข้อมูล INSERT DATA สำหรับแต่ละตาราง
+            out.println("-- =============================================================================");
+            out.println("-- 1. DATA INSERTS");
+            out.println("-- =============================================================================");
+            out.println();
+
+            for (String tableName : tables) {
+                long rowsInTable = exportTableData(conn, tableName, out);
+                tableRowCounts.put(tableName, rowsInTable);
+                totalRows += rowsInTable;
+            }
+
+            // 3. รีเซ็ต Sequence
+            out.println("-- =============================================================================");
+            out.println("-- 2. RESET SEQUENCES (AUTO-INCREMENT COUNTERS)");
+            out.println("-- =============================================================================");
+            out.println();
+
+            for (String tableName : tables) {
+                exportSequenceReset(conn, metaData, tableName, out);
+            }
+
+            out.println();
+            out.println("-- เปิดการตรวจสอบ Trigger และ Foreign Key กลับสู่ปกติ");
+            out.println("SET session_replication_role = 'origin';");
+            out.println();
+            out.println("COMMIT;");
+            out.println();
+            out.println("-- =============================================================================");
+            out.println("-- DATA-ONLY EXPORT COMPLETED SUCCESSFULLY (" + totalRows + " rows exported)");
+            out.println("-- =============================================================================");
+
+            result.put("status", "SUCCESS");
+            result.put("message", "ส่งออกข้อมูลไปยัง " + targetFile.getAbsolutePath() + " สำเร็จเรียบร้อย");
+            result.put("filePath", targetFile.getAbsolutePath());
+            result.put("fileSizeBytes", targetFile.length());
+            result.put("totalTables", totalTables);
+            result.put("totalRows", totalRows);
+            result.put("tables", tableRowCounts);
+
+            log.info("✅ Data-only export completed successfully to {}: {} tables, {} rows",
+                    targetFile.getAbsolutePath(), totalTables, totalRows);
+
+        } catch (Exception e) {
+            log.error("❌ Data-only export failed: {}", e.getMessage(), e);
+            result.put("status", "ERROR");
+            result.put("message", "การส่งออกข้อมูลล้มเหลว: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * ส่งออกเฉพาะข้อมูล (Data-Only INSERTS) ของเฉพาะตารางที่ระบุเท่านั้น
+     * พร้อมปิด Trigger/FK ชั่วคราว และรีเซ็ต Sequence ให้อัตโนมัติ
+     * 
+     * @param targetFilePath เส้นทางไฟล์ปลายทาง (เช่น all_data.sql)
+     * @param targetTables รายชื่อตารางที่ต้องการส่งออกข้อมูล
+     * @return สรุปผลการส่งออกข้อมูล
+     */
+    public Map<String, Object> exportSelectedTablesDataToSql(String targetFilePath, List<String> targetTables) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        int totalTables = 0;
+        long totalRows = 0;
+        Map<String, Long> tableRowCounts = new LinkedHashMap<>();
+
+        File targetFile = new File(targetFilePath);
+        File parentDir = targetFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+
+        try (Connection conn = dataSource.getConnection();
+             PrintWriter out = new PrintWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(targetFile), java.nio.charset.StandardCharsets.UTF_8))) {
+
+            DatabaseMetaData metaData = conn.getMetaData();
+            String dbProduct = metaData.getDatabaseProductName() + " " + metaData.getDatabaseProductVersion();
+
+            out.println("-- =============================================================================");
+            out.println("-- WELLNESS ROUTE - DATA-ONLY EXPORT (SELECTED " + targetTables.size() + " TABLES)");
+            out.println("-- Generated on: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            out.println("-- Database: " + dbProduct);
+            out.println("-- Tables included: " + String.join(", ", targetTables));
+            out.println("-- =============================================================================");
+            out.println();
+            out.println("BEGIN;");
+            out.println();
+            out.println("SET statement_timeout = 0;");
+            out.println("SET lock_timeout = 0;");
+            out.println("SET client_encoding = 'UTF8';");
+            out.println("SET standard_conforming_strings = on;");
+            out.println("SET check_function_bodies = false;");
+            out.println("SET client_min_messages = warning;");
+            out.println("-- ปิด Trigger และ Foreign Key ตรวจสอบชั่วคราวระหว่าง Import");
+            out.println("SET session_replication_role = 'replica';");
+            out.println();
+
+            // 1. ตรวจสอบว่าตารางที่ระบุมีอยู่ในฐานข้อมูลจริง
+            List<String> actualTables = new ArrayList<>();
+            for (String requestedTable : targetTables) {
+                try (ResultSet rs = metaData.getTables(null, "public", requestedTable, new String[]{"TABLE"})) {
+                    if (rs.next()) {
+                        actualTables.add(requestedTable);
+                    } else {
+                        log.warn("⚠️ Table '{}' not found in public schema", requestedTable);
+                    }
+                }
+            }
+
+            totalTables = actualTables.size();
+
+            // 2. สร้างข้อมูล INSERT DATA สำหรับแต่ละตาราง
+            out.println("-- =============================================================================");
+            out.println("-- 1. DATA INSERTS");
+            out.println("-- =============================================================================");
+            out.println();
+
+            for (String tableName : actualTables) {
+                long rowsInTable = exportTableData(conn, tableName, out);
+                tableRowCounts.put(tableName, rowsInTable);
+                totalRows += rowsInTable;
+            }
+
+            // 3. รีเซ็ต Sequence
+            out.println("-- =============================================================================");
+            out.println("-- 2. RESET SEQUENCES (AUTO-INCREMENT COUNTERS)");
+            out.println("-- =============================================================================");
+            out.println();
+
+            for (String tableName : actualTables) {
+                exportSequenceReset(conn, metaData, tableName, out);
+            }
+
+            out.println();
+            out.println("-- เปิดการตรวจสอบ Trigger และ Foreign Key กลับสู่ปกติ");
+            out.println("SET session_replication_role = 'origin';");
+            out.println();
+            out.println("COMMIT;");
+            out.println();
+            out.println("-- =============================================================================");
+            out.println("-- DATA-ONLY EXPORT COMPLETED SUCCESSFULLY (" + totalRows + " rows exported across " + totalTables + " tables)");
+            out.println("-- =============================================================================");
+
+            result.put("status", "SUCCESS");
+            result.put("message", "ส่งออกข้อมูลเฉพาะตารางที่เลือกไปยัง " + targetFile.getAbsolutePath() + " สำเร็จเรียบร้อย");
+            result.put("filePath", targetFile.getAbsolutePath());
+            result.put("fileSizeBytes", targetFile.length());
+            result.put("totalTables", totalTables);
+            result.put("totalRows", totalRows);
+            result.put("tables", tableRowCounts);
+
+            log.info("✅ Selected tables data-only export completed successfully to {}: {} tables, {} rows",
+                    targetFile.getAbsolutePath(), totalTables, totalRows);
+
+        } catch (Exception e) {
+            log.error("❌ Selected tables data-only export failed: {}", e.getMessage(), e);
+            result.put("status", "ERROR");
+            result.put("message", "การส่งออกข้อมูลล้มเหลว: " + e.getMessage());
         }
 
         return result;
@@ -307,14 +543,24 @@ public class DatabaseExportService {
 
     private void exportSequenceReset(Connection conn, DatabaseMetaData metaData, String tableName, PrintWriter out) {
         try {
-            // ค้นหาคอลัมน์ที่เป็น Primary Key / Serial เพื่อ reset sequence
+            // ค้นหาคอลัมน์ที่เป็น Primary Key และตรวจสอบว่ามี sequence ผูกอยู่จริงหรือไม่
             try (ResultSet pkRs = metaData.getPrimaryKeys(null, "public", tableName)) {
                 if (pkRs.next()) {
                     String pkCol = pkRs.getString("COLUMN_NAME");
-                    out.println("SELECT setval(pg_get_serial_sequence('public.\"" + tableName + "\"', '" + pkCol + "'), " +
-                            "COALESCE((SELECT MAX(\"" + pkCol + "\") FROM public.\"" + tableName + "\"), 1), " +
-                            "(SELECT COUNT(*) > 0 FROM public.\"" + tableName + "\")) " +
-                            "WHERE pg_get_serial_sequence('public.\"" + tableName + "\"', '" + pkCol + "') IS NOT NULL;");
+                    String checkSeqSql = "SELECT pg_get_serial_sequence('public.\"" + tableName + "\"', '" + pkCol + "')";
+                    try (Statement stmt = conn.createStatement();
+                         ResultSet seqRs = stmt.executeQuery(checkSeqSql)) {
+                        if (seqRs.next()) {
+                            String seqName = seqRs.getString(1);
+                            // ออกคำสั่ง setval เฉพาะคอลัมน์ที่เป็น Serial / Auto-Increment (Sequence) เท่านั้น
+                            if (seqName != null && !seqName.trim().isEmpty()) {
+                                out.println("SELECT setval(pg_get_serial_sequence('public.\"" + tableName + "\"', '" + pkCol + "'), " +
+                                        "COALESCE((SELECT MAX(\"" + pkCol + "\") FROM public.\"" + tableName + "\"), 1), " +
+                                        "(SELECT COUNT(*) > 0 FROM public.\"" + tableName + "\")) " +
+                                        "WHERE pg_get_serial_sequence('public.\"" + tableName + "\"', '" + pkCol + "') IS NOT NULL;");
+                            }
+                        }
+                    }
                 }
             }
         } catch (Exception ignored) {

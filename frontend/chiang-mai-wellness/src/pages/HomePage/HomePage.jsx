@@ -8,8 +8,10 @@ import {
   Newspaper,
   RefreshCw,
   Search,
+  Sparkles,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import heroImage from "../../assets/logo/hero.png";
 import "./HomePage.css";
 
 const API_BASE_URL = "http://localhost:8080/api";
@@ -30,8 +32,7 @@ const HERO_SLIDES = [
     ),
     description:
       "ค้นหาเส้นทางท่องเที่ยวเชิงสุขภาพที่รวมจุดแวะ กิจกรรม และประสบการณ์น่าสนใจไว้ให้คุณวางแผนการเดินทางได้ง่ายในที่เดียว",
-    image:
-      "https://images.openai.com/static-rsc-4/P6Ohmbq-7S8SX2yJ90umTtkPikc2cWUqf8npFqukbxnu1FyM9050Z-FFvhvzTDOY9DJSO6pxR-rfMnLxnjPtCw2grk9B53PhanSvHAvsG9H-YDB7M2V6mJAL7HcffY-bkRDB2kGID8JmAnLWgVitORQDFXw6T7LCUO_fPz1Vl4et0TPSssGWaTeGcMfyUsqd?purpose=fullsize",
+    image: heroImage || "http://localhost:8080/uploads/logo/hero.png",
     link: "#recommended-routes",
     buttonText: "สำรวจเส้นทางแนะนำ",
   },
@@ -363,26 +364,9 @@ export default function HomePage() {
           aria-hidden="true"
         />
 
-        <div className="homepage-container homepage-container--wide homepage-hero-v2__shell">
-          <div className="homepage-hero-v2__canvas">
-            <div className="homepage-hero-v2__media">
-              <img
-                src={heroSlide.image}
-                alt=""
-                className="homepage-hero-v2__image"
-              />
-
-              <div
-                className="homepage-hero-v2__image-overlay"
-                aria-hidden="true"
-              />
-
-              <div className="homepage-hero-v2__location">
-                <MapPin aria-hidden="true" />
-                <span>Chiang Mai, Thailand</span>
-              </div>
-            </div>
-
+        <div className="homepage-container homepage-hero-v2__shell">
+          <div className="homepage-hero-v2__grid">
+            {/* ฝั่งซ้าย: ข้อมูลและปุ่มแอ็กชัน */}
             <div className="homepage-hero-v2__content-card">
               <h1>{heroSlide.title}</h1>
 
@@ -390,10 +374,33 @@ export default function HomePage() {
                 {heroSlide.description}
               </p>
 
-              <a href={heroSlide.link} className="homepage-hero-v2__cta">
-                <span>{heroSlide.buttonText}</span>
-                <ArrowRight aria-hidden="true" />
-              </a>
+              <div className="homepage-hero-v2__actions">
+                <a href={heroSlide.link} className="homepage-hero-v2__cta">
+                  <span>{heroSlide.buttonText}</span>
+                  <ArrowRight aria-hidden="true" />
+                </a>
+              </div>
+            </div>
+
+            {/* ฝั่งขวา: รูปภาพสัดส่วนธรรมชาติ คมชัด ไม่ยืด */}
+            <div className="homepage-hero-v2__media-frame">
+              <div className="homepage-hero-v2__media">
+                <img
+                  src={heroSlide.image}
+                  alt="เชียงใหม่ เวลเนส รูท"
+                  className="homepage-hero-v2__image"
+                />
+
+                <div
+                  className="homepage-hero-v2__image-overlay"
+                  aria-hidden="true"
+                />
+
+                <div className="homepage-hero-v2__location">
+                  <MapPin aria-hidden="true" />
+                  <span>Chiang Mai, Thailand</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -488,8 +495,17 @@ export default function HomePage() {
         <div className="homepage-container">
           <div className="homepage-section__header">
             <div>
-              <div className="homepage-section__kicker">
-                <span className="homepage-section__kicker-bar" />
+              <div className="homepage-section__kicker homepage-section__kicker--ribbon">
+                <svg
+                  className="homepage-section__kicker-ribbon-icon"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M5 2h14a1 1 0 0 1 1 1v19a1 1 0 0 1-1.6.8L12 17.5l-6.4 5.3A1 1 0 0 1 4 22V3a1 1 0 0 1 1-1z" />
+                </svg>
                 <span className="homepage-section__kicker-label">
                   Recommended Wellness Routes
                 </span>
@@ -503,14 +519,13 @@ export default function HomePage() {
               </p>
             </div>
 
-            <a
-              href="#recommended-routes"
+            <Link
+              to="/wellness-routes"
               className="homepage-section__link homepage-section__link--pill"
-              onClick={(event) => event.preventDefault()}
             >
               <span>ดูเส้นทางทั้งหมด</span>
               <ArrowRight aria-hidden="true" />
-            </a>
+            </Link>
           </div>
 
           {routesLoading && (
@@ -764,7 +779,7 @@ export default function HomePage() {
         id="latest-articles"
         className="homepage-section homepage-section--articles"
       >
-        <div className="homepage-container homepage-container--wide">
+        <div className="homepage-container">
           <div className="homepage-section__header">
             <div>
               <div className="homepage-section__kicker">
@@ -784,7 +799,7 @@ export default function HomePage() {
 
             <Link
               to="/articles"
-              className="homepage-section__link"
+              className="homepage-section__link homepage-section__link--pill"
             >
               <span>ดูบทความทั้งหมด</span>
               <ArrowRight aria-hidden="true" />
@@ -846,41 +861,46 @@ export default function HomePage() {
 
                 return (
                   <article key={articleId} className="homepage-article-card">
-                    <Link
-                      to={`/articles/${articleId}`}
-                      className="homepage-article-card__image"
-                    >
-                      {articleImage ? (
-                        <img
-                          src={articleImage}
-                          alt={articleTitle}
-                          onError={(event) => {
-                            event.currentTarget.classList.add(
-                              "homepage-article-card__image-hidden"
-                            );
-                          }}
-                        />
-                      ) : (
-                        <Newspaper aria-hidden="true" />
-                      )}
-                    </Link>
+                    <div className="homepage-article-card__media">
+                      <Link
+                        to={`/articles/${articleId}`}
+                        className="homepage-article-card__image-link"
+                        tabIndex="-1"
+                        aria-hidden="true"
+                      >
+                        {articleImage ? (
+                          <img
+                            src={articleImage}
+                            alt=""
+                            className="homepage-article-card__image"
+                            onError={(event) => {
+                              event.currentTarget.classList.add(
+                                "homepage-article-card__image-hidden"
+                              );
+                            }}
+                          />
+                        ) : (
+                          <div className="homepage-article-card__fallback">
+                            <Newspaper aria-hidden="true" />
+                          </div>
+                        )}
+                      </Link>
+
+                      <span className="homepage-article-card__floating-badge">
+                        {article.articleCategory || "บทความสุขภาพ"}
+                      </span>
+                    </div>
 
                     <div className="homepage-article-card__body">
-                      <div className="homepage-article-card__meta-row">
-                        <p className="homepage-article-card__category">
-                          {article.articleCategory || "บทความสุขภาพ"}
-                        </p>
-
-                        <p className="homepage-article-card__date">
-                          <CalendarDays aria-hidden="true" />
-                          {formatDate(publishedDate)}
-                        </p>
+                      <div className="homepage-article-card__date">
+                        <CalendarDays aria-hidden="true" />
+                        <span>{formatDate(publishedDate)}</span>
                       </div>
 
-                      <h3>
+                      <h3 className="homepage-article-card__title">
                         <Link
                           to={`/articles/${articleId}`}
-                          style={{ color: "inherit", textDecoration: "none" }}
+                          className="homepage-article-card__title-link"
                         >
                           {articleTitle}
                         </Link>
@@ -893,10 +913,11 @@ export default function HomePage() {
 
                       <Link
                         to={`/articles/${articleId}`}
-                        className="homepage-article-card__link"
+                        className="homepage-article-card__action"
+                        aria-label={`อ่านบทความ: ${articleTitle}`}
                       >
                         <span>อ่านบทความ</span>
-                        <ArrowRight />
+                        <ArrowRight aria-hidden="true" />
                       </Link>
                     </div>
                   </article>

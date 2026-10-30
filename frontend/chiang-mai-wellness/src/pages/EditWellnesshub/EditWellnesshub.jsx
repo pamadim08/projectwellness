@@ -96,6 +96,7 @@ const EditWellnessHub = () => {
 
   const [formData, setFormData] = useState({
     licenseId: "",
+    username: "",
     wellnessHubName: "",
     categoryId: "",
     districtId: "",
@@ -198,13 +199,13 @@ const EditWellnessHub = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
     if (!allowedTypes.includes(file.type)) {
       setStatusModal({
         isOpen: true,
         type: "warning",
         title: "ประเภทไฟล์ไม่ถูกต้อง",
-        message: "รองรับเฉพาะไฟล์รูปภาพ .jpg, .jpeg, .png และ .webp เท่านั้น",
+        message: "ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น",
       });
       e.target.value = "";
       return;
@@ -696,7 +697,7 @@ const EditWellnessHub = () => {
                   <div className="gov-image-guidelines">
                     <h4>อัปโหลดรูปภาพหน้าปก</h4>
                     <p>
-                      รองรับไฟล์ภาพนามสกุล .JPG, .JPEG, .PNG หรือ .WEBP ขนาดไม่เกิน 20 MB (แนะนำภาพแนวนอนสัดส่วน 16:9 เพื่อความสวยงาม)
+                      รองรับไฟล์ภาพนามสกุล .png, .jpg หรือ .jpeg ขนาดไม่เกิน 20 MB (แนะนำภาพแนวนอนสัดส่วน 16:9 เพื่อความสวยงาม)
                     </p>
                   </div>
 
@@ -707,7 +708,7 @@ const EditWellnessHub = () => {
                       <input
                         id="cover-image-input"
                         type="file"
-                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                         onChange={handleImageChange}
                         style={{ display: "none" }}
                       />

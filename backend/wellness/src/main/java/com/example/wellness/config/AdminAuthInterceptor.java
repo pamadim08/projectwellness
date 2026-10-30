@@ -12,7 +12,8 @@ import java.io.IOException;
 public class AdminAuthInterceptor implements HandlerInterceptor {
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+            throws Exception {
         String method = request.getMethod();
         if ("OPTIONS".equalsIgnoreCase(method)) {
             return true;
@@ -22,8 +23,8 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
         String contextPath = request.getContextPath();
         String path = (contextPath != null && !contextPath.isEmpty()) ? uri.substring(contextPath.length()) : uri;
 
-        // 1. Allow Login and public maintenance/migration endpoints
-        if ("/api/admin/login".equals(path) || "/api/admin/migrate-storage".equals(path) || "/api/admin/export-database".equals(path)) {
+        // 1. Allow Login endpoint
+        if ("/api/admin/login".equals(path)) {
             return true;
         }
 
@@ -61,12 +62,13 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
     }
 
     private boolean isAdminOnlyEndpoint(String method, String path) {
-        // /api/admin/logout and /api/admin/dashboard/**
+        // /api/admin/** (all admin endpoints require login except /api/admin/login)
         if (path.startsWith("/api/admin/")) {
-            return !"/api/admin/login".equals(path) && !"/api/admin/migrate-storage".equals(path) && !"/api/admin/export-database".equals(path);
+            return !"/api/admin/login".equals(path);
         }
 
-        // /api/account-requests: GET /api/account-requests, GET /api/account-requests/{id}, PUT /approve, PUT /reject, POST /{id}/notify
+        // /api/account-requests: GET /api/account-requests, GET
+        // /api/account-requests/{id}, PUT /approve, PUT /reject, POST /{id}/notify
         // (Public: /api/account-requests/track and POST /api/account-requests)
         if (path.startsWith("/api/account-requests")) {
             if ("GET".equalsIgnoreCase(method)) {
@@ -85,13 +87,15 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
         }
 
         // /api/main-routes:
-        // Admin-only: GET /api/main-routes (root list), POST, PUT, DELETE, POST /upload-image
+        // Admin-only: GET /api/main-routes (root list), POST, PUT, DELETE, POST
+        // /upload-image
         // Public: GET /api/main-routes/{id}, GET /api/main-routes/user/**
         if ("/api/main-routes".equals(path) && "GET".equalsIgnoreCase(method)) {
             return true;
         }
         if (path.startsWith("/api/main-routes")) {
-            if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method)) {
+            if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)
+                    || "DELETE".equalsIgnoreCase(method)) {
                 return true;
             }
             return false;
@@ -100,18 +104,21 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
         // /api/articles: POST, PUT, DELETE
         // (Public: GET /api/articles, GET /api/articles/{id})
         if (path.startsWith("/api/articles")) {
-            if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method)) {
+            if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)
+                    || "DELETE".equalsIgnoreCase(method)) {
                 return true;
             }
             return false;
         }
 
-        // /api/wellness-hubs: GET /next-license-id, POST /api/wellness-hubs, POST /api/wellness-hubs/search, DELETE /api/wellness-hubs/{id}
+        // /api/wellness-hubs: GET /next-license-id, POST /api/wellness-hubs, POST
+        // /api/wellness-hubs/search, DELETE /api/wellness-hubs/{id}
         if (path.startsWith("/api/wellness-hubs")) {
             if ("/api/wellness-hubs/next-license-id".equals(path)) {
                 return true;
             }
-            if ("POST".equalsIgnoreCase(method) && ("/api/wellness-hubs".equals(path) || "/api/wellness-hubs/search".equals(path))) {
+            if ("POST".equalsIgnoreCase(method)
+                    && ("/api/wellness-hubs".equals(path) || "/api/wellness-hubs/search".equals(path))) {
                 return true;
             }
             if ("DELETE".equalsIgnoreCase(method)) {

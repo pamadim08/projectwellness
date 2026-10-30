@@ -4,27 +4,27 @@
    ========================================================================== */
 
 :root {
-  --search-green-950: #06231d;
-  --search-green-900: #082b24;
-  --search-green-800: #075143;
-  --search-green-700: #286d57;
-  --search-green-600: #3d8061;
-  --search-green-500: #519b67;
-  --search-green-300: #a7d7b5;
+  --search-green-950: #0f3d26;
+  --search-green-900: #0f3d26;
+  --search-green-800: #1b5336;
+  --search-green-700: #25704a;
+  --search-green-600: #2e8b5c;
+  --search-green-500: #38a169;
+  --search-green-300: #86efac;
 
-  --search-orange-500: #e45c10;
-  --search-amber-400: #f2b635;
+  --search-orange-500: #f97316;
+  --search-amber-400: #fbbf24;
 
-  --search-bg: #f6f4f1;
+  --search-bg: #f3f9f4;
   --search-surface: #ffffff;
-  --search-soft: #f0ede8;
+  --search-soft: #f0fdf4;
 
-  --search-border: #ece2ce;
-  --search-border-soft: #e2e8f0;
+  --search-border: #dbeef0;
+  --search-border-soft: #e2ece6;
 
-  --search-text: #173229;
-  --search-text-soft: #56635b;
-  --search-text-muted: #849288;
+  --search-text: #153826;
+  --search-text-soft: #4a6354;
+  --search-text-muted: #6b8074;
 }
 
 /* ==========================================================================
@@ -35,7 +35,7 @@
   min-height: 100vh;
   color: var(--search-text);
   background: var(--search-bg);
-  font-family: "Sarabun", sans-serif;
+  font-family: "Anuphan", "Sarabun", sans-serif;
   padding-bottom: 80px;
 }
 
@@ -60,43 +60,47 @@
   overflow: hidden;
   padding: 55px 0 65px;
   background:
-    radial-gradient(circle at 0% 0%, rgba(228, 92, 16, 0.22), transparent 35%),
-    radial-gradient(circle at 100% 20%, rgba(242, 182, 53, 0.18), transparent 35%),
-    linear-gradient(126deg, #082b24 0%, #075143 60%, #286d57 100%);
+    radial-gradient(circle at 80% 10%, rgba(251, 191, 36, 0.3), transparent 30%),
+    radial-gradient(circle at 10% 90%, rgba(132, 204, 22, 0.25), transparent 35%),
+    linear-gradient(135deg, #1b5336 0%, #25704a 48%, #38a169 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .search-results-hero::before {
   content: "";
   position: absolute;
-  top: -110px;
-  left: -120px;
+  top: -80px;
+  left: -80px;
   z-index: -1;
-  width: 360px;
-  height: 360px;
+  width: 320px;
+  height: 320px;
   border-radius: 50%;
-  background: radial-gradient(circle,
-      rgba(233, 109, 43, 0.85) 0%,
-      rgba(233, 109, 43, 0.4) 40%,
-      transparent 72%);
-  filter: blur(20px);
+  background: radial-gradient(
+    circle,
+    rgba(249, 115, 22, 0.45) 0%,
+    rgba(251, 191, 36, 0.25) 55%,
+    transparent 75%
+  );
+  filter: blur(40px);
   pointer-events: none;
 }
 
 .search-results-hero::after {
   content: "";
   position: absolute;
-  right: -120px;
-  bottom: -150px;
+  right: -80px;
+  bottom: -100px;
   z-index: -1;
-  width: 420px;
-  height: 420px;
+  width: 380px;
+  height: 380px;
   border-radius: 50%;
-  background: radial-gradient(circle,
-      rgba(242, 182, 53, 0.8) 0%,
-      rgba(242, 182, 53, 0.35) 45%,
-      transparent 75%);
-  filter: blur(24px);
+  background: radial-gradient(
+    circle,
+    rgba(163, 230, 53, 0.4) 0%,
+    rgba(56, 161, 105, 0.2) 60%,
+    transparent 75%
+  );
+  filter: blur(40px);
   pointer-events: none;
 }
 

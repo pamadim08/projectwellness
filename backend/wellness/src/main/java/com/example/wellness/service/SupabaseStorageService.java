@@ -16,10 +16,10 @@ import java.util.*;
 @Slf4j
 public class SupabaseStorageService {
 
-    @Value("${supabase.url:https://mzuwvqwcymwfyjdirhst.supabase.co}")
+    @Value("${supabase.url:https://csljpnypebwjgvoygqov.supabase.co}")
     private String supabaseUrl;
 
-    @Value("${supabase.key:sb_publishable_BxMcrCpeUfrOFVnhzu-63w_t4ICY1k9}")
+    @Value("${supabase.key:sb_publishable_iPzf-LZQfAiXoWK-HRfpMg_P7WHBfPS}")
     private String supabaseKey;
 
     @Value("${supabase.bucket:WELLNESS-IMAGES}")
@@ -103,22 +103,34 @@ public class SupabaseStorageService {
             }
         }
 
-        // ตรวจหานามสกุลไฟล์จาก MIME Type
-        if (contentType.equalsIgnoreCase("image/png")) {
+        // ตรวจหานามสกุลไฟล์จาก MIME Type (เฉพาะ .png, .jpg, .jpeg และ .pdf สำหรับเอกสารยืนยันสิทธิ์)
+        String lowerMime = contentType.toLowerCase();
+        if (lowerMime.contains("png")) {
             extension = ".png";
-        } else if (contentType.equalsIgnoreCase("image/jpeg") || contentType.equalsIgnoreCase("image/jpg")) {
+            contentType = "image/png";
+        } else if (lowerMime.contains("jpeg") || lowerMime.contains("jpg")) {
             extension = ".jpg";
-        } else if (contentType.equalsIgnoreCase("image/webp")) {
-            extension = ".webp";
-        } else if (contentType.equalsIgnoreCase("application/pdf")) {
+            contentType = "image/jpeg";
+        } else if (lowerMime.contains("pdf")) {
             extension = ".pdf";
+            contentType = "application/pdf";
+        } else {
+            throw new IllegalArgumentException("ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น");
         }
 
         try {
             byte[] decoded = Base64.getDecoder().decode(base64Content.replaceAll("\\s+", ""));
+            long maxBytes = extension.equals(".pdf") ? (10L * 1024L * 1024L) : (20L * 1024L * 1024L);
+            if (decoded.length > maxBytes) {
+                long maxMb = maxBytes / (1024 * 1024);
+                throw new IllegalArgumentException("ขนาดไฟล์ต้องไม่เกิน " + maxMb + " MB");
+            }
             String filename = UUID.randomUUID() + extension;
             return uploadBytes(decoded, contentType, folder, filename);
         } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && (e.getMessage().contains("ต้องเป็นไฟล์") || e.getMessage().contains("ขนาดไฟล์"))) {
+                throw e;
+            }
             log.warn("Invalid base64 string, keeping raw value: {}", e.getMessage());
             return trimmed;
         }
@@ -202,26 +214,142 @@ public class SupabaseStorageService {
         }
     }
 
+
+
     /**
-     * อัปโหลด MultipartFile ไปยัง Supabase Storage
-     * @param file MultipartFile จาก Form
-     * @param folder โฟลเดอร์ปลายทาง
-     * @return Public URL
+     * ลบไฟล์ออกจาก Supabase Storage Bucket ตาม Public URL
+     * @param publicUrl URL เต็มของไฟล์บน Supabase Storage
+     * @return true หากลบสำเร็จ
      */
-    public String uploadMultipartFile(MultipartFile file, String folder) throws IOException {
+    public boolean deleteFile(String publicUrl) {
+        if (publicUrl == null || publicUrl.trim().isEmpty()) {
+            return false;
+        }
+
+        String marker = "/storage/v1/object/public/" + supabaseBucket + "/";
+        int markerIdx = publicUrl.indexOf(marker);
+        if (markerIdx == -1) {
+            return false;
+        }
+
+        String fullPath = publicUrl.substring(markerIdx + marker.length());
+        String cleanUrl = supabaseUrl.endsWith("/") ? supabaseUrl.substring(0, supabaseUrl.length() - 1) : supabaseUrl;
+        String deleteEndpoint = cleanUrl + "/storage/v1/object/" + supabaseBucket + "/" + fullPath;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("apikey", supabaseKey);
+        headers.set("Authorization", "Bearer " + supabaseKey);
+
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(deleteEndpoint, HttpMethod.DELETE, entity, String.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("🗑️ Deleted file from Supabase Storage: {}", fullPath);
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to delete file from Supabase Storage {}: {}", fullPath, e.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * ลบไฟล์หลายรายการออกจาก Supabase Storage
+     * @param publicUrls รายการ URL ที่ต้องการลบ
+     */
+    public void deleteFiles(Collection<String> publicUrls) {
+        if (publicUrls == null || publicUrls.isEmpty()) {
+            return;
+        }
+        for (String url : publicUrls) {
+            deleteFile(url);
+        }
+    }
+
+    /**
+     * สกัดรายการ Supabase Public URLs จาก JSON Array หรือ String เดี่ยว
+     * @param jsonOrUrl ข้อความ URL หรือ JSON String
+     * @return รายการ URL ของ Supabase ทั้งหมดที่พบ
+     */
+    public List<String> extractSupabaseUrls(String jsonOrUrl) {
+        if (jsonOrUrl == null || jsonOrUrl.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> urls = new ArrayList<>();
+        String marker = "/storage/v1/object/public/" + supabaseBucket + "/";
+        String trimmed = jsonOrUrl.trim();
+        if (!trimmed.startsWith("[")) {
+            if (trimmed.contains(marker)) {
+                urls.add(trimmed);
+            }
+            return urls;
+        }
+        try {
+            List<?> list = objectMapper.readValue(trimmed, List.class);
+            for (Object item : list) {
+                if (item instanceof String str && str.contains(marker)) {
+                    urls.add(str);
+                } else if (item instanceof Map<?, ?> map) {
+                    Object data = map.get("data");
+                    if (data != null && data.toString().contains(marker)) {
+                        urls.add(data.toString().trim());
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return urls;
+    }
+
+    /**
+     * อัปโหลดไฟล์ MultipartFile ตรงไปยัง Supabase Storage Bucket
+     * ตรวจสอบชนิดไฟล์ (เฉพาะ .png, .jpg, .jpeg) และขนาดไฟล์ไม่เกิน 20 MB
+     * @param file ไฟล์ที่รับมาจาก Request
+     * @param folder โฟลเดอร์ปลายทาง เช่น routes, articles
+     * @return Public URL ของไฟล์บน Supabase Storage
+     */
+    public String uploadMultipartFile(MultipartFile file, String folder) {
         if (file == null || file.isEmpty()) {
             return null;
         }
 
-        String originalName = file.getOriginalFilename();
-        String extension = ".jpg";
-        if (originalName != null && originalName.contains(".")) {
-            extension = originalName.substring(originalName.lastIndexOf('.'));
+        // ตรวจสอบขนาดไฟล์ไม่เกิน 20 MB
+        long maxBytes = 20L * 1024L * 1024L;
+        if (file.getSize() > maxBytes) {
+            throw new IllegalArgumentException("ขนาดไฟล์รูปภาพต้องไม่เกิน 20 MB");
+        }
+
+        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename().trim() : "";
+        String extension = "";
+        int dot = originalFilename.lastIndexOf('.');
+        if (dot >= 0) {
+            extension = originalFilename.substring(dot).toLowerCase();
+        }
+
+        String contentType = file.getContentType() != null ? file.getContentType().toLowerCase() : "";
+
+        boolean isAllowedExt = extension.equals(".png") || extension.equals(".jpg") || extension.equals(".jpeg");
+        boolean isAllowedMime = contentType.equals("image/jpeg") || contentType.equals("image/jpg") || contentType.equals("image/png");
+
+        if (!isAllowedExt && !isAllowedMime) {
+            throw new IllegalArgumentException("ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น");
+        }
+
+        // ปรับจูนนามสกุลและ MIME Type ให้ตรงกัน
+        if (extension.equals(".png") || contentType.equals("image/png")) {
+            extension = ".png";
+            contentType = "image/png";
+        } else {
+            extension = ".jpg";
+            contentType = "image/jpeg";
         }
 
         String filename = UUID.randomUUID() + extension;
-        String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
-
-        return uploadBytes(file.getBytes(), contentType, folder, filename);
+        try {
+            return uploadBytes(file.getBytes(), contentType, folder, filename);
+        } catch (IOException e) {
+            throw new RuntimeException("ไม่สามารถอ่านข้อมูลไบต์ของไฟล์: " + e.getMessage(), e);
+        }
     }
 }

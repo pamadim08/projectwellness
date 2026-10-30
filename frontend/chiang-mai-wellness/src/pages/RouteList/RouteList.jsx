@@ -402,10 +402,6 @@ export default function RouteList() {
                             <Route />
                           </div>
                         )}
-
-                        <div className="route-list-card__image-overlay">
-                          <span>WELLNESS ROUTE</span>
-                        </div>
                       </div>
 
                       {/* CONTENT */}

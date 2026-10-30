@@ -4,6 +4,8 @@ import {
   AlertTriangle,
   ArrowRight,
   Building2,
+  Calendar,
+  Check,
   CheckCircle2,
   CircleAlert,
   Clock3,
@@ -34,10 +36,32 @@ import "./RequestWellnessHubAccount.css";
 const API_BASE_URL = "http://localhost:8080/api";
 const MAX_COVER_SIZE = 20 * 1024 * 1024;
 const MAX_GALLERY_SIZE = 20 * 1024 * 1024;
+const MAX_GALLERY_IMAGES = 5;
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
-const MAX_GALLERY_IMAGES = 4;
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png"];
-const ACCEPTED_DOCUMENT_TYPES = ["application/pdf", "image/jpeg", "image/png"];
+const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+];
+const ACCEPTED_DOCUMENT_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+];
+
+const isAcceptedImage = (file) =>
+  Boolean(
+    (file && file.type && ACCEPTED_IMAGE_TYPES.includes(file.type)) ||
+    (file && file.name && /\.(png|jpe?g)$/i.test(file.name))
+  );
+
+const isAcceptedDocument = (file) =>
+  Boolean(
+    (file && file.type === "application/pdf") ||
+    (file && file.name && /\.pdf$/i.test(file.name)) ||
+    isAcceptedImage(file)
+  );
 
 const DOCUMENT_TYPE_OPTIONS = [
   "ใบอนุญาตประกอบกิจการ / ใบอนุญาตสปาเพื่อสุขภาพ",
@@ -122,6 +146,9 @@ export default function RequestWellnessHubAccount() {
   const [operatingHours, setOperatingHours] = useState(
     createDefaultOperatingHours(),
   );
+  const [scheduleMode, setScheduleMode] = useState("same"); // 'same' | 'custom' | '24hours'
+  const [sameOpenTime, setSameOpenTime] = useState("09:00");
+  const [sameCloseTime, setSameCloseTime] = useState("18:00");
 
   const [formData, setFormData] = useState({
     // ผู้สมัคร
@@ -223,10 +250,10 @@ export default function RequestWellnessHubAccount() {
 
     if (!file) return;
 
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+    if (!isAcceptedImage(file)) {
       setFormErrors((prev) => ({
         ...prev,
-        coverFile: "รองรับเฉพาะไฟล์ JPG และ PNG",
+        coverFile: "ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น",
       }));
       return;
     }
@@ -268,7 +295,7 @@ export default function RequestWellnessHubAccount() {
     }
 
     const acceptedFiles = selectedFiles
-      .filter((file) => ACCEPTED_IMAGE_TYPES.includes(file.type))
+      .filter((file) => isAcceptedImage(file))
       .filter((file) => file.size <= MAX_GALLERY_SIZE)
       .slice(0, remainingSlots);
 
@@ -276,7 +303,7 @@ export default function RequestWellnessHubAccount() {
       setFormErrors((prev) => ({
         ...prev,
         galleryImages:
-          "บางไฟล์ไม่ถูกเพิ่ม เนื่องจากชนิดไฟล์ไม่รองรับ (รับเฉพาะ JPG/PNG) ขนาดเกิน 20 MB หรือเกินจำนวนสูงสุด",
+          "บางไฟล์ไม่ถูกเพิ่ม เนื่องจากชนิดไฟล์ไม่รองรับ (ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น) ขนาดเกิน 20 MB หรือเกินจำนวนสูงสุด",
       }));
     } else {
       setFormErrors((prev) => ({ ...prev, galleryImages: "" }));
@@ -348,11 +375,11 @@ export default function RequestWellnessHubAccount() {
   const handleDocumentFileChange = (id, file) => {
     if (!file) return;
 
-    if (!ACCEPTED_DOCUMENT_TYPES.includes(file.type)) {
+    if (!isAcceptedDocument(file)) {
       setDocumentRows((prev) =>
         prev.map((row) =>
           row.id === id
-            ? { ...row, error: "เอกสารต้องเป็นไฟล์ PDF, JPG หรือ PNG" }
+            ? { ...row, error: "เอกสารต้องเป็นไฟล์ PDF หรือรูปภาพนามสกุล .png, .jpg, .jpeg เท่านั้น" }
             : row
         )
       );
@@ -393,11 +420,11 @@ export default function RequestWellnessHubAccount() {
       prev.map((row) =>
         row.id === id
           ? {
-              ...row,
-              file: file,
-              name: file.name,
-              error: "",
-            }
+            ...row,
+            file: file,
+            name: file.name,
+            error: "",
+          }
           : row
       )
     );
@@ -409,19 +436,21 @@ export default function RequestWellnessHubAccount() {
       prev.map((row) =>
         row.id === id
           ? {
-              ...row,
-              file: null,
-              name: "",
-              error: "",
-            }
+            ...row,
+            file: null,
+            name: "",
+            error: "",
+          }
           : row
       )
     );
   };
 
-  const handle24HoursToggle = (enabled) => {
-    setIs24Hours(enabled);
-    if (enabled) {
+
+  const handleScheduleModeChange = (mode) => {
+    setScheduleMode(mode);
+    if (mode === "24hours") {
+      setIs24Hours(true);
       const all24Hours = DAYS.reduce((result, day) => {
         result[day.key] = {
           active: true,
@@ -432,11 +461,106 @@ export default function RequestWellnessHubAccount() {
       }, {});
       setOperatingHours(all24Hours);
     } else {
-      setOperatingHours(createDefaultOperatingHours());
+      setIs24Hours(false);
+      if (mode === "same") {
+        setOperatingHours((prev) => {
+          const updated = { ...prev };
+          let anyActive = false;
+          DAYS.forEach((d) => {
+            if (updated[d.key]?.active) {
+              anyActive = true;
+              updated[d.key] = {
+                ...updated[d.key],
+                open: sameOpenTime || "09:00",
+                close: sameCloseTime || "18:00",
+              };
+            }
+          });
+          if (!anyActive) {
+            ["monday", "tuesday", "wednesday", "thursday", "friday"].forEach((key) => {
+              updated[key] = {
+                active: true,
+                open: sameOpenTime || "09:00",
+                close: sameCloseTime || "18:00",
+              };
+            });
+          }
+          return updated;
+        });
+      } else if (mode === "custom" && is24Hours) {
+        setOperatingHours(createDefaultOperatingHours());
+      }
     }
-    if (formErrors.operatingHours) {
-      setFormErrors((prev) => ({ ...prev, operatingHours: "" }));
-    }
+    setFormErrors((prev) => ({ ...prev, operatingHours: "" }));
+  };
+
+  const handleSameDayToggle = (dayKey) => {
+    setOperatingHours((prev) => {
+      const isCurrentlyActive = Boolean(prev[dayKey]?.active);
+      const nextActive = !isCurrentlyActive;
+      return {
+        ...prev,
+        [dayKey]: {
+          active: nextActive,
+          open: nextActive ? sameOpenTime || "09:00" : "",
+          close: nextActive ? sameCloseTime || "18:00" : "",
+        },
+      };
+    });
+    setFormErrors((prev) => ({ ...prev, operatingHours: "" }));
+  };
+
+  const handleSameTimeChange = (field, value) => {
+    if (field === "open") setSameOpenTime(value);
+    if (field === "close") setSameCloseTime(value);
+
+    setOperatingHours((prev) => {
+      const updated = { ...prev };
+      DAYS.forEach((d) => {
+        if (updated[d.key]?.active) {
+          updated[d.key] = {
+            ...updated[d.key],
+            [field]: value,
+          };
+        }
+      });
+      return updated;
+    });
+    setFormErrors((prev) => ({ ...prev, operatingHours: "" }));
+  };
+
+  const handleSameQuickPreset = (preset) => {
+    const open = sameOpenTime || "09:00";
+    const close = sameCloseTime || "18:00";
+
+    setOperatingHours((prev) => {
+      const updated = { ...prev };
+      DAYS.forEach((d) => {
+        if (preset === "weekdays") {
+          const isWk = ["monday", "tuesday", "wednesday", "thursday", "friday"].includes(d.key);
+          updated[d.key] = {
+            active: isWk,
+            open: isWk ? open : "",
+            close: isWk ? close : "",
+          };
+        } else if (preset === "all") {
+          updated[d.key] = {
+            active: true,
+            open: open,
+            close: close,
+          };
+        } else if (preset === "weekends") {
+          const isWe = ["saturday", "sunday"].includes(d.key);
+          updated[d.key] = {
+            active: isWe,
+            open: isWe ? open : "",
+            close: isWe ? close : "",
+          };
+        }
+      });
+      return updated;
+    });
+    setFormErrors((prev) => ({ ...prev, operatingHours: "" }));
   };
 
   const handleDayToggle = (dayKey) => {
@@ -452,6 +576,9 @@ export default function RequestWellnessHubAccount() {
         },
       };
     });
+    if (formErrors.operatingHours) {
+      setFormErrors((prev) => ({ ...prev, operatingHours: "" }));
+    }
   };
 
   const handleTimeChange = (dayKey, field, value) => {
@@ -511,7 +638,7 @@ export default function RequestWellnessHubAccount() {
     } else if (/\s/.test(password)) {
       errors.password = "รหัสผ่านต้องไม่มีช่องว่าง";
     } else if (password.length !== 8) {
-      errors.password = "รหัสผ่านต้องมีความยาว 8 ตัวอักษร";
+      errors.password = "รหัสผ่านต้องมีความยาว 8 ตัวอักษรเท่านั้น";
     }
 
     // สถานประกอบการ
@@ -1206,7 +1333,7 @@ export default function RequestWellnessHubAccount() {
                       <div className="request-account-upload-placeholder">
                         <ImagePlus />
                         <strong>เพิ่มรูปหน้าปก</strong>
-                        <span>JPG, PNG หรือ WEBP</span>
+                        <span>JPG, JPEG หรือ PNG (ไม่เกิน 20 MB)</span>
                       </div>
                     )}
 
@@ -1219,7 +1346,7 @@ export default function RequestWellnessHubAccount() {
                   <input
                     ref={coverInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
+                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                     hidden
                     onChange={handleCoverChange}
                   />
@@ -1271,7 +1398,7 @@ export default function RequestWellnessHubAccount() {
                   <input
                     ref={galleryInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
+                    accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                     multiple
                     hidden
                     onChange={handleGalleryChange}
@@ -1454,37 +1581,151 @@ export default function RequestWellnessHubAccount() {
                 <div>
                   <h2>วันและเวลาทำการ</h2>
                   <p>
-                    เลือกเฉพาะวันที่เปิดให้บริการและระบุเวลาให้ถูกต้อง
-                    หรือเปิดบริการ 24 ชั่วโมง
+                    กำหนดเวลาเปิดให้บริการของสถานประกอบการ หรือเปิดบริการ 24 ชั่วโมง
                   </p>
                 </div>
               </div>
 
-              {/* 24 Hours Toggle Banner */}
-              <div className="request-account-24hours-toggle">
-                <div className="request-account-24hours-info">
-                  <span className="request-account-24hours-title">
-                    <Clock3 size={18} /> เปิดให้บริการตลอด 24 ชั่วโมง (ทุกวัน)
-                  </span>
-                  <p className="request-account-24hours-desc">
-                    สำหรับสถานพยาบาล โรงพยาบาล หรือหน่วยบริการกู้ภัยฉุกเฉิน
-                  </p>
-                </div>
-                <label
-                  className="request-account-switch"
-                  htmlFor="toggle-24hours"
+              {/* Mode Selector Tabs */}
+              <div className="request-account-schedule-mode-bar">
+                <button
+                  type="button"
+                  className={`request-account-schedule-mode-btn ${scheduleMode === "same" ? "active" : ""}`}
+                  onClick={() => handleScheduleModeChange("same")}
                 >
-                  <input
-                    id="toggle-24hours"
-                    type="checkbox"
-                    checked={is24Hours}
-                    onChange={(e) => handle24HoursToggle(e.target.checked)}
-                  />
-                  <span />
-                </label>
+                  <Clock3 size={16} />
+                  <span>เปิดเวลาเดียวกัน</span>
+                  <small>กำหนดเวลาครั้งเดียว ใช้กับทุกวันที่เลือก</small>
+                </button>
+
+                <button
+                  type="button"
+                  className={`request-account-schedule-mode-btn ${scheduleMode === "custom" ? "active" : ""}`}
+                  onClick={() => handleScheduleModeChange("custom")}
+                >
+                  <Calendar size={16} />
+                  <span>กำหนดแยกรายวัน</span>
+                  <small>ตั้งเวลาแยกเฉพาะแต่ละวัน</small>
+                </button>
+
+                <button
+                  type="button"
+                  className={`request-account-schedule-mode-btn ${scheduleMode === "24hours" ? "active" : ""}`}
+                  onClick={() => handleScheduleModeChange("24hours")}
+                >
+                  <Sparkles size={16} />
+                  <span>เปิดตลอด 24 ชั่วโมง</span>
+                  <small>เปิดบริการทุกวันตลอดเวลา</small>
+                </button>
               </div>
 
-              {!is24Hours ? (
+              {/* MODE 1: SAME HOURS (เปิดเวลาเดียวกัน) */}
+              {scheduleMode === "same" && (
+                <div className="request-account-same-hours-panel">
+                  {/* Step 1: Day Selection */}
+                  <div className="request-account-same-section">
+                    <div className="request-account-same-section-header">
+                      <label className="request-account-same-title">
+                        1. เลือกวันเปิดให้บริการ
+                      </label>
+                      <div className="request-account-same-quick-links">
+                        <button
+                          type="button"
+                          className="request-account-quick-link-btn"
+                          onClick={() => handleSameQuickPreset("weekdays")}
+                        >
+                          จันทร์ - ศุกร์
+                        </button>
+                        <span className="request-account-link-sep">•</span>
+                        <button
+                          type="button"
+                          className="request-account-quick-link-btn"
+                          onClick={() => handleSameQuickPreset("all")}
+                        >
+                          ทุกวัน (จ.-อา.)
+                        </button>
+                        <span className="request-account-link-sep">•</span>
+                        <button
+                          type="button"
+                          className="request-account-quick-link-btn"
+                          onClick={() => handleSameQuickPreset("weekends")}
+                        >
+                          เสาร์ - อาทิตย์
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="request-account-day-pills">
+                      {DAYS.map((day) => {
+                        const isActive = Boolean(operatingHours[day.key]?.active);
+                        return (
+                          <button
+                            key={day.key}
+                            type="button"
+                            className={`request-account-day-pill ${isActive ? "request-account-day-pill--active" : ""}`}
+                            onClick={() => handleSameDayToggle(day.key)}
+                            title={isActive ? `คลิกเพื่อปิด ${day.label}` : `คลิกเพื่อเปิด ${day.label}`}
+                          >
+                            <span className="request-account-day-pill-icon">
+                              {isActive ? <Check size={14} /> : "+"}
+                            </span>
+                            <span className="request-account-day-pill-text">{day.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Step 2: Time Selection */}
+                  <div className="request-account-same-section">
+                    <label className="request-account-same-title">
+                      2. กำหนดเวลาเปิด – ปิดทำการ
+                    </label>
+
+                    <div className="request-account-same-time-box">
+                      <div className="request-account-same-time-field">
+                        <label>เวลาเปิด</label>
+                        <input
+                          type="time"
+                          value={sameOpenTime}
+                          onChange={(e) => handleSameTimeChange("open", e.target.value)}
+                        />
+                      </div>
+
+                      <span className="request-account-same-time-arrow">ถึง</span>
+
+                      <div className="request-account-same-time-field">
+                        <label>เวลาปิด</label>
+                        <input
+                          type="time"
+                          value={sameCloseTime}
+                          onChange={(e) => handleSameTimeChange("close", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Summary */}
+                  <div className="request-account-same-summary">
+                    <Clock3 size={16} />
+                    <span>
+                      สรุปเวลาทำการ:{" "}
+                      <strong>
+                        {DAYS.filter((d) => operatingHours[d.key]?.active)
+                          .map((d) => d.label.replace("วัน", ""))
+                          .join(", ") || "ยังไม่ได้เลือกวัน"}
+                      </strong>{" "}
+                      เวลา{" "}
+                      <strong>
+                        {sameOpenTime || "—"} – {sameCloseTime || "—"} น.
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* MODE 2: CUSTOM PER DAY (กำหนดแยกรายวัน) */}
+              {scheduleMode === "custom" && (
                 <div className="request-account-hours">
                   <div className="request-account-hours__header">
                     <span>วัน</span>
@@ -1544,7 +1785,10 @@ export default function RequestWellnessHubAccount() {
                     );
                   })}
                 </div>
-              ) : (
+              )}
+
+              {/* MODE 3: 24 HOURS (เปิดตลอด 24 ชั่วโมง) */}
+              {scheduleMode === "24hours" && (
                 <div className="request-account-24hours-badge">
                   <span>
                     ✓ เปิดให้บริการตลอด 24 ชั่วโมงทุกวัน (จันทร์ - อาทิตย์)
@@ -1681,7 +1925,7 @@ export default function RequestWellnessHubAccount() {
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={handleInputChange}
-                      placeholder="กำหนดรหัสผ่านเข้าสู่ระบบ (8 ตัวอักษร)"
+                      placeholder="กำหนดรหัสผ่านเข้าสู่ระบบ (ความยาว 8 ตัวอักษร)"
                       maxLength={8}
                       className={
                         formErrors.password
@@ -1817,7 +2061,7 @@ export default function RequestWellnessHubAccount() {
                               <label className="request-account-doc-dropzone">
                                 <input
                                   type="file"
-                                  accept=".pdf,image/jpeg,image/png"
+                                  accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
                                   hidden
                                   onChange={(e) => {
                                     const f = e.target.files?.[0];
@@ -1826,7 +2070,7 @@ export default function RequestWellnessHubAccount() {
                                   }}
                                 />
                                 <Upload size={18} />
-                                <span>คลิกเพื่อเลือกไฟล์ (PDF, JPG, PNG)</span>
+                                <span>คลิกเพื่อเลือกไฟล์ (PDF, JPG, JPEG, PNG)</span>
                               </label>
                             )}
                           </div>

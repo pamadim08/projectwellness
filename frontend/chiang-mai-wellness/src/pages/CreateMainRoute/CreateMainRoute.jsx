@@ -112,65 +112,142 @@ const calculateTotalRouteDistance = (routeList) => {
   return totalKm;
 };
 
-// ⚡ จัดเรียงลำดับเส้นทางอัตโนมัติ (Nearest Neighbor + 2-Opt TSP Algorithm)
+// ⚡ จัดเรียงลำดับเส้นทางอัตโนมัติแบบอิสระทุกจุด (Multi-Start TSP + Full 2-Opt + Node Relocation)
+// ช่วยสลับจุดเริ่มต้น จุดสิ้นสุด และจุดระหว่างทางได้อย่างอิสระ เพื่อให้เส้นทางเป็นเส้นตรงต่อเนื่อง ไม่วิ่งวนย้อนไปมา
 const optimizeRouteOrder = (routeList) => {
   if (!Array.isArray(routeList) || routeList.length <= 2) return routeList;
 
-  // 1. Greedy Nearest Neighbor เริ่มจากจุดเริ่มต้น (อำเภอแรกที่ผู้ใช้เลือก)
-  const unvisited = [...routeList];
-  const optimized = [unvisited.shift()];
+  const getLat = (item) => Number(item?.district?.latitude ?? item?.latitude);
+  const getLng = (item) => Number(item?.district?.longitude ?? item?.longitude);
 
-  while (unvisited.length > 0) {
-    const current = optimized[optimized.length - 1];
-    const currLat = Number(current.district?.latitude ?? current.latitude);
-    const currLng = Number(current.district?.longitude ?? current.longitude);
-
-    let nearestIndex = 0;
-    let minDistance = Infinity;
-
-    for (let i = 0; i < unvisited.length; i++) {
-      const candidate = unvisited[i];
-      const candLat = Number(candidate.district?.latitude ?? candidate.latitude);
-      const candLng = Number(candidate.district?.longitude ?? candidate.longitude);
-      const dist = calculateDistanceKm(currLat, currLng, candLat, candLng);
-
-      if (dist < minDistance) {
-        minDistance = dist;
-        nearestIndex = i;
-      }
+  const getDist = (a, b) => {
+    const latA = getLat(a);
+    const lngA = getLng(a);
+    const latB = getLat(b);
+    const lngB = getLng(b);
+    if (!Number.isFinite(latA) || !Number.isFinite(lngA) || !Number.isFinite(latB) || !Number.isFinite(lngB)) {
+      return Infinity;
     }
+    return calculateDistanceKm(latA, lngA, latB, lngB);
+  };
 
-    optimized.push(unvisited.splice(nearestIndex, 1)[0]);
-  }
+  const calculatePathDistance = (path) => {
+    if (!Array.isArray(path) || path.length < 2) return 0;
+    let total = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      const d = getDist(path[i], path[i + 1]);
+      total += Number.isFinite(d) ? d : 0;
+    }
+    return total;
+  };
 
-  // 2. 2-Opt Local Search แก้ปัญหาเส้นทางตัดกัน (Untangle crossing paths)
-  let improved = true;
-  let bestRoute = [...optimized];
-  let iterations = 0;
+  // 1. สร้างเส้นทางเริ่มต้นด้วย Nearest Neighbor จากจุดเริ่มต้นใดๆ
+  const buildNearestNeighbor = (startIdx) => {
+    const unvisited = [...routeList];
+    const path = [unvisited.splice(startIdx, 1)[0]];
 
-  while (improved && iterations < 50) {
-    improved = false;
-    iterations++;
+    while (unvisited.length > 0) {
+      const current = path[path.length - 1];
+      let nearestIndex = 0;
+      let minDistance = Infinity;
 
-    for (let i = 1; i < bestRoute.length - 1; i++) {
-      for (let k = i + 1; k < bestRoute.length; k++) {
-        const newRoute = [
-          ...bestRoute.slice(0, i),
-          ...bestRoute.slice(i, k + 1).reverse(),
-          ...bestRoute.slice(k + 1),
-        ];
-
-        if (calculateTotalRouteDistance(newRoute) < calculateTotalRouteDistance(bestRoute) - 0.05) {
-          bestRoute = newRoute;
-          improved = true;
-          break;
+      for (let i = 0; i < unvisited.length; i++) {
+        const d = getDist(current, unvisited[i]);
+        if (d < minDistance) {
+          minDistance = d;
+          nearestIndex = i;
         }
       }
-      if (improved) break;
+
+      path.push(unvisited.splice(nearestIndex, 1)[0]);
+    }
+    return path;
+  };
+
+  // 2. ปรับปรุงเส้นทางด้วย 2-Opt และ Node Relocation (สลับ/ย้ายตำแหน่งได้อย่างอิสระทุกจุดเพื่อตัดการย้อนศร)
+  const improveRoute = (initialRoute) => {
+    let current = [...initialRoute];
+    let improved = true;
+    let iterations = 0;
+
+    while (improved && iterations < 80) {
+      improved = false;
+      iterations++;
+
+      // 2.1 2-Opt Reversal (กลับด้านลำดับย่อย รวมถึงจุดเริ่มต้นและสิ้นสุด)
+      for (let i = 0; i < current.length - 1; i++) {
+        for (let k = i + 1; k < current.length; k++) {
+          const newRoute = [
+            ...current.slice(0, i),
+            ...current.slice(i, k + 1).reverse(),
+            ...current.slice(k + 1),
+          ];
+
+          if (calculatePathDistance(newRoute) < calculatePathDistance(current) - 0.02) {
+            current = newRoute;
+            improved = true;
+            break;
+          }
+        }
+        if (improved) break;
+      }
+
+      if (improved) continue;
+
+      // 2.2 Node Relocation (หยิบจุดที่อยู่ผิดตำแหน่ง ย้ายไปแทรกในตำแหน่งที่เหมาะสมที่สุด)
+      for (let fromIdx = 0; fromIdx < current.length; fromIdx++) {
+        const node = current[fromIdx];
+        const remaining = current.filter((_, idx) => idx !== fromIdx);
+
+        for (let toIdx = 0; toIdx <= remaining.length; toIdx++) {
+          if (toIdx === fromIdx) continue;
+          const newRoute = [
+            ...remaining.slice(0, toIdx),
+            node,
+            ...remaining.slice(toIdx),
+          ];
+
+          if (calculatePathDistance(newRoute) < calculatePathDistance(current) - 0.02) {
+            current = newRoute;
+            improved = true;
+            break;
+          }
+        }
+        if (improved) break;
+      }
+    }
+
+    return current;
+  };
+
+  // 3. ค้นหาแนวเส้นทางจากทุกจุดเริ่มต้น เพื่อหาแนวเส้นทางตรงที่ประหยัดและไม่วิ่งย้อนศรที่สุด
+  let bestRoute = null;
+  let minTotalDistance = Infinity;
+
+  for (let s = 0; s < routeList.length; s++) {
+    const candidateRoute = improveRoute(buildNearestNeighbor(s));
+    const dist = calculatePathDistance(candidateRoute);
+    if (dist < minTotalDistance) {
+      minTotalDistance = dist;
+      bestRoute = candidateRoute;
     }
   }
 
-  return bestRoute;
+  // 4. รักษาทิศทางภาพรวม: หากจุดแรกเดิมที่ผู้ใช้เลือกไว้ อยู่ใกล้กับปลายทางของ bestRoute มากกว่าต้นทาง ให้กลับด้าน (reverse) เพื่อให้ทิศทางสอดคล้องกับเจตนาตั้งต้น
+  if (bestRoute && routeList.length > 0) {
+    const originalFirst = routeList[0];
+    const origLat = getLat(originalFirst);
+    const origLng = getLng(originalFirst);
+    if (Number.isFinite(origLat) && Number.isFinite(origLng)) {
+      const distToHead = calculateDistanceKm(origLat, origLng, getLat(bestRoute[0]), getLng(bestRoute[0]));
+      const distToTail = calculateDistanceKm(origLat, origLng, getLat(bestRoute[bestRoute.length - 1]), getLng(bestRoute[bestRoute.length - 1]));
+      if (distToTail < distToHead) {
+        bestRoute = [...bestRoute].reverse();
+      }
+    }
+  }
+
+  return bestRoute || routeList;
 };
 
 const CreateMainRoute = () => {
@@ -192,10 +269,8 @@ const CreateMainRoute = () => {
   const [districts, setDistricts] = useState([]);
   const [wellnessHubs, setWellnessHubs] = useState([]);
 
-  // States จัดลำดับและรายการควบคุมหน้าบ้าน
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState(
-    REQUIRED_EMERGENCY_CATEGORY_IDS,
-  );
+  // States จัดลำดับและรายการควบคุมหน้าบ้าน (เฉพาะหมวดหมู่ที่ผู้ใช้เลือกได้)
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
 
   const [orderedRouteDetails, setOrderedRouteDetails] = useState([]);
   const [errors, setErrors] = useState({});
@@ -367,9 +442,11 @@ const CreateMainRoute = () => {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
 
-    const allowedTypes = ["image/jpeg", "image/png"];
-    if (!allowedTypes.includes(file.type)) {
-      setImageError("ชนิดไฟล์ไม่รองรับ (รองรับ JPG/PNG)");
+    const isImage =
+      ["image/jpeg", "image/png", "image/jpg"].includes(file.type) ||
+      /\.(png|jpe?g)$/i.test(file.name);
+    if (!isImage) {
+      setImageError("ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น");
       event.target.value = "";
       return;
     }
@@ -452,25 +529,61 @@ const CreateMainRoute = () => {
             setImageFileName(data.routeImage);
           }
 
-          if (data.categoryId) {
+          // ดึงหมวดหมู่เดิม (รองรับทั้ง categories จากตาราง main_route_categories, categoryIds array, และ categoryId เดิม)
+          let extractedCategoryIds = [];
+          if (Array.isArray(data.categoryIds) && data.categoryIds.length > 0) {
+            extractedCategoryIds = data.categoryIds;
+          } else if (Array.isArray(data.categories) && data.categories.length > 0) {
+            extractedCategoryIds = data.categories.map((cat) =>
+              typeof cat === "object" && cat !== null ? cat.categoryId : String(cat)
+            );
+          } else if (data.categoryId) {
             try {
               const parsedCategoryIds = JSON.parse(data.categoryId);
-              setSelectedCategoryIds(
-                mergeRequiredCategories(Array.isArray(parsedCategoryIds) ? parsedCategoryIds : [parsedCategoryIds])
-              );
+              extractedCategoryIds = Array.isArray(parsedCategoryIds)
+                ? parsedCategoryIds
+                : [parsedCategoryIds];
             } catch {
-              setSelectedCategoryIds(mergeRequiredCategories([String(data.categoryId)]));
+              extractedCategoryIds = [String(data.categoryId)];
             }
+          }
+
+          if (extractedCategoryIds.length > 0) {
+            const selectableCategoryIds = extractedCategoryIds
+              .map(String)
+              .filter((catId) => !REQUIRED_EMERGENCY_CATEGORY_IDS.includes(catId));
+            setSelectedCategoryIds(selectableCategoryIds);
           } else {
-            setSelectedCategoryIds(REQUIRED_EMERGENCY_CATEGORY_IDS);
+            setSelectedCategoryIds([]);
           }
 
           if (data.details && data.details.length > 0) {
-            const sortedDetails = [...data.details].sort((a, b) => a.orderNumber - b.orderNumber);
+            // ป้องกันปัญหาอำเภอซ้ำซ้อนจาก Cartesian Product ในการดึงข้อมูล
+            const uniqueDetailsMap = new Map();
+            data.details.forEach((detail) => {
+              const districtId = detail.district?.districtId ?? detail.districtId;
+              const orderNum = detail.orderNumber;
+              const key = districtId != null ? `dist_${districtId}` : `order_${orderNum}`;
+              if (!uniqueDetailsMap.has(key)) {
+                uniqueDetailsMap.set(key, detail);
+              }
+            });
+
+            const sortedDetails = Array.from(uniqueDetailsMap.values()).sort(
+              (a, b) => Number(a.orderNumber || 0) - Number(b.orderNumber || 0),
+            );
+
+            const seenDistrictIds = new Set();
             const mappedDistricts = sortedDetails
               .map((detail) => {
                 const districtId = detail.district?.districtId ?? detail.districtId;
-                return currentDistricts.find((d) => String(d.districtId) === String(districtId));
+                if (!districtId || seenDistrictIds.has(String(districtId))) {
+                  return null;
+                }
+                seenDistrictIds.add(String(districtId));
+                return currentDistricts.find(
+                  (d) => String(d.districtId) === String(districtId),
+                );
               })
               .filter(Boolean);
 
@@ -507,8 +620,9 @@ const CreateMainRoute = () => {
     if (!mapRef.current && mapContainerRef.current) {
       mapRef.current = L.map(mapContainerRef.current, {
         zoomControl: true,
-        scrollWheelZoom: false,
-        doubleClickZoom: false,
+        scrollWheelZoom: true,
+        touchZoom: true,
+        doubleClickZoom: true,
         dragging: true,
         keyboard: true,
       }).setView([18.7883, 98.9853], 11);
@@ -659,9 +773,14 @@ const CreateMainRoute = () => {
           lineOptions: {
             styles: [
               {
-                color: "#28a745",
-                weight: 5,
-                opacity: 0.85,
+                color: "#000000",
+                weight: 7,
+                opacity: 0.9,
+              },
+              {
+                color: "#147D72",
+                weight: 4,
+                opacity: 1,
               },
             ],
           },
@@ -710,11 +829,14 @@ const CreateMainRoute = () => {
 
         const catName = hub.category?.categoryName || "";
         const style = getCategoryStyle(hubCatId, catName);
+        const isEmergency =
+          style.isEmergency ||
+          REQUIRED_EMERGENCY_CATEGORY_IDS.includes(String(hubCatId));
 
         return (
           activeDistrictIds.includes(hubDistId) &&
-          (style.isEmergency ||
-            selectedCategoryIds.includes(String(hubCatId))) &&
+          !isEmergency &&
+          selectedCategoryIds.includes(String(hubCatId)) &&
           isValidHubForMap(hub)
         );
       });
@@ -808,10 +930,14 @@ const CreateMainRoute = () => {
 
       const catName = hub.category?.categoryName || "";
       const style = getCategoryStyle(hubCatId, catName);
+      const isEmergency =
+        style.isEmergency ||
+        REQUIRED_EMERGENCY_CATEGORY_IDS.includes(String(hubCatId));
 
       return (
         String(hubDistId) === String(districtId) &&
-        (style.isEmergency || selectedCategoryIds.includes(String(hubCatId))) &&
+        !isEmergency &&
+        selectedCategoryIds.includes(String(hubCatId)) &&
         isValidHubForMap(hub)
       );
     }).length;
@@ -837,10 +963,14 @@ const CreateMainRoute = () => {
 
       const catName = hub.category?.categoryName || "";
       const style = getCategoryStyle(hubCatId, catName);
+      const isEmergency =
+        style.isEmergency ||
+        REQUIRED_EMERGENCY_CATEGORY_IDS.includes(String(hubCatId));
 
       return (
         activeDistrictIds.includes(hubDistId) &&
-        (style.isEmergency || selectedCategoryIds.includes(String(hubCatId))) &&
+        !isEmergency &&
+        selectedCategoryIds.includes(String(hubCatId)) &&
         isValidHubForMap(hub)
       );
     }).length;
@@ -848,8 +978,14 @@ const CreateMainRoute = () => {
 
   const selectedCategories = categories.filter((category) => {
     const categoryId = String(category.categoryId);
+    const catName = category.categoryName || "";
+    const style = getCategoryStyle(categoryId, catName);
+    const isEmergency =
+      style.isEmergency ||
+      REQUIRED_EMERGENCY_CATEGORY_IDS.includes(categoryId);
+
     return (
-      REQUIRED_EMERGENCY_CATEGORY_IDS.includes(categoryId) ||
+      !isEmergency &&
       selectedCategoryIds.includes(categoryId)
     );
   });
@@ -1003,6 +1139,12 @@ const CreateMainRoute = () => {
   // ➕ เพิ่มอำเภอที่ระบบแนะนำลงในเส้นทางโดยตรง
   const handleAddSuggestedDistrict = (district) => {
     if (!district) return;
+    const targetId = String(district.districtId ?? district.district?.districtId);
+    const isDuplicate = orderedRouteDetails.some(
+      (d) => String(d.districtId ?? d.district?.districtId) === targetId,
+    );
+    if (isDuplicate) return;
+
     setOrderedRouteDetails((prev) => [...prev, district]);
     if (errors.orderedDistricts) {
       setErrors((prev) => ({ ...prev, orderedDistricts: "" }));
@@ -1531,99 +1673,88 @@ const CreateMainRoute = () => {
                   className={`gov-category-grid ${errors.categories ? "gov-input-border-error" : ""
                     }`}
                 >
-                  {categories.map((category) => {
-                    const catIdStr = String(category.categoryId);
-                    const styleInfo = getCategoryStyle(
-                      category.categoryId,
-                      category.categoryName,
-                    );
-                    const isEmergency = styleInfo.isEmergency;
-                    const isChecked =
-                      isEmergency || selectedCategoryIds.includes(catIdStr);
-                    const currentCount = getCountForCategory(
-                      category.categoryId,
-                    );
+                  {categories
+                    .filter((category) => {
+                      const catIdStr = String(category.categoryId);
+                      const catName = category.categoryName || "";
+                      const styleInfo = getCategoryStyle(catIdStr, catName);
+                      return (
+                        !REQUIRED_EMERGENCY_CATEGORY_IDS.includes(catIdStr) &&
+                        !styleInfo.isEmergency
+                      );
+                    })
+                    .map((category) => {
+                      const catIdStr = String(category.categoryId);
+                      const styleInfo = getCategoryStyle(
+                        category.categoryId,
+                        category.categoryName,
+                      );
+                      const isChecked = selectedCategoryIds.includes(catIdStr);
+                      const currentCount = getCountForCategory(
+                        category.categoryId,
+                      );
 
-                    return (
-                      <div
-                        key={category.categoryId}
-                        className={`gov-category-card ${isChecked ? "gov-selected" : ""
-                          } ${isEmergency ? "gov-disabled-card" : ""}`}
-                        onClick={() => {
-                          if (!isEmergency) {
-                            handleCategoryToggle(catIdStr);
-                          }
-                        }}
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "flex-start",
-                          padding: "10px",
-                          cursor: isEmergency ? "not-allowed" : "pointer",
-                          opacity: isEmergency ? 0.85 : 1,
-                          backgroundColor: isEmergency ? "#f8fafc" : undefined,
-                          borderLeft: `4px solid ${styleInfo.color}`,
-                        }}
-                      >
+                      return (
                         <div
+                          key={category.categoryId}
+                          className={`gov-category-card ${isChecked ? "gov-selected" : ""
+                            }`}
+                          onClick={() => handleCategoryToggle(catIdStr)}
                           style={{
                             display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            width: "100%",
+                            flexDirection: "column",
+                            alignItems: "flex-start",
+                            padding: "10px",
+                            cursor: "pointer",
+                            borderLeft: `4px solid ${styleInfo.color}`,
                           }}
                         >
-                          <input
-                            type="checkbox"
-                            className="gov-custom-checkbox"
-                            checked={isChecked}
-                            disabled={isEmergency}
-                            readOnly
-                          />
-                          <span
-                            className="gov-category-text"
+                          <div
                             style={{
-                              fontWeight: "600",
-                              color: isEmergency ? styleInfo.color : "#0f172a",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              width: "100%",
                             }}
                           >
-                            {category.categoryName}
-                          </span>
-                        </div>
-
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            width: "100%",
-                            marginTop: "4px",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              color: isChecked ? "#1e3a8a" : "#64748b",
-                              marginLeft: "22px",
-                            }}
-                          >
-                            ({currentCount} แห่ง)
-                          </span>
-
-                          {isEmergency && (
+                            <input
+                              type="checkbox"
+                              className="gov-custom-checkbox"
+                              checked={isChecked}
+                              readOnly
+                            />
                             <span
+                              className="gov-category-text"
                               style={{
-                                fontSize: "10px",
-                                color: "#64748b",
-                                fontStyle: "italic",
+                                fontWeight: "600",
+                                color: "#0f172a",
                               }}
                             >
-                              (แสดงเสมอ)
+                              {category.categoryName}
                             </span>
-                          )}
+                          </div>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              width: "100%",
+                              marginTop: "4px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: "11px",
+                                color: isChecked ? "#1e3a8a" : "#64748b",
+                                marginLeft: "22px",
+                              }}
+                            >
+                              ({currentCount} แห่ง)
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
 
                 {errors.categories && (
@@ -1672,7 +1803,7 @@ const CreateMainRoute = () => {
                         {imagePreview ? "เปลี่ยนรูปภาพ" : "เลือกรูปภาพ"}
                         <input
                           type="file"
-                          accept="image/jpeg,image/png,image/webp"
+                          accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                           onChange={handleImageChange}
                           hidden
                         />
@@ -1870,22 +2001,7 @@ const CreateMainRoute = () => {
                 </div>
               </div>
 
-              {/* บริการฉุกเฉิน */}
-              <div>
-                <div style={{ fontSize: "12px", fontWeight: "700", color: "#475569", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  บริการฉุกเฉิน (Emergency Services)
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fafafa", borderRadius: "0px", border: "1px solid #999" }}>
-                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#BD0915", display: "inline-block", flexShrink: 0 }} />
-                    <span style={{ fontSize: "13.5px", color: "#333" }}>ALS (Advanced Hospital / โรงพยาบาลระดับสูง)</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: "#fafafa", borderRadius: "0px", border: "1px solid #999" }}>
-                    <span style={{ width: "14px", height: "14px", borderRadius: "50%", background: "#C98600", display: "inline-block", flexShrink: 0 }} />
-                    <span style={{ fontSize: "13.5px", color: "#333" }}>BLS (Basic Life Support / หน่วยกู้ชีพ)</span>
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>

@@ -32,6 +32,7 @@ import ArticleList from "./pages/ArticleList/ArticleList";
 import LoginWellnessHub from "./pages/LoginWellnessHub/LoginWellnessHub";
 import ProviderDashboard from "./pages/ProviderDashboard/ProviderDashboard";
 import ArticleDetail from "./pages/ArticleDetail/ArticleDetail";
+import SessionTimeoutManager from "./Components/SessionTimeout/SessionTimeoutManager";
 
 // ส่ง Session Cookie อัตโนมัติไปกับทุก Request
 axios.defaults.withCredentials = true;
@@ -42,18 +43,11 @@ let isInterceptorRegistered = false;
 if (!isInterceptorRegistered) {
   isInterceptorRegistered = true;
 
-  // Interceptor ดักจับกรณี API ตอบ 401 Unauthorized สำหรับฝั่ง Admin
+  // Interceptor ดักจับกรณี API ตอบ 401 Unauthorized สำหรับฝั่ง Admin และ สถานประกอบการเท่านั้น (ฝั่งผู้ใช้ไม่ต้อง)
   axios.interceptors.response.use(
     (response) => response,
     (error) => {
       if (error.response && error.response.status === 401) {
-        // ล้างข้อมูล Admin ใน localStorage
-        localStorage.removeItem("adminUser");
-        localStorage.removeItem("adminName");
-        localStorage.removeItem("username");
-        localStorage.removeItem("role");
-        localStorage.removeItem("token");
-
         const adminPrefixes = [
           "/dashboard",
           "/listWellnesshub",
@@ -68,15 +62,45 @@ if (!isInterceptorRegistered) {
           "/account-requests",
         ];
 
+        const providerPrefixes = [
+          "/provider/dashboard",
+        ];
+
         const currentPath = window.location.pathname;
         const isAdminPath = adminPrefixes.some((path) =>
           currentPath.toLowerCase().startsWith(path.toLowerCase())
         );
+        const isProviderPath = providerPrefixes.some((path) =>
+          currentPath.toLowerCase().startsWith(path.toLowerCase())
+        );
 
-        // ถ้าอยู่ในหน้าฝั่ง Admin ให้ redirect ไปที่ /login
-        if (isAdminPath && !currentPath.toLowerCase().startsWith("/login")) {
-          window.location.href = "/login";
+        // จัดการกรณีหลุดเซสชันเฉพาะฝั่งแอดมิน
+        if (isAdminPath) {
+          localStorage.removeItem("adminUser");
+          localStorage.removeItem("adminName");
+          localStorage.removeItem("username");
+          localStorage.removeItem("role");
+          localStorage.removeItem("token");
+
+          sessionStorage.setItem(
+            "session_timeout_message",
+            "เซสชันหมดอายุเนื่องจากไม่มีการใช้งาน กรุณาเข้าสู่ระบบใหม่อีกครั้ง"
+          );
+
+          if (!currentPath.toLowerCase().startsWith("/login")) {
+            window.location.href = "/login";
+          }
+        } else if (isProviderPath) {
+          // จัดการกรณีหลุดเซสชันเฉพาะฝั่งสถานประกอบการ
+          localStorage.removeItem("wellnessProvider");
+          localStorage.removeItem("wellnessProviderLicenseId");
+          localStorage.removeItem("wellnessProviderName");
+
+          if (!currentPath.toLowerCase().startsWith("/provider/login")) {
+            window.location.href = "/provider/login";
+          }
         }
+        // ฝั่งผู้ใช้ทั่วไป ไม่ต้อง redirect และไม่มีเซสชันมารบกวน
       }
       return Promise.reject(error);
     }
@@ -141,6 +165,7 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
+      <SessionTimeoutManager />
       <div className="App">
         <Routes>
           {/* ฝั่งผู้ใช้ทั่วไป */}

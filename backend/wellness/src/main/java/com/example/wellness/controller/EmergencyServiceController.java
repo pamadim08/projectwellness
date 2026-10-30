@@ -19,10 +19,14 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping({"/api/v1/emergency-services", "/api/emergency-services"})
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
-@RequiredArgsConstructor
+// @RequiredArgsConstructor
 public class EmergencyServiceController {
 
     private final EmergencyServiceRepository emergencyServiceRepository;
+
+    public EmergencyServiceController(EmergencyServiceRepository emergencyServiceRepository) {
+        this.emergencyServiceRepository = emergencyServiceRepository;
+    }
 
     @GetMapping
     public ResponseEntity<?> getAllEmergencyServices() {

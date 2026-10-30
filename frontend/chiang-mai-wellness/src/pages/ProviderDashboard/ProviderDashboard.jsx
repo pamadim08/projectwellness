@@ -16,9 +16,11 @@ import {
   Edit3,
   ExternalLink,
   Eye,
+  EyeOff,
   ImageIcon,
   KeyRound,
   LoaderCircle,
+  Lock,
   LogOut,
   Mail,
   MapPin,
@@ -447,6 +449,9 @@ export default function ProviderDashboard() {
   const [districts, setDistricts] = useState([]);
 
   const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+    confirmPassword: "",
     wellnessHubName: "",
     categoryId: "",
     certificateType: "",
@@ -461,6 +466,107 @@ export default function ProviderDashboard() {
     wellnessHubImg: "",
     wellnessHubGallery: [],
   });
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+
+  // Change Password Modal State
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordModalData, setPasswordModalData] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordModalErrors, setPasswordModalErrors] = useState({});
+  const [passwordModalSubmitting, setPasswordModalSubmitting] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+
+  const handleOpenPasswordModal = () => {
+    setPasswordModalData({ newPassword: "", confirmPassword: "" });
+    setPasswordModalErrors({});
+    setShowNewPassword(false);
+    setShowConfirmNewPassword(false);
+    setShowPasswordModal(true);
+  };
+
+  const handleClosePasswordModal = () => {
+    if (passwordModalSubmitting) return;
+    setShowPasswordModal(false);
+    setPasswordModalData({ newPassword: "", confirmPassword: "" });
+    setPasswordModalErrors({});
+  };
+
+  const handleChangePasswordSubmit = async (e) => {
+    e.preventDefault();
+    const newPass = passwordModalData.newPassword ? passwordModalData.newPassword.trim() : "";
+    const confirmPass = passwordModalData.confirmPassword ? passwordModalData.confirmPassword.trim() : "";
+    const errors = {};
+
+    if (!newPass) {
+      errors.newPassword = "กรุณากรอกรหัสผ่านใหม่";
+    } else if (/\s/.test(newPass)) {
+      errors.newPassword = "รหัสผ่านต้องไม่มีช่องว่าง";
+    } else if (newPass.length !== 8) {
+      errors.newPassword = "รหัสผ่านต้องมีความยาว 8 ตัวอักษรเท่านั้น";
+    }
+
+    if (!confirmPass) {
+      errors.confirmPassword = "กรุณายืนยันรหัสผ่านใหม่อีกครั้ง";
+    } else if (newPass !== confirmPass) {
+      errors.confirmPassword = "รหัสผ่านยืนยันไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setPasswordModalErrors(errors);
+      return;
+    }
+
+    setPasswordModalSubmitting(true);
+    setPasswordModalErrors({});
+
+    try {
+      const payload = {
+        licenseId: hub?.licenseId || licenseId,
+        wellnessHubName: formData.wellnessHubName || hub?.wellnessHubName,
+        address: formData.address || hub?.address,
+        telInformation: formData.telInformation || hub?.telInformation,
+        googleMapsLink: formData.googleMapsLink || hub?.googleMapsLink || "#",
+        password: newPass,
+      };
+
+      await axios.put(`${API_BASE_URL}/wellness-hubs/${licenseId}`, payload, {
+        timeout: 30000,
+        withCredentials: true,
+      });
+
+      setHub((prev) => ({ ...prev, password: newPass }));
+      setFormData((prev) => ({ ...prev, password: "", confirmPassword: "" }));
+
+      const savedProvider = localStorage.getItem("wellnessProvider");
+      if (savedProvider) {
+        try {
+          const parsed = JSON.parse(savedProvider);
+          localStorage.setItem("wellnessProvider", JSON.stringify({ ...parsed, password: newPass }));
+        } catch (_) {}
+      }
+
+      clearWellnessHubCache();
+      clearDashboardCache();
+
+      setShowPasswordModal(false);
+      setToast({
+        type: "success",
+        title: "เปลี่ยนรหัสผ่านสำเร็จ",
+        message: "ระบบได้ทำการอัปเดตรหัสผ่านใหม่สำหรับเข้าสู่ระบบเรียบร้อยแล้ว",
+      });
+    } catch (err) {
+      console.error("Change password error:", err);
+      setPasswordModalErrors({
+        submit: getErrorMessage(err) || "ไม่สามารถเปลี่ยนรหัสผ่านได้ กรุณาลองใหม่อีกครั้ง",
+      });
+    } finally {
+      setPasswordModalSubmitting(false);
+    }
+  };
 
   // State สำหรับจัดการรายการใบรับรอง 1 ใบต่อ 1 ช่อง
   const [certificateList, setCertificateList] = useState([""]);
@@ -603,6 +709,10 @@ export default function ProviderDashboard() {
     setCertificateList(certList.length > 0 ? certList : [""]);
 
     setFormData({
+      username: hubData.username || "",
+      password: "",
+      confirmPassword: "",
+
       wellnessHubName: hubData.wellnessHubName || "",
 
       categoryId: hubData.category?.categoryId || hubData.categoryId || "",
@@ -905,12 +1015,12 @@ export default function ProviderDashboard() {
       return;
     }
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
 
     if (!allowedTypes.includes(selectedFile.type)) {
       setFormErrors((previousErrors) => ({
         ...previousErrors,
-        wellnessHubImg: "รองรับเฉพาะไฟล์ JPG, JPEG, PNG และ WEBP",
+        wellnessHubImg: "ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น",
       }));
 
       return;
@@ -970,7 +1080,7 @@ export default function ProviderDashboard() {
 
     if (selectedFiles.length === 0) return;
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
 
     const newImages = [];
 
@@ -978,16 +1088,16 @@ export default function ProviderDashboard() {
       if (!allowedTypes.includes(file.type)) {
         setFormErrors((previousErrors) => ({
           ...previousErrors,
-          wellnessHubGallery: "รองรับเฉพาะไฟล์ JPG, PNG และ WEBP",
+          wellnessHubGallery: "ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น",
         }));
 
         continue;
       }
 
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > 20 * 1024 * 1024) {
         setFormErrors((previousErrors) => ({
           ...previousErrors,
-          wellnessHubGallery: "รูปภาพต้องมีขนาดไม่เกิน 5 MB ต่อรูป",
+          wellnessHubGallery: "รูปภาพต้องมีขนาดไม่เกิน 20 MB ต่อรูป",
         }));
 
         continue;
@@ -1128,6 +1238,35 @@ export default function ProviderDashboard() {
       });
     }
 
+    // 7. username (ถ้ามีการแก้ไข)
+    const normalizedUsername = formData.username ? formData.username.trim() : "";
+    if (normalizedUsername) {
+      if (/\s/.test(normalizedUsername)) {
+        errors.username = "ชื่อผู้ใช้ (Username) ต้องไม่มีช่องว่าง";
+      } else if (normalizedUsername.length < 4 || normalizedUsername.length > 20) {
+        errors.username = "ชื่อผู้ใช้ (Username) ต้องมีความยาว 4–20 ตัวอักษร";
+      }
+    }
+
+    // 8. password & confirmPassword (ถ้าต้องการเปลี่ยนรหัสผ่าน)
+    const normalizedPassword = formData.password ? formData.password.trim() : "";
+    const normalizedConfirmPassword = formData.confirmPassword ? formData.confirmPassword.trim() : "";
+    if (normalizedPassword || normalizedConfirmPassword) {
+      if (!normalizedPassword) {
+        errors.password = "กรุณากรอกรหัสผ่านใหม่";
+      } else if (/\s/.test(normalizedPassword)) {
+        errors.password = "รหัสผ่านต้องไม่มีช่องว่าง";
+      } else if (normalizedPassword.length !== 8) {
+        errors.password = "รหัสผ่านต้องมีความยาว 8 ตัวอักษรเท่านั้น";
+      }
+
+      if (!normalizedConfirmPassword) {
+        errors.confirmPassword = "กรุณายืนยันรหัสผ่านใหม่อีกครั้ง";
+      } else if (normalizedPassword !== normalizedConfirmPassword) {
+        errors.confirmPassword = "รหัสผ่านยืนยันไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง";
+      }
+    }
+
     setFormErrors(errors);
 
     return errors;
@@ -1201,6 +1340,14 @@ export default function ProviderDashboard() {
 
       const payload = {
         licenseId: licenseId,
+
+        username: formData.username
+          ? formData.username.trim()
+          : hub?.username || null,
+
+        ...(formData.password && formData.password.trim()
+          ? { password: formData.password.trim() }
+          : {}),
 
         wellnessHubName: formData.wellnessHubName
           ? formData.wellnessHubName.trim()
@@ -1284,6 +1431,7 @@ export default function ProviderDashboard() {
 
       const updatedProvider = {
         ...provider,
+        username: updatedHub.username || provider?.username,
         wellnessHubName: updatedHub.wellnessHubName,
         categoryId: updatedHub.category?.categoryId || null,
         categoryName: updatedHub.category?.categoryName || null,
@@ -2426,7 +2574,7 @@ export default function ProviderDashboard() {
                         <h4>ภาพหน้าปกสถานประกอบการ</h4>
 
                         <p>
-                          แนะนำภาพแนวนอน JPG, PNG หรือ WEBP ขนาดไม่เกิน 20 MB
+                          แนะนำภาพแนวนอน .png, .jpg, .jpeg ขนาดไม่เกิน 20 MB
                         </p>
                       </div>
 
@@ -2437,7 +2585,7 @@ export default function ProviderDashboard() {
 
                         <input
                           type="file"
-                          accept="image/jpeg,image/png,image/webp"
+                          accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                           onChange={handleImageChange}
                           hidden
                         />
@@ -2517,7 +2665,7 @@ export default function ProviderDashboard() {
                     <div className="provider-dashboard-gallery-actions">
                       <div>
                         <h4>อัปโหลดภาพภายใน</h4>
-                        <p>รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 5 MB ต่อรูป</p>
+                        <p>รองรับ .png, .jpg, .jpeg ขนาดไม่เกิน 20 MB ต่อรูป</p>
                       </div>
 
                       <label className="provider-dashboard-upload">
@@ -2525,7 +2673,7 @@ export default function ProviderDashboard() {
                         เลือก/เพิ่มรูปภาพ
                         <input
                           type="file"
-                          accept="image/jpeg,image/png,image/webp"
+                          accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                           multiple
                           onChange={handleGalleryChange}
                           hidden
@@ -2537,6 +2685,90 @@ export default function ProviderDashboard() {
                           {formErrors.wellnessHubGallery}
                         </small>
                       )}
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 6: Account & Security */}
+                <section className="provider-dashboard-form-section">
+                  <div className="provider-dashboard-form-section__title">
+                    <span>06</span>
+
+                    <div>
+                      <h3>บัญชีผู้ใช้งานและความปลอดภัย</h3>
+                      <p>
+                        แก้ไขชื่อผู้ใช้และเปลี่ยนรหัสผ่านสำหรับเข้าสู่ระบบสถานประกอบการ
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="provider-dashboard-grid-2">
+                    <div className="provider-dashboard-field">
+                      <label htmlFor="username">
+                        ชื่อผู้ใช้งาน (Username)
+                      </label>
+
+                      <div className="provider-dashboard-input-icon">
+                        <UserRound />
+
+                        <input
+                          id="username"
+                          name="username"
+                          type="text"
+                          value={formData.username}
+                          onChange={handleInputChange}
+                          placeholder="ระบุชื่อผู้ใช้งาน (4–20 ตัวอักษร)"
+                          maxLength={20}
+                          className={
+                            formErrors.username
+                              ? "provider-dashboard-field-error-input"
+                              : ""
+                          }
+                        />
+                      </div>
+
+                      {formErrors.username ? (
+                        <small className="provider-dashboard-error">
+                          {formErrors.username}
+                        </small>
+                      ) : (
+                        <small>
+                          ใช้สำหรับเข้าสู่ระบบ (4–20 ตัวอักษร ไม่มีช่องว่าง)
+                        </small>
+                      )}
+                    </div>
+
+                    <div className="provider-dashboard-field">
+                      <label>รหัสผ่านเข้าสู่ระบบ (Password)</label>
+
+                      <div className="provider-dashboard-password-display-box">
+                        <div className="provider-dashboard-password-display-content">
+                          <Lock size={16} />
+                          <span className="provider-dashboard-password-text">
+                            {showCurrentPassword
+                              ? (hub.password || provider?.password || "••••••••")
+                              : "••••••••••••"}
+                          </span>
+                          <button
+                            type="button"
+                            className="provider-dashboard-password-toggle-btn"
+                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                            title={showCurrentPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                          >
+                            {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="provider-dashboard-change-pwd-btn"
+                          onClick={handleOpenPasswordModal}
+                        >
+                          <KeyRound size={15} />
+                          <span>เปลี่ยนรหัสผ่าน</span>
+                        </button>
+                      </div>
+                      <small>คลิกปุ่ม "เปลี่ยนรหัสผ่าน" เพื่อตั้งรหัสผ่านใหม่ (ความยาว 8 ตัวอักษรเท่านั้น)</small>
                     </div>
                   </div>
                 </section>
@@ -2796,6 +3028,58 @@ export default function ProviderDashboard() {
                     </div>
                   )}
                 </section>
+
+                {/* View Section 6: Account & Security */}
+                <section className="provider-dashboard-view-section">
+                  <div className="provider-dashboard-view-section__heading">
+                    <UserRound />
+
+                    <div>
+                      <h3>บัญชีผู้ใช้งานและความปลอดภัย</h3>
+                      <p>ข้อมูลสำหรับใช้เข้าสู่ระบบจัดการสถานประกอบการ</p>
+                    </div>
+                  </div>
+
+                  <div className="provider-dashboard-info-list">
+                    <div className="provider-dashboard-info-row">
+                      <span>ชื่อผู้ใช้งาน (Username)</span>
+                      <strong>
+                        {displayValue(hub.username || provider?.username)}
+                      </strong>
+                    </div>
+
+                    <div className="provider-dashboard-info-row">
+                      <span>รหัสผ่าน (Password)</span>
+                      <div className="provider-dashboard-view-password-cell">
+                        <div className="provider-dashboard-view-password-masked">
+                          <Lock size={16} />
+                          <span className="provider-dashboard-password-text">
+                            {showCurrentPassword
+                              ? (hub.password || provider?.password || "••••••••")
+                              : "••••••••••••"}
+                          </span>
+                          <button
+                            type="button"
+                            className="provider-dashboard-password-toggle-btn"
+                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                            title={showCurrentPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                          >
+                            {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="provider-dashboard-change-pwd-btn"
+                          onClick={handleOpenPasswordModal}
+                        >
+                          <KeyRound size={14} />
+                          เปลี่ยนรหัสผ่าน
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
               </div>
             )}
           </section>
@@ -2875,6 +3159,161 @@ export default function ProviderDashboard() {
               <X size={22} />
             </button>
             <img src={lightboxImage} alt="รูปภาพขนาดใหญ่" />
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div
+          className="provider-dashboard-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="provider-dashboard-modal provider-dashboard-password-modal">
+            <div className="provider-dashboard-modal__icon provider-dashboard-modal__icon--security">
+              <KeyRound />
+            </div>
+
+            <h2>เปลี่ยนรหัสผ่านเข้าสู่ระบบ</h2>
+            <p>กำหนดรหัสผ่านใหม่สำหรับบัญชีผู้ประกอบการ (ความยาว 8 ตัวอักษรเท่านั้น)</p>
+
+            <form onSubmit={handleChangePasswordSubmit} className="provider-dashboard-pwd-modal-form">
+              {passwordModalErrors.submit && (
+                <div className="provider-dashboard-pwd-modal-alert">
+                  <AlertCircle size={16} />
+                  <span>{passwordModalErrors.submit}</span>
+                </div>
+              )}
+
+              <div className="provider-dashboard-field">
+                <label htmlFor="modalNewPassword">
+                  รหัสผ่านใหม่ (New Password) <em>*</em>
+                </label>
+                <div className="provider-dashboard-input-icon">
+                  <Lock />
+                  <input
+                    id="modalNewPassword"
+                    name="newPassword"
+                    type={showNewPassword ? "text" : "password"}
+                    value={passwordModalData.newPassword}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPasswordModalData((prev) => ({
+                        ...prev,
+                        newPassword: val,
+                      }));
+                      setPasswordModalErrors((prev) => ({
+                        ...prev,
+                        newPassword: "",
+                        submit: "",
+                      }));
+                    }}
+                    placeholder="ระบุรหัสผ่านใหม่ (ความยาว 8 ตัวอักษร)"
+                    maxLength={8}
+                    disabled={passwordModalSubmitting}
+                    className={
+                      passwordModalErrors.newPassword
+                        ? "provider-dashboard-field-error-input"
+                        : ""
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="provider-dashboard-password-toggle"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    title={showNewPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                  >
+                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {passwordModalErrors.newPassword ? (
+                  <small className="provider-dashboard-error">
+                    {passwordModalErrors.newPassword}
+                  </small>
+                ) : (
+                  <small>ความยาว 8 ตัวอักษรเท่านั้น ไม่มีช่องว่าง</small>
+                )}
+              </div>
+
+              <div className="provider-dashboard-field">
+                <label htmlFor="modalConfirmPassword">
+                  ยืนยันรหัสผ่านใหม่อีกครั้ง (Confirm Password) <em>*</em>
+                </label>
+                <div className="provider-dashboard-input-icon">
+                  <ShieldCheck />
+                  <input
+                    id="modalConfirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmNewPassword ? "text" : "password"}
+                    value={passwordModalData.confirmPassword}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPasswordModalData((prev) => ({
+                        ...prev,
+                        confirmPassword: val,
+                      }));
+                      setPasswordModalErrors((prev) => ({
+                        ...prev,
+                        confirmPassword: "",
+                        submit: "",
+                      }));
+                    }}
+                    placeholder="กรอกรหัสผ่านใหม่อีกครั้งให้ตรงกัน"
+                    maxLength={8}
+                    disabled={passwordModalSubmitting}
+                    className={
+                      passwordModalErrors.confirmPassword
+                        ? "provider-dashboard-field-error-input"
+                        : ""
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="provider-dashboard-password-toggle"
+                    onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                    title={showConfirmNewPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                  >
+                    {showConfirmNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {passwordModalErrors.confirmPassword ? (
+                  <small className="provider-dashboard-error">
+                    {passwordModalErrors.confirmPassword}
+                  </small>
+                ) : (
+                  <small>กรอกรหัสผ่านซ้ำอีกครั้งเพื่อยืนยันความถูกต้อง</small>
+                )}
+              </div>
+
+              <div className="provider-dashboard-modal__actions">
+                <button
+                  type="button"
+                  className="provider-dashboard-button provider-dashboard-button--secondary"
+                  onClick={handleClosePasswordModal}
+                  disabled={passwordModalSubmitting}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="provider-dashboard-button provider-dashboard-button--primary"
+                  disabled={passwordModalSubmitting}
+                >
+                  {passwordModalSubmitting ? (
+                    <>
+                      <LoaderCircle className="provider-dashboard-small-spinner" />
+                      กำลังบันทึก...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      บันทึกรหัสผ่านใหม่
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

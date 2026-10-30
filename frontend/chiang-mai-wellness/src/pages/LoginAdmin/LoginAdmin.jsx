@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +12,14 @@ function LoginAdmin() {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const timeoutMsg = sessionStorage.getItem("session_timeout_message");
+    if (timeoutMsg) {
+      setError(timeoutMsg);
+      sessionStorage.removeItem("session_timeout_message");
+    }
+  }, []);
 
   // นิยามกฎสำหรับตรวจสอบเงื่อนไข (Regex)
   // ชื่อผู้ใช้ (adminId): ภาษาอังกฤษหรือตัวเลขเท่านั้น ห้ามช่องว่าง ห้ามเป็นค่าว่าง บังคับยาว 6-10 ตัวอักษร

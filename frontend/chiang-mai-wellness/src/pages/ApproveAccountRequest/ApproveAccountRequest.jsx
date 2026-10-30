@@ -168,6 +168,50 @@ const parseVerificationDocuments = (docData, docName) => {
   return [];
 };
 
+// ฟังก์ชันจัดรูปแบบชื่อไฟล์เอกสารรับรอง: <ชื่อในดรอปดาวน์ที่เลือก>_<รหัสคำขอ><นามสกุลไฟล์>
+const formatDocumentDisplayName = (docItem, requestId, index, allDocs = []) => {
+  if (!docItem) return "";
+  const docType = (docItem.type || "เอกสารยืนยันสิทธิ์").trim();
+  const currentName = (docItem.name || "").trim();
+
+  // ดึงนามสกุลไฟล์เดิม
+  let ext = "";
+  if (currentName.includes(".")) {
+    ext = currentName.substring(currentName.lastIndexOf("."));
+  } else if (typeof docItem.data === "string") {
+    const lowerData = docItem.data.toLowerCase();
+    if (lowerData.startsWith("data:application/pdf") || lowerData.includes(".pdf")) {
+      ext = ".pdf";
+    } else if (lowerData.startsWith("data:image/png") || lowerData.includes(".png")) {
+      ext = ".png";
+    } else if (lowerData.startsWith("data:image/jpeg") || lowerData.includes(".jpg") || lowerData.includes(".jpeg")) {
+      ext = ".jpg";
+    } else if (lowerData.startsWith("data:image/webp") || lowerData.includes(".webp")) {
+      ext = ".webp";
+    }
+  }
+
+  const reqId = requestId ? String(requestId).trim() : "";
+
+  // ตรวจสอบว่าในชุดเอกสารนี้ มีประเภทเดียวกันหลายไฟล์หรือไม่
+  const sameTypeDocs = allDocs.filter(
+    (d) => (d.type || "เอกสารยืนยันสิทธิ์").trim() === docType
+  );
+  let duplicateSuffix = "";
+  if (sameTypeDocs.length > 1) {
+    const pos = sameTypeDocs.indexOf(docItem);
+    if (pos >= 0) {
+      duplicateSuffix = `_${pos + 1}`;
+    }
+  }
+
+  if (!reqId) {
+    return `${docType}${duplicateSuffix}${ext}`;
+  }
+
+  return `${docType}_${reqId}${duplicateSuffix}${ext}`;
+};
+
 function ApproveAccountRequest() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -622,7 +666,12 @@ function ApproveAccountRequest() {
         }
         const file = new Blob([u8arr], { type: mime });
         const fileURL = URL.createObjectURL(file);
-        window.open(fileURL, "_blank");
+        const win = window.open(fileURL, "_blank");
+        if (win && docItem?.name) {
+          try {
+            win.document.title = docItem.name;
+          } catch (e) {}
+        }
       } catch (e) {
         alert("ไม่สามารถเปิดไฟล์ PDF ได้ รูปแบบ Base64 ไม่ถูกต้อง");
       }
@@ -638,10 +687,20 @@ function ApproveAccountRequest() {
         }
         const file = new Blob([u8arr], { type: mime });
         const fileURL = URL.createObjectURL(file);
-        window.open(fileURL, "_blank");
+        const win = window.open(fileURL, "_blank");
+        if (win && docItem?.name) {
+          try {
+            win.document.title = docItem.name;
+          } catch (e) {}
+        }
       } catch (e) {
         const w = window.open("");
         if (w) {
+          if (docItem?.name) {
+            try {
+              w.document.title = docItem.name;
+            } catch (e) {}
+          }
           w.document.write(`<img src="${fileData}" style="max-width:100%; height:auto;" />`);
         }
       }
@@ -659,9 +718,18 @@ function ApproveAccountRequest() {
   const galleryList = request
     ? parseGalleryImages(request.wellnessHubGallery)
     : [];
-  const documentsList = request
+  const rawDocs = request
     ? parseVerificationDocuments(request.verificationDocuments)
     : [];
+  const documentsList = rawDocs.map((docItem, idx) => ({
+    ...docItem,
+    name: formatDocumentDisplayName(
+      docItem,
+      request?.requestId || id,
+      idx,
+      rawDocs
+    ),
+  }));
 
   return (
     <div className="admin-layout">
@@ -750,6 +818,11 @@ function ApproveAccountRequest() {
             <div>
               <label>Email สถานประกอบการ</label>
               <p>{request.userEmail || "-"}</p>
+            </div>
+
+            <div>
+              <label>ช่องทางติดต่อเพิ่มเติม / เว็บไซต์</label>
+              <p>{request.contactInformation || "-"}</p>
             </div>
 
             <div style={{ gridColumn: "1 / -1" }}>
@@ -930,16 +1003,6 @@ function ApproveAccountRequest() {
             <div>
               <label>Email ผู้ยื่นคำขอ</label>
               <p>{request.userEmail || "-"}</p>
-            </div>
-
-            <div>
-              <label>เบอร์โทรศัพท์</label>
-              <p>{request.tellInformation || "-"}</p>
-            </div>
-
-            <div>
-              <label>ช่องทางติดต่อเพิ่มเติม</label>
-              <p>{request.contactInformation || "-"}</p>
             </div>
           </div>
 

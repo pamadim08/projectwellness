@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
+// @RequiredArgsConstructor
 @Slf4j
 public class StorageMigrationService {
 
@@ -19,7 +19,19 @@ public class StorageMigrationService {
     private final WellnessHubRepository wellnessHubRepository;
     private final EmergencyServiceRepository emergencyServiceRepository;
     private final AccountRequestRepository accountRequestRepository;
-    private final ArticleRepository articleRepository;
+
+    public StorageMigrationService(
+            SupabaseStorageService supabaseStorageService,
+            OfficialArticleRepository officialArticleRepository,
+            WellnessHubRepository wellnessHubRepository,
+            EmergencyServiceRepository emergencyServiceRepository,
+            AccountRequestRepository accountRequestRepository) {
+        this.supabaseStorageService = supabaseStorageService;
+        this.officialArticleRepository = officialArticleRepository;
+        this.wellnessHubRepository = wellnessHubRepository;
+        this.emergencyServiceRepository = emergencyServiceRepository;
+        this.accountRequestRepository = accountRequestRepository;
+    }
 
     /**
      * ดำเนินการย้ายรูปภาพ Base64 เดิมทั้งหมดในฐานข้อมูลขึ้น Supabase Storage
@@ -33,7 +45,6 @@ public class StorageMigrationService {
         int migratedHubs = migrateWellnessHubs();
         int migratedEmergency = migrateEmergencyServices();
         int migratedRequests = migrateAccountRequests();
-        int migratedUserArticles = migrateUserArticles();
 
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("status", "SUCCESS");
@@ -42,8 +53,7 @@ public class StorageMigrationService {
         report.put("wellnessHubsUpdated", migratedHubs);
         report.put("emergencyServicesUpdated", migratedEmergency);
         report.put("accountRequestsUpdated", migratedRequests);
-        report.put("userArticlesUpdated", migratedUserArticles);
-        report.put("totalUpdated", migratedArticles + migratedHubs + migratedEmergency + migratedRequests + migratedUserArticles);
+        report.put("totalUpdated", migratedArticles + migratedHubs + migratedEmergency + migratedRequests);
 
         log.info("🏁 Migration completed successfully! Report: {}", report);
         return report;
@@ -157,27 +167,6 @@ public class StorageMigrationService {
 
             if (updated) {
                 accountRequestRepository.save(request);
-                count++;
-            }
-        }
-        return count;
-    }
-
-    private int migrateUserArticles() {
-        List<Article> articles = articleRepository.findAll();
-        int count = 0;
-
-        for (Article article : articles) {
-            boolean updated = false;
-
-            if (hasBase64(article.getImage())) {
-                String imageUrls = supabaseStorageService.uploadGalleryBase64OrReturnUrl(article.getImage(), "articles");
-                article.setImage(imageUrls);
-                updated = true;
-            }
-
-            if (updated) {
-                articleRepository.save(article);
                 count++;
             }
         }

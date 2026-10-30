@@ -171,12 +171,12 @@ function CreateOfficialArticle() {
 
   // ตรวจสอบชนิดไฟล์ (.png, .jpg, .jpeg) และขนาดไฟล์ไม่เกิน 20MB
   const validateImage = (file) => {
-    const allowTypes = ["image/png", "image/jpeg", "image/jpg"];
-    const isExtValid =
-      allowTypes.includes(file.type) || /\.(png|jpe?g)$/i.test(file.name);
+    const isImage =
+      ["image/png", "image/jpeg", "image/jpg"].includes(file.type) ||
+      /\.(png|jpe?g)$/i.test(file.name);
 
-    if (!isExtValid) {
-      return "รองรับเฉพาะไฟล์ .png, .jpg, .jpeg เท่านั้น";
+    if (!isImage) {
+      return "ต้องเป็นไฟล์รูปภาพนามสกุล .png, .jpg และ .jpeg เท่านั้น";
     }
     if (file.size > MAX_IMAGE_SIZE) {
       return "ขนาดไฟล์ต้องไม่เกิน 20 MB";

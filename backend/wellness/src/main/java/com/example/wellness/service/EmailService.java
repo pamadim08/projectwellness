@@ -1,10 +1,22 @@
 package com.example.wellness.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+/**
+ * เซอร์วิสสำหรับส่งอีเมลแจ้งเตือนผลการอนุมัติ/ปฏิเสธคำขอ
+ *
+ * คำอธิบายการทำงาน:
+ * 1. @Slf4j: ช่วยสร้างตัวแปร log ให้ใช้อัตโนมัติ (เช่น log.info, log.error) เพื่อบันทึกประวัติการส่งเมลลงคอนโซล
+ * 2. @Async: สั่งให้ส่งอีเมลใน "เบื้องหลัง" (Background Thread)
+ *    เพื่อไม่ให้หน้าจอของแอดมินหมุนค้างระหว่างรอเซิร์ฟเวอร์ต่อเน็ตกับ Gmail (แอดมินกดปุ๊บ หน้าจอเสร็จทันที)
+ */
 @Service
+@Slf4j
+@Async
 public class EmailService {
 
     private final JavaMailSender mailSender;
@@ -13,6 +25,9 @@ public class EmailService {
         this.mailSender = mailSender;
     }
 
+    /**
+     * ส่งอีเมลแจ้งเตือนเมื่อคำขอได้รับการอนุมัติ (แนบ Username / Password ให้ผู้ประกอบการ)
+     */
     public void sendApproveEmail(
             String email,
             String wellnessHubName,
@@ -20,59 +35,85 @@ public class EmailService {
             String username,
             String password) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject("ผลการอนุมัติบัญชีสถานประกอบการ");
-        message.setText("""
-                ระบบได้อนุมัติบัญชีสถานประกอบการของคุณแล้ว
+        if (email == null || email.trim().isEmpty()) {
+            log.warn("⚠️ ไม่สามารถส่งอีเมลอนุมัติได้: ไม่มีอีเมลผู้รับ");
+            return;
+        }
 
-                ชื่อสถานประกอบการ:
-                %s
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(email);
+            message.setSubject("ผลการอนุมัติบัญชีสถานประกอบการ");
+            message.setText("""
+                    ระบบได้อนุมัติบัญชีสถานประกอบการของคุณแล้ว
 
-                รหัสใบอนุญาตสถานประกอบการ:
-                %s
+                    ชื่อสถานประกอบการ:
+                    %s
 
-                Username:
-                %s
+                    รหัสใบอนุญาตสถานประกอบการ:
+                    %s
 
-                Password:
-                %s
-                """.formatted(wellnessHubName, String.valueOf(licenseId), username, password));
+                    Username:
+                    %s
 
-        mailSender.send(message);
+                    Password:
+                    %s
+                    """.formatted(wellnessHubName, String.valueOf(licenseId), username, password));
+
+            mailSender.send(message);
+            log.info("📧 ส่งอีเมลแจ้งผลการอนุมัติสำเร็จไปยัง: {}", email);
+        } catch (Exception e) {
+            log.error("❌ เกิดข้อผิดพลาดในการส่งอีเมลอนุมัติไปยัง {}: {}", email, e.getMessage());
+        }
     }
 
+    /**
+     * ส่งอีเมลแจ้งเตือนเมื่อคำขอถูกปฏิเสธ (พร้อมระบุเหตุผล)
+     */
     public void sendRejectEmail(
             String email,
             String wellnessHubName,
             String licenseId,
             String reason) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject("ผลการพิจารณาคำร้องขอสิทธิ์สถานประกอบการ");
-        message.setText("""
-                คำร้องขอสิทธิ์สถานประกอบการของคุณไม่ได้รับการอนุมัติ
+        if (email == null || email.trim().isEmpty()) {
+            log.warn("⚠️ ไม่สามารถส่งอีเมลแจ้งการปฏิเสธได้: ไม่มีอีเมลผู้รับ");
+            return;
+        }
 
-                ชื่อสถานประกอบการ:
-                %s
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(email);
+            message.setSubject("ผลการพิจารณาคำร้องขอสิทธิ์สถานประกอบการ");
+            message.setText("""
+                    คำร้องขอสิทธิ์สถานประกอบการของคุณไม่ได้รับการอนุมัติ
 
-                รหัสใบอนุญาตสถานประกอบการ:
-                %s
+                    ชื่อสถานประกอบการ:
+                    %s
 
-                เหตุผลที่ไม่อนุมัติ:
-                %s
+                    รหัสใบอนุญาตสถานประกอบการ:
+                    %s
 
-                --------------------------------------------------
-                คำแนะนำในการดำเนินการ:
-                ท่านสามารถตรวจสอบและแก้ไขข้อมูลหรือเอกสารประกอบให้ถูกต้องครบถ้วน
-                จากนั้นสามารถดำเนินการยื่นคำร้องขอสิทธิ์เข้ามาใหม่อีกครั้งผ่านทางเว็บไซต์ระบบได้
-                เมื่อท่านส่งข้อมูลเข้ามาใหม่ ระบบจะนำข้อมูลเข้าสู่กระบวนการ "รอพิจารณา" อีกครั้ง
-                """.formatted(wellnessHubName, String.valueOf(licenseId), reason));
+                    เหตุผลที่ไม่อนุมัติ:
+                    %s
 
-        mailSender.send(message);
+                    --------------------------------------------------
+                    คำแนะนำในการดำเนินการ:
+                    ท่านสามารถตรวจสอบและแก้ไขข้อมูลหรือเอกสารประกอบให้ถูกต้องครบถ้วน
+                    จากนั้นสามารถดำเนินการยื่นคำร้องขอสิทธิ์เข้ามาใหม่อีกครั้งผ่านทางเว็บไซต์ระบบได้
+                    เมื่อท่านส่งข้อมูลเข้ามาใหม่ ระบบจะนำข้อมูลเข้าสู่กระบวนการ "รอพิจารณา" อีกครั้ง
+                    """.formatted(wellnessHubName, String.valueOf(licenseId), reason));
+
+            mailSender.send(message);
+            log.info("📧 ส่งอีเมลแจ้งผลการปฏิเสธสำเร็จไปยัง: {}", email);
+        } catch (Exception e) {
+            log.error("❌ เกิดข้อผิดพลาดในการส่งอีเมลปฏิเสธไปยัง {}: {}", email, e.getMessage());
+        }
     }
 
+    /**
+     * เมธอดรวมศูนย์สำหรับแจ้งผลคำขอ
+     */
     public void notifyRequestResult(
             String email,
             String wellnessHubName,

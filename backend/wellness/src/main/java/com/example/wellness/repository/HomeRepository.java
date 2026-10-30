@@ -57,6 +57,7 @@ public class HomeRepository {
                         FROM MainRoute route
                         LEFT JOIN FETCH route.details detail
                         LEFT JOIN FETCH detail.district
+                        LEFT JOIN FETCH route.categories cat
                         WHERE route.routeId IN :routeIds
                         """, MainRoute.class)
                 .setParameter("routeIds", routeIds)
@@ -153,6 +154,7 @@ public class HomeRepository {
                         FROM MainRoute route
                         LEFT JOIN FETCH route.details detail
                         LEFT JOIN FETCH detail.district
+                        LEFT JOIN FETCH route.categories cat
                         ORDER BY route.createdAt DESC,
                                  route.routeId DESC
                         """, MainRoute.class)

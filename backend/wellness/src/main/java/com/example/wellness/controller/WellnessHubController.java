@@ -221,6 +221,7 @@ public class WellnessHubController {
             username = (isEmer ? "ES_" : "WH_") + hub.getLicenseId();
         }
         map.put("username", username);
+        map.put("password", hub.getPassword());
         map.put("wellnessHubName", hub.getWellnessHubName());
         map.put("address", hub.getAddress());
         map.put("contactInformation", hub.getContactInformation());
@@ -387,39 +388,7 @@ public class WellnessHubController {
         }
     }
 
-    // เพิ่มใน WellnessHubController ที่มีอยู่แล้ว
 
-    @PostMapping("/favorite")
-    public ResponseEntity<?> addToFavorite(
-            @RequestParam Integer memberId,
-            @RequestParam String licenseId) {
-        try {
-            wellnessHubService.addToFavorite(memberId, licenseId);
-            return ResponseEntity.ok("เพิ่มรายการโปรดสำเร็จ");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-    @DeleteMapping("/favorite")
-    public ResponseEntity<?> removeFromFavorite(
-            @RequestParam Integer memberId,
-            @RequestParam String licenseId) {
-        wellnessHubService.removeFromFavorite(memberId, licenseId);
-        return ResponseEntity.ok("ลบรายการโปรดสำเร็จ");
-    }
-
-    @GetMapping("/favorite")
-    public ResponseEntity<?> getListFavorite(@RequestParam Integer memberId) {
-        return ResponseEntity.ok(wellnessHubService.getListFavorite(memberId));
-    }
-
-    @GetMapping("/favorite/check")
-    public ResponseEntity<?> checkFavorite(
-            @RequestParam Integer memberId,
-            @RequestParam String licenseId) {
-        return ResponseEntity.ok(wellnessHubService.isFavorite(memberId, licenseId));
-    }
 
     @GetMapping("/route")
     public ResponseEntity<PagedResult> getHubsForRoute(

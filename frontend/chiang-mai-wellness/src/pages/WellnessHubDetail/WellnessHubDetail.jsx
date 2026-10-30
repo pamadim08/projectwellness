@@ -895,7 +895,9 @@ export default function WellnessHubDetail() {
                   <MapContainer
                     center={mapPosition}
                     zoom={15}
-                    scrollWheelZoom={false}
+                    scrollWheelZoom={true}
+                    touchZoom={true}
+                    doubleClickZoom={true}
                     className="hub-detail-leaflet-map"
                   >
                     <TileLayer
