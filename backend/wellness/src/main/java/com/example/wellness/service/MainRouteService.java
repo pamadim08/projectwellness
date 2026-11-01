@@ -208,12 +208,18 @@ public class MainRouteService {
                 (int) (wellnessHubCount + emergencyServiceCount));
     }
 
+    private boolean isValidGoogleMapsLink(String link) {
+        if (link == null) return false;
+        String trimmed = link.trim();
+        return !trimmed.isEmpty() && !trimmed.startsWith("#") && !"null".equalsIgnoreCase(trimmed);
+    }
+
     private boolean isValidHubForPinCount(com.example.wellness.model.WellnessHub hub) {
         if (hub == null) return false;
         if (hub.getStatus() != null && !hub.getStatus().trim().isEmpty() && !"ACTIVE".equalsIgnoreCase(hub.getStatus().trim())) {
             return false;
         }
-        if (hub.getGoogleMapsLink() == null || hub.getGoogleMapsLink().trim().isEmpty()) {
+        if (!isValidGoogleMapsLink(hub.getGoogleMapsLink())) {
             return false;
         }
         return isValidCoordinate(hub.getWellnessHubLatitude(), hub.getWellnessHubLongitude());
@@ -224,7 +230,7 @@ public class MainRouteService {
         if (emergency.getStatus() != null && !emergency.getStatus().trim().isEmpty() && !"ACTIVE".equalsIgnoreCase(emergency.getStatus().trim())) {
             return false;
         }
-        if (emergency.getGoogleMapsLink() == null || emergency.getGoogleMapsLink().trim().isEmpty()) {
+        if (!isValidGoogleMapsLink(emergency.getGoogleMapsLink())) {
             return false;
         }
         return isValidCoordinate(emergency.getWellnessHubLatitude(), emergency.getWellnessHubLongitude());

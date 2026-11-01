@@ -26,6 +26,7 @@ public class DatabaseSequenceInitializer implements CommandLineRunner {
             ensureTableSequence("notification", "notification_id", "notification_notification_id_seq");
             ensureTableSequence("official_articles", "article_id", "official_articles_article_id_seq");
             ensureTableSequence("main_routes", "route_id", "main_routes_route_id_seq");
+            ensureTableSequence("main_route_details", "id", "main_route_details_id_seq");
         } catch (Exception e) {
             log.warn("DatabaseSequenceInitializer warning: {}", e.getMessage());
         }

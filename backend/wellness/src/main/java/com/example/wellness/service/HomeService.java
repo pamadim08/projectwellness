@@ -672,50 +672,40 @@ public class HomeService {
                 return wellnessHub;
         }
 
+        private boolean isValidGoogleMapsLink(String link) {
+                if (link == null) return false;
+                String trimmed = link.trim();
+                return !trimmed.isEmpty() && !trimmed.startsWith("#") && !"null".equalsIgnoreCase(trimmed);
+        }
+
+        private boolean isValidCoordinate(Double lat, Double lng) {
+                if (lat == null || lng == null) return false;
+                if (lat.isNaN() || lng.isNaN() || (lat == 0.0 && lng == 0.0)) return false;
+                return lat >= 17.0 && lat <= 20.5 && lng >= 98.0 && lng <= 100.0;
+        }
+
         private boolean isValidForMap(WellnessHub hub) {
                 if (hub == null) return false;
-                // 1. สถานะต้องเปิดทำการ (ACTIVE) เท่านั้น
                 String status = hub.getStatus();
                 if (status != null && !status.trim().isEmpty() && !"ACTIVE".equalsIgnoreCase(status.trim())) {
                         return false;
                 }
-                // 2. ต้องมีลิงก์ Google Maps
-                if (hub.getGoogleMapsLink() == null || hub.getGoogleMapsLink().trim().isEmpty()) {
+                if (!isValidGoogleMapsLink(hub.getGoogleMapsLink())) {
                         return false;
                 }
-                // 3. ต้องมีพิกัด ละติจูด และ ลองติจูด ที่ถูกต้อง
-                Double lat = hub.getWellnessHubLatitude();
-                Double lng = hub.getWellnessHubLongitude();
-                if (lat == null || lng == null) {
-                        return false;
-                }
-                if (lat.isNaN() || lng.isNaN() || (lat == 0.0 && lng == 0.0)) {
-                        return false;
-                }
-                return lat >= 17.0 && lat <= 20.5 && lng >= 98.0 && lng <= 100.0;
+                return isValidCoordinate(hub.getWellnessHubLatitude(), hub.getWellnessHubLongitude());
         }
 
         private boolean isValidForMapEmergency(EmergencyService emergency) {
                 if (emergency == null) return false;
-                // 1. สถานะต้องเปิดทำการ (ACTIVE) เท่านั้น
                 String status = emergency.getStatus();
                 if (status != null && !status.trim().isEmpty() && !"ACTIVE".equalsIgnoreCase(status.trim())) {
                         return false;
                 }
-                // 2. ต้องมีลิงก์ Google Maps
-                if (emergency.getGoogleMapsLink() == null || emergency.getGoogleMapsLink().trim().isEmpty()) {
+                if (!isValidGoogleMapsLink(emergency.getGoogleMapsLink())) {
                         return false;
                 }
-                // 3. ต้องมีพิกัด ละติจูด และ ลองติจูด ที่ถูกต้อง (อยู่ใน จ.เชียงใหม่)
-                Double lat = emergency.getWellnessHubLatitude();
-                Double lng = emergency.getWellnessHubLongitude();
-                if (lat == null || lng == null) {
-                        return false;
-                }
-                if (lat.isNaN() || lng.isNaN() || (lat == 0.0 && lng == 0.0)) {
-                        return false;
-                }
-                return lat >= 17.0 && lat <= 20.5 && lng >= 98.0 && lng <= 100.0;
+                return isValidCoordinate(emergency.getWellnessHubLatitude(), emergency.getWellnessHubLongitude());
         }
 
         private void putIfNotBlank(
